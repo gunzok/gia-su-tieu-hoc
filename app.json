@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "gia-su-tieu-hoc",
+    "name": "Cô giáo AI",
     "slug": "gia-su-tieu-hoc",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -25,6 +25,13 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "App cần dùng camera để bé chụp bài tập cho cô giáo AI chấm.",
+          "photosPermission": "App cần xem ảnh để bé chọn ảnh bài tập đã chụp sẵn."
+        }
+      ],
       [
         "expo-splash-screen",
         {

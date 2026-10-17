@@ -24,7 +24,16 @@ export const Colors = {
   },
 } as const;
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+// Màu nhấn tươi sáng cho trẻ em, dùng chung cho cả giao diện sáng và tối.
+export const Accent = {
+  primary: '#FF8A3D',
+  primarySoft: '#FFE3CF',
+  correct: '#2BB673',
+  wrong: '#E5484D',
+  onAccent: '#ffffff',
+} as const;
+
+export type ThemeColor =keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
