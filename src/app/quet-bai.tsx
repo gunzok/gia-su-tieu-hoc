@@ -133,7 +133,8 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   frame: {
-    aspectRatio: 3 / 4,
+    // Khung thấp vừa đủ để nút "Chụp ngay" luôn nằm trong màn hình, không phải cuộn.
+    aspectRatio: 1.1,
     borderRadius: 28,
     overflow: 'hidden',
     backgroundColor: '#334155',
