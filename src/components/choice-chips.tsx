@@ -1,8 +1,7 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { Accent, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { AppText } from '@/components/app-text';
+import { Palette, Radius, Spacing } from '@/constants/theme';
 
 type Props<T extends string | number> = {
   options: { value: T; label: string }[];
@@ -10,11 +9,10 @@ type Props<T extends string | number> = {
   onChange: (value: T) => void;
 };
 
+// Hàng nút chọn dạng viên thuốc, cuộn ngang được khi nhiều lựa chọn.
 export function ChoiceChips<T extends string | number>({ options, value, onChange }: Props<T>) {
-  const theme = useTheme();
-
   return (
-    <View style={styles.row}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
       {options.map((option) => {
         const selected = option.value === value;
         return (
@@ -25,34 +23,33 @@ export function ChoiceChips<T extends string | number>({ options, value, onChang
             onPress={() => onChange(option.value)}
             style={[
               styles.chip,
-              { backgroundColor: selected ? Accent.primary : theme.backgroundElement },
+              selected
+                ? { backgroundColor: Palette.blue, borderColor: Palette.blueDark }
+                : { backgroundColor: Palette.surface, borderColor: Palette.border },
             ]}>
-            <ThemedText style={[styles.label, selected && { color: Accent.onAccent }]}>
+            <AppText variant="labelLg" color={selected ? Palette.white : Palette.ink}>
               {option.label}
-            </ThemedText>
+            </AppText>
           </Pressable>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   row: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: Spacing.two,
+    paddingBottom: Spacing.one,
   },
   chip: {
-    minHeight: 48,
-    minWidth: 56,
+    minHeight: 52,
+    minWidth: 60,
     paddingHorizontal: Spacing.three,
-    borderRadius: 24,
+    borderRadius: Radius.full,
+    borderWidth: 2,
+    borderBottomWidth: 4,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  label: {
-    fontSize: 18,
-    fontWeight: 700,
   },
 });

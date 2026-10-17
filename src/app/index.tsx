@@ -1,233 +1,236 @@
-import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
-import * as Speech from 'expo-speech';
-import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { AppHeader, HeaderPill } from '@/components/app-header';
+import { AppText } from '@/components/app-text';
 import { BigButton } from '@/components/big-button';
-import { ChoiceChips } from '@/components/choice-chips';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Accent, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { gradeHomework, SubjectNames, type GradingResult, type Subject } from '@/lib/grading';
-import { addHistoryEntry } from '@/lib/history';
+import { Card } from '@/components/card';
+import { Mascot } from '@/components/mascot';
+import { Screen } from '@/components/screen';
+import { Palette, Radius, Spacing } from '@/constants/theme';
+import { SubjectNames, type Subject } from '@/lib/grading';
+import { loadHistory, type HistoryEntry } from '@/lib/history';
+import { useHomeworkSession } from '@/lib/homework-session';
+import { allSubjects, averageScore, SubjectIcons } from '@/lib/progress';
+import { speakVietnamese } from '@/lib/speech';
 
-const gradeOptions = [1, 2, 3, 4, 5].map((g) => ({ value: g, label: `Lớp ${g}` }));
-const subjectOptions = (Object.keys(SubjectNames) as Subject[]).map((s) => ({
-  value: s,
-  label: SubjectNames[s],
-}));
+const greeting =
+  'Chào con! Con chụp bài tập đã làm, cô sẽ chấm và nhận xét cho con nghe nhé!';
 
-function speakVietnamese(text: string) {
-  Speech.stop();
-  Speech.speak(text, { language: 'vi-VN', rate: 0.9 });
-}
+const subjectTints: Record<Subject, { soft: string; strong: string; button: 'primary' | 'amber' }> = {
+  toan: { soft: Palette.blueSoft, strong: Palette.blueDark, button: 'primary' },
+  'tieng-viet': { soft: Palette.amberSoft, strong: Palette.amberInk, button: 'amber' },
+};
 
-export default function HomeworkScreen() {
-  const [grade, setGrade] = useState(2);
-  const [subject, setSubject] = useState<Subject>('toan');
-  const [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
-  const [grading, setGrading] = useState(false);
-  const [result, setResult] = useState<GradingResult | null>(null);
+export default function HomeScreen() {
+  const { grade, setSubject } = useHomeworkSession();
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
-  useEffect(() => () => void Speech.stop(), []);
-
-  async function pickPhoto(source: 'camera' | 'library') {
-    const permission =
-      source === 'camera'
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Cần quyền truy cập', 'Bố mẹ hãy cho phép app dùng camera hoặc thư viện ảnh nhé.');
-      return;
-    }
-
-    const options: ImagePicker.ImagePickerOptions = {
-      mediaTypes: ['images'],
-      quality: 0.5,
-      base64: true,
-    };
-    const picked =
-      source === 'camera'
-        ? await ImagePicker.launchCameraAsync(options)
-        : await ImagePicker.launchImageLibraryAsync(options);
-    if (picked.canceled) return;
-
-    Speech.stop();
-    setResult(null);
-    setPhoto(picked.assets[0]);
-  }
-
-  async function submitForGrading() {
-    if (!photo?.base64) return;
-    setGrading(true);
-    try {
-      const graded = await gradeHomework({ imageBase64: photo.base64, subject, grade });
-      setResult(graded);
-      speakVietnamese(graded.spokenFeedback);
-      await addHistoryEntry({
-        ...graded,
-        id: String(Date.now()),
-        createdAt: new Date().toISOString(),
-        subject,
-        grade,
-      });
-    } catch (error) {
-      Alert.alert('Chưa chấm được bài', error instanceof Error ? error.message : String(error));
-    } finally {
-      setGrading(false);
-    }
-  }
-
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ScrollView contentContainerStyle={styles.content}>
-          <ThemedText type="subtitle">Cô giáo AI 🍎</ThemedText>
-          <ThemedText themeColor="textSecondary" style={styles.lead}>
-            Con chụp bài tập đã làm, cô sẽ chấm và nhận xét cho con nghe nhé!
-          </ThemedText>
-
-          <View style={styles.section}>
-            <ThemedText type="smallBold">Con học lớp mấy?</ThemedText>
-            <ChoiceChips options={gradeOptions} value={grade} onChange={setGrade} />
-          </View>
-
-          <View style={styles.section}>
-            <ThemedText type="smallBold">Bài tập môn gì?</ThemedText>
-            <ChoiceChips options={subjectOptions} value={subject} onChange={setSubject} />
-          </View>
-
-          {photo && (
-            <Image source={{ uri: photo.uri }} style={styles.photo} contentFit="contain" />
-          )}
-
-          <View style={styles.buttons}>
-            <BigButton
-              label={photo ? '📷 Chụp lại' : '📷 Chụp bài làm'}
-              variant={photo ? 'secondary' : 'primary'}
-              onPress={() => pickPhoto('camera')}
-            />
-            <BigButton label="🖼️ Chọn ảnh có sẵn" variant="secondary" onPress={() => pickPhoto('library')} />
-            {photo && !result && (
-              <BigButton label="✏️ Cô chấm bài nhé!" onPress={submitForGrading} loading={grading} />
-            )}
-          </View>
-
-          {grading && (
-            <ThemedText themeColor="textSecondary" style={styles.center}>
-              Cô đang xem bài của con, đợi cô một chút nhé…
-            </ThemedText>
-          )}
-
-          {result && <ResultCard result={result} />}
-        </ScrollView>
-      </SafeAreaView>
-    </ThemedView>
+  useFocusEffect(
+    useCallback(() => {
+      loadHistory().then(setHistory);
+    }, []),
   );
-}
 
-function ResultCard({ result }: { result: GradingResult }) {
+  function startSubject(subject: Subject) {
+    setSubject(subject);
+    router.navigate('/quet-bai');
+  }
+
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
-      <View style={styles.scoreBadge}>
-        <ThemedText style={styles.scoreText}>{result.score}</ThemedText>
-        <ThemedText style={styles.scoreMax}>/10</ThemedText>
+    <Screen>
+      <AppHeader
+        subtitle={`Lớp ${grade}`}
+        right={<HeaderPill icon="📚" label={`${history.length} bài`} />}
+      />
+
+      <Card borderColor={Palette.blueSoft} style={styles.greetingCard}>
+        <View style={styles.greetingText}>
+          <View style={styles.tag}>
+            <AppText variant="labelSm" color={Palette.blueDark}>
+              👋 Xin chào!
+            </AppText>
+          </View>
+          <AppText variant="headlineLg">Hôm nay con học gì nào?</AppText>
+          <BigButton label="🔊 Nghe cô dặn" compact onPress={() => speakVietnamese(greeting)} />
+        </View>
+        <Mascot size={92} />
+      </Card>
+
+      <View style={styles.hero}>
+        <View style={styles.heroTag}>
+          <AppText variant="labelSm" color={Palette.white}>
+            ⚡ AI SIÊU TỐC
+          </AppText>
+        </View>
+        <AppText variant="headlineXl" color={Palette.white}>
+          Chấm Bài Ngay!
+        </AppText>
+        <AppText variant="bodySm" color={Palette.blueSoft}>
+          Chụp ảnh bài làm, cô chấm điểm và giảng lại cho con nghe.
+        </AppText>
+        <BigButton label="📷  1 CHẠM CHẤM NGAY" variant="amber" onPress={() => router.navigate('/quet-bai')} />
       </View>
 
-      <ThemedText style={styles.feedback}>{result.spokenFeedback}</ThemedText>
-      <BigButton label="🔊 Nghe cô nhận xét" variant="secondary" onPress={() => speakVietnamese(result.spokenFeedback)} />
-
-      {result.items.map((item, index) => (
-        <View key={index} style={styles.item}>
-          <ThemedText style={[styles.mark, { color: item.correct ? Accent.correct : Accent.wrong }]}>
-            {item.correct ? '✓' : '✗'}
-          </ThemedText>
-          <View style={styles.itemBody}>
-            <ThemedText type="smallBold">{item.question}</ThemedText>
-            <ThemedText type="small">Con làm: {item.childAnswer}</ThemedText>
-            {!item.correct && (
-              <ThemedText type="small" themeColor="textSecondary">
-                {item.explanation}
-              </ThemedText>
-            )}
-          </View>
+      <View style={styles.section}>
+        <AppText variant="headlineSm">📚 Khám phá môn học</AppText>
+        <View style={styles.subjectRow}>
+          {allSubjects.map((subject) => {
+            const tint = subjectTints[subject];
+            const average = averageScore(history.filter((entry) => entry.subject === subject));
+            return (
+              <Card key={subject} borderColor={tint.soft} style={styles.subjectCard}>
+                <View style={[styles.subjectIcon, { backgroundColor: tint.soft }]}>
+                  <AppText style={styles.subjectEmoji}>{SubjectIcons[subject]}</AppText>
+                </View>
+                <AppText variant="labelLg" color={tint.strong} style={styles.center}>
+                  {SubjectNames[subject]} {grade}
+                </AppText>
+                <AppText variant="bodySm" color={Palette.inkSoft} style={styles.center}>
+                  {average === null ? 'Chưa có bài' : `Điểm TB ${average.toFixed(1)}`}
+                </AppText>
+                <BigButton
+                  label="Học ▷"
+                  compact
+                  variant={tint.button}
+                  onPress={() => startSubject(subject)}
+                />
+              </Card>
+            );
+          })}
         </View>
-      ))}
-    </ThemedView>
+      </View>
+
+      {history[0] && (
+        <Card tint={Palette.amberSoft} borderColor="#FFE3A3" style={styles.latestCard}>
+          <View style={styles.latestScore}>
+            <AppText variant="headlineLg" color={Palette.amberInk}>
+              {history[0].score}
+            </AppText>
+            <AppText variant="labelSm" color={Palette.amberInk}>
+              /10
+            </AppText>
+          </View>
+          <View style={styles.flex}>
+            <AppText variant="labelLg">Bài gần nhất</AppText>
+            <AppText variant="bodySm" color={Palette.inkSoft}>
+              {SubjectNames[history[0].subject]} · Lớp {history[0].grade}
+            </AppText>
+          </View>
+          <BigButton label="Xem lại" compact variant="ghost" onPress={() => router.navigate('/chua-bai')} />
+        </Card>
+      )}
+
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.navigate('/tien-do')}
+        style={styles.parentRow}>
+        <AppText style={styles.parentEmoji}>👨‍👩‍👧</AppText>
+        <View style={styles.flex}>
+          <AppText variant="labelMd">Góc phụ huynh</AppText>
+          <AppText variant="bodySm" color={Palette.inkSoft}>
+            Xem tiến độ và lời nhận xét cho bố mẹ
+          </AppText>
+        </View>
+        <View style={styles.parentButton}>
+          <AppText variant="labelMd" color={Palette.blueDark}>
+            Xem ngay
+          </AppText>
+        </View>
+      </Pressable>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  flex: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  safeArea: {
-    flex: 1,
-    maxWidth: MaxContentWidth,
-  },
-  content: {
-    padding: Spacing.four,
-    paddingBottom: BottomTabInset + Spacing.five,
-    gap: Spacing.four,
-  },
-  lead: {
-    fontSize: 18,
-    lineHeight: 26,
-  },
-  section: {
-    gap: Spacing.two,
-  },
-  photo: {
-    width: '100%',
-    aspectRatio: 3 / 4,
-    borderRadius: 16,
-  },
-  buttons: {
-    gap: Spacing.three,
   },
   center: {
     textAlign: 'center',
   },
-  card: {
-    borderRadius: 24,
+  greetingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: Palette.blue,
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  greetingText: {
+    flex: 1,
+    gap: Spacing.two,
+    alignItems: 'flex-start',
+  },
+  tag: {
+    backgroundColor: Palette.blueSoft,
+    paddingHorizontal: Spacing.two + 2,
+    paddingVertical: Spacing.one,
+    borderRadius: Radius.full,
+  },
+  hero: {
+    backgroundColor: Palette.blue,
+    borderRadius: Radius.lg,
+    borderBottomWidth: 5,
+    borderColor: Palette.blueDark,
     padding: Spacing.four,
+    gap: Spacing.two,
+  },
+  heroTag: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: Spacing.two + 2,
+    paddingVertical: Spacing.one,
+    borderRadius: Radius.full,
+  },
+  section: {
     gap: Spacing.three,
   },
-  scoreBadge: {
+  subjectRow: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+  },
+  subjectCard: {
+    flex: 1,
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  subjectIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  subjectEmoji: {
+    fontSize: 38,
+    lineHeight: 46,
+  },
+  latestCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  latestScore: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    alignSelf: 'center',
   },
-  scoreText: {
-    fontSize: 64,
-    lineHeight: 72,
-    fontWeight: 800,
-    color: Accent.primary,
-  },
-  scoreMax: {
-    fontSize: 24,
-    fontWeight: 700,
-    color: Accent.primary,
-  },
-  feedback: {
-    fontSize: 18,
-    lineHeight: 28,
-  },
-  item: {
+  parentRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.three,
+    backgroundColor: Palette.surfaceMuted,
+    borderRadius: Radius.lg,
+    padding: Spacing.three,
   },
-  mark: {
-    fontSize: 24,
-    lineHeight: 28,
-    fontWeight: 800,
+  parentEmoji: {
+    fontSize: 28,
+    lineHeight: 36,
   },
-  itemBody: {
-    flex: 1,
-    gap: Spacing.half,
+  parentButton: {
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
   },
 });
