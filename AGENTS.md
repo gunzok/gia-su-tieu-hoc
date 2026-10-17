@@ -39,3 +39,15 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Dự án: Gia sư tiểu học
+
+App iOS + Android giúp học sinh tiểu học (lớp 1–5) làm bài tập về nhà: chụp ảnh bài làm, AI chấm điểm và nhận xét, rồi đọc lời nhận xét thành tiếng cho bé nghe.
+
+- Người dùng là trẻ em 6–11 tuổi và phụ huynh: chữ to, nút lớn, ít chữ, màu sắc thân thiện, lời lẽ khích lệ.
+- Toàn bộ giao diện và lời nhận xét bằng **tiếng Việt**.
+- AI chấm bài: **Claude API** (Anthropic), gửi ảnh bài làm để đọc và chấm.
+- **Không bao giờ** đặt API key trong code app hay commit lên Git. Key chỉ nằm ở server/proxy hoặc file `.env.local` (đã được gitignore).
+- Đọc lời nhận xét: ưu tiên `expo-speech` (giọng tiếng Việt có sẵn trên máy).
+- Dự án được sửa chung bởi Claude Code, Google Antigravity và OpenAI Codex. Mỗi công cụ làm trên nhánh Git riêng, commit nhỏ và thường xuyên, không sửa cùng file cùng lúc.
+- Chủ dự án không phải lập trình viên chuyên nghiệp: giải thích ngắn gọn bằng tiếng Việt và hỏi ý kiến trước mỗi quyết định lớn về tính năng hoặc công nghệ.
