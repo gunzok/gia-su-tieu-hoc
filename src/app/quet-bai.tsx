@@ -6,6 +6,7 @@ import { AppHeader } from '@/components/app-header';
 import { AppText } from '@/components/app-text';
 import { BigButton } from '@/components/big-button';
 import { ChoiceChips } from '@/components/choice-chips';
+import { GradingOverlay } from '@/components/grading-overlay';
 import { Mascot } from '@/components/mascot';
 import { Screen } from '@/components/screen';
 import { Palette, Radius, Spacing } from '@/constants/theme';
@@ -91,11 +92,7 @@ export default function ScanScreen() {
       {photo && (
         <BigButton label="✏️  Cô chấm bài nhé!" variant="mint" onPress={handleGrade} loading={grading} />
       )}
-      {grading && (
-        <AppText variant="bodyMd" color={Palette.inkSoft} style={styles.center}>
-          Cô đang xem bài của con, đợi cô một chút nhé…
-        </AppText>
-      )}
+      {grading && <GradingOverlay photoUri={photo?.uri} />}
 
       <View style={styles.tips}>
         <Tip icon="💡" label="Đủ ánh sáng" />
