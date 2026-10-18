@@ -14,6 +14,7 @@ import * as SplashScreen from 'expo-splash-screen';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { Palette } from '@/constants/theme';
+import { AuthProvider } from '@/lib/auth';
 import { HomeworkSessionProvider } from '@/lib/homework-session';
 import { ProfileProvider, useProfile } from '@/lib/profile';
 
@@ -39,14 +40,16 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={theme}>
-      <ProfileProvider>
-        <RootNavigator />
-      </ProfileProvider>
+      <AuthProvider>
+        <ProfileProvider>
+          <RootNavigator />
+        </ProfileProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }
 
-// Chưa có hồ sơ bé: chỉ vào được Khởi động / Đăng nhập / Hồ sơ (mở app sẽ vào Khởi động).
+// Chưa có hồ sơ bé: chỉ vào được Khởi động / Hồ sơ / Đăng nhập (mở app sẽ vào Khởi động).
 // Có hồ sơ rồi: vào thẳng các tab; sửa hồ sơ ở màn "sua-ho-so".
 function RootNavigator() {
   const { ready, profile } = useProfile();
@@ -58,13 +61,14 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Palette.background } }}>
         <Stack.Protected guard={!profile} redirectTo="/">
           <Stack.Screen name="khoi-dong" />
-          <Stack.Screen name="dang-nhap" />
           <Stack.Screen name="ho-so" />
         </Stack.Protected>
         <Stack.Protected guard={!!profile} redirectTo="/khoi-dong">
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="sua-ho-so" />
         </Stack.Protected>
+        {/* Đăng nhập mở được cả lúc mới cài app lẫn từ tab Tiến độ. */}
+        <Stack.Screen name="dang-nhap" />
       </Stack>
     </HomeworkSessionProvider>
   );

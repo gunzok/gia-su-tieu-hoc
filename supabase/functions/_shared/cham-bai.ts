@@ -1,4 +1,29 @@
-import type { Subject } from '@/lib/grading';
+// Dùng chung cho app (src/lib/grading.ts) và máy chủ Supabase (functions/cham-bai):
+// kiểu dữ liệu, mẫu kết quả và lời dặn chấm bài. File này KHÔNG được import gì,
+// để cả Metro (app) lẫn Deno (Supabase Edge Function) đều đọc được.
+
+export type Subject = 'toan' | 'tieng-viet';
+
+export const SubjectNames: Record<Subject, string> = {
+  toan: 'Toán',
+  'tieng-viet': 'Tiếng Việt',
+};
+
+export type GradedItem = {
+  question: string;
+  childAnswer: string;
+  /** Đáp án đúng do AI tự giải; bài chấm trước khi có trường này thì không có. */
+  correctAnswer?: string;
+  correct: boolean;
+  explanation: string;
+};
+
+export type GradingResult = {
+  score: number;
+  spokenFeedback: string;
+  items: GradedItem[];
+  parentNote: string;
+};
 
 /**
  * "Kiến thức của cô giáo": đưa vào lời dặn mỗi lần chấm, dùng chung cho Claude và LM Studio.
@@ -8,7 +33,7 @@ import type { Subject } from '@/lib/grading';
  * giáo khoa. Nên nhờ giáo viên tiểu học đọc lại và sửa trực tiếp trong file này.
  */
 
-export const pedagogyPrinciples = `Nguyên tắc nhận xét (theo tinh thần Thông tư 27/2020 về đánh giá học sinh tiểu học):
+const pedagogyPrinciples = `Nguyên tắc nhận xét (theo tinh thần Thông tư 27/2020 về đánh giá học sinh tiểu học):
 - Đánh giá để giúp bé tiến bộ, không để so sánh hay chê. Không dùng từ "dốt", "kém", "sai bét", "lười".
 - Khen cụ thể điều bé làm tốt trước (ví dụ: "con đặt tính thẳng hàng rất đẹp"), rồi mới chỉ lỗi.
 - Mỗi lỗi phải kèm cách sửa cụ thể, từng bước nhỏ, dùng ví dụ gần gũi (que tính, quả táo, đồ chơi).
@@ -67,3 +92,56 @@ export function teacherKnowledge(subject: Subject, grade: number) {
     .filter(Boolean)
     .join('\n\n');
 }
+
+export const resultSchema = {
+  type: 'object',
+  additionalProperties: false,
+  // Chấm từng câu trước, rồi mới cho điểm và viết nhận xét dựa trên đúng các câu đó.
+  required: ['items', 'score', 'spokenFeedback', 'parentNote'],
+  properties: {
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        // Thứ tự có chủ ý: AI tự giải ra correctAnswer trước rồi mới so với bài của bé.
+        required: ['question', 'childAnswer', 'correctAnswer', 'correct', 'explanation'],
+        properties: {
+          question: { type: 'string' },
+          childAnswer: { type: 'string', description: 'Đúng nguyên văn bé đã viết' },
+          correctAnswer: {
+            type: 'string',
+            description: 'Đáp án đúng do cô tự giải lại, không nhìn bài của bé',
+          },
+          correct: { type: 'boolean', description: 'true khi childAnswer khớp correctAnswer' },
+          explanation: { type: 'string' },
+        },
+      },
+    },
+    score: { type: 'number', description: 'Điểm trên thang 10, làm tròn 0.5' },
+    spokenFeedback: {
+      type: 'string',
+      description: 'Lời nhận xét nói trực tiếp với bé, sẽ được đọc thành tiếng',
+    },
+    parentNote: {
+      type: 'string',
+      description: 'Ghi chú ngắn cho phụ huynh: lỗi bé hay mắc và gợi ý luyện thêm',
+    },
+  },
+};
+
+export function systemPrompt(subject: Subject, grade: number) {
+  return `Bạn là cô giáo tiểu học người Việt, hiền và kiên nhẫn, đang chấm bài tập về nhà môn ${SubjectNames[subject]} lớp ${grade} theo chương trình giáo dục phổ thông 2018 của Việt Nam.
+
+${teacherKnowledge(subject, grade)}
+
+Ảnh là bài làm của bé (có thể viết tay, chụp nghiêng hoặc mờ). Hãy:
+1. Đọc từng câu hỏi và câu trả lời của bé. Chỗ nào không đọc rõ thì ghi "không đọc rõ" thay vì đoán.
+2. Với từng câu: chép nguyên văn câu trả lời của bé vào childAnswer, tự giải lại cẩn thận và ghi kết quả vào correctAnswer, rồi mới so hai kết quả để chấm đúng/sai. Với câu sai, explanation chỉ ra bé sai ở bước nào và cách làm đúng, ngắn gọn, dễ hiểu với trẻ lớp ${grade}.
+3. Cho điểm trên thang 10, làm tròn 0.5, tương ứng với số câu đúng.
+4. Viết spokenFeedback để đọc thành tiếng cho bé nghe: xưng "cô", gọi bé là "con", 3–5 câu ngắn, khen điều bé làm tốt trước, chỉ ra tối đa 2 lỗi quan trọng nhất và cách sửa, kết thúc bằng một câu động viên. Lỗi nhắc tới phải đúng với các câu được chấm sai ở mục items, không thêm lỗi khác. Không dùng ký hiệu, emoji hay định dạng vì câu này sẽ được đọc lên; viết phép tính bằng chữ (ví dụ "bốn mươi bảy nhân ba").
+5. Viết parentNote cho phụ huynh: lỗi bé mắc trong bài này (đúng như items) và gợi ý cách luyện thêm ở nhà phù hợp với lớp ${grade}.
+
+Nếu ảnh không phải bài tập, trả về score 0, items rỗng và nhẹ nhàng nhờ bé chụp lại bài làm.`;
+}
+

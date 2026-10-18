@@ -3,6 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
+import { AccountCard } from '@/components/account-card';
 import { AppHeader } from '@/components/app-header';
 import { AppText } from '@/components/app-text';
 import { type IconName } from '@/components/big-button';
@@ -72,6 +73,8 @@ export default function ProgressScreen() {
           </AppText>
         </View>
       </View>
+
+      <AccountCard />
 
       {history.length === 0 ? (
         <Card style={styles.empty}>

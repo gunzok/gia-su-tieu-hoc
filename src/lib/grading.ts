@@ -1,99 +1,27 @@
-import Anthropic from '@anthropic-ai/sdk';
+import {
+  resultSchema,
+  systemPrompt,
+  type GradingResult,
+  type Subject,
+} from '../../supabase/functions/_shared/cham-bai';
+import { ensureSession, supabase } from '@/lib/supabase';
 
-import { teacherKnowledge } from '@/lib/kien-thuc';
+export {
+  SubjectNames,
+  type GradedItem,
+  type GradingResult,
+  type Subject,
+} from '../../supabase/functions/_shared/cham-bai';
 
-export type Subject = 'toan' | 'tieng-viet';
-
-export const SubjectNames: Record<Subject, string> = {
-  toan: 'Toán',
-  'tieng-viet': 'Tiếng Việt',
-};
-
-export type GradedItem = {
-  question: string;
-  childAnswer: string;
-  /** Đáp án đúng do AI tự giải; bài chấm trước khi có trường này thì không có. */
-  correctAnswer?: string;
-  correct: boolean;
-  explanation: string;
-};
-
-export type GradingResult = {
-  score: number;
-  spokenFeedback: string;
-  items: GradedItem[];
-  parentNote: string;
-};
-
-// Giai đoạn thử nghiệm: key nằm trong .env.local và được đóng gói vào app.
-// Trước khi phát hành phải chuyển lời gọi này sang server riêng.
-const apiKey = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY;
-
+// Chấm bằng Claude qua hàm "cham-bai" trên Supabase: API key nằm trên máy chủ, không nằm trong app.
 // Không chờ quá lâu khi mất mạng, để kịp chuyển sang LM Studio.
-const client = new Anthropic({
-  apiKey,
-  dangerouslyAllowBrowser: true,
-  maxRetries: 1,
-  timeout: 90_000,
-});
+const claudeTimeoutMs = 120_000;
 
 // LM Studio chạy trên máy tính ở nhà, dùng khi không chấm được bằng Claude.
 // Ví dụ: http://192.168.1.13:1234 (địa chỉ máy tính trong mạng Wi-Fi nhà).
 const lmStudioUrl = process.env.EXPO_PUBLIC_LMSTUDIO_URL?.replace(/\/+$/, '');
 const lmStudioModel = process.env.EXPO_PUBLIC_LMSTUDIO_MODEL;
 const lmStudioTimeoutMs = 240_000;
-
-const resultSchema = {
-  type: 'object',
-  additionalProperties: false,
-  // Chấm từng câu trước, rồi mới cho điểm và viết nhận xét dựa trên đúng các câu đó.
-  required: ['items', 'score', 'spokenFeedback', 'parentNote'],
-  properties: {
-    items: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        // Thứ tự có chủ ý: AI tự giải ra correctAnswer trước rồi mới so với bài của bé.
-        required: ['question', 'childAnswer', 'correctAnswer', 'correct', 'explanation'],
-        properties: {
-          question: { type: 'string' },
-          childAnswer: { type: 'string', description: 'Đúng nguyên văn bé đã viết' },
-          correctAnswer: {
-            type: 'string',
-            description: 'Đáp án đúng do cô tự giải lại, không nhìn bài của bé',
-          },
-          correct: { type: 'boolean', description: 'true khi childAnswer khớp correctAnswer' },
-          explanation: { type: 'string' },
-        },
-      },
-    },
-    score: { type: 'number', description: 'Điểm trên thang 10, làm tròn 0.5' },
-    spokenFeedback: {
-      type: 'string',
-      description: 'Lời nhận xét nói trực tiếp với bé, sẽ được đọc thành tiếng',
-    },
-    parentNote: {
-      type: 'string',
-      description: 'Ghi chú ngắn cho phụ huynh: lỗi bé hay mắc và gợi ý luyện thêm',
-    },
-  },
-};
-
-function systemPrompt(subject: Subject, grade: number) {
-  return `Bạn là cô giáo tiểu học người Việt, hiền và kiên nhẫn, đang chấm bài tập về nhà môn ${SubjectNames[subject]} lớp ${grade} theo chương trình giáo dục phổ thông 2018 của Việt Nam.
-
-${teacherKnowledge(subject, grade)}
-
-Ảnh là bài làm của bé (có thể viết tay, chụp nghiêng hoặc mờ). Hãy:
-1. Đọc từng câu hỏi và câu trả lời của bé. Chỗ nào không đọc rõ thì ghi "không đọc rõ" thay vì đoán.
-2. Với từng câu: chép nguyên văn câu trả lời của bé vào childAnswer, tự giải lại cẩn thận và ghi kết quả vào correctAnswer, rồi mới so hai kết quả để chấm đúng/sai. Với câu sai, explanation chỉ ra bé sai ở bước nào và cách làm đúng, ngắn gọn, dễ hiểu với trẻ lớp ${grade}.
-3. Cho điểm trên thang 10, làm tròn 0.5, tương ứng với số câu đúng.
-4. Viết spokenFeedback để đọc thành tiếng cho bé nghe: xưng "cô", gọi bé là "con", 3–5 câu ngắn, khen điều bé làm tốt trước, chỉ ra tối đa 2 lỗi quan trọng nhất và cách sửa, kết thúc bằng một câu động viên. Lỗi nhắc tới phải đúng với các câu được chấm sai ở mục items, không thêm lỗi khác. Không dùng ký hiệu, emoji hay định dạng vì câu này sẽ được đọc lên; viết phép tính bằng chữ (ví dụ "bốn mươi bảy nhân ba").
-5. Viết parentNote cho phụ huynh: lỗi bé mắc trong bài này (đúng như items) và gợi ý cách luyện thêm ở nhà phù hợp với lớp ${grade}.
-
-Nếu ảnh không phải bài tập, trả về score 0, items rỗng và nhẹ nhàng nhờ bé chụp lại bài làm.`;
-}
 
 type GradeParams = {
   imageBase64: string;
@@ -143,46 +71,16 @@ function normalizeResult(result: GradingResult): GradingResult {
 }
 
 async function gradeWithClaude(params: GradeParams): Promise<GradingResult> {
-  if (!apiKey) {
-    throw new Error('Chưa có API key. Hãy thêm EXPO_PUBLIC_ANTHROPIC_API_KEY vào file .env.local.');
-  }
+  if (!supabase) throw new Error('Chưa cấu hình Supabase trong .env.local.');
+  if (!(await ensureSession())) throw new Error('Chưa đăng nhập được Supabase.');
 
-  const response = await client.beta.messages.create({
-    model: 'claude-opus-5-5',
-    max_tokens: 16000,
-    betas: ['server-side-fallback-2026-07-01'],
-    fallbacks: 'default',
-    output_config: {
-      effort: 'medium',
-      format: { type: 'json_schema', schema: resultSchema },
-    },
-    system: systemPrompt(params.subject, params.grade),
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: 'image/jpeg', data: params.imageBase64 },
-          },
-          { type: 'text', text: 'Cô chấm bài này giúp con nhé.' },
-        ],
-      },
-    ],
+  const { data, error } = await supabase.functions.invoke<GradingResult>('cham-bai', {
+    body: params,
+    timeout: claudeTimeoutMs,
   });
-
-  if (response.stop_reason === 'refusal') {
-    throw new Error('AI không chấm được bài này. Con thử chụp lại bài khác nhé.');
-  }
-  if (response.stop_reason === 'max_tokens') {
-    throw new Error('Bài làm quá dài, AI chưa chấm xong. Con thử chụp ít câu hơn nhé.');
-  }
-
-  const text = response.content.find((block) => block.type === 'text');
-  if (!text || text.type !== 'text') {
-    throw new Error('AI không trả về kết quả chấm.');
-  }
-  return JSON.parse(text.text) as GradingResult;
+  if (error) throw error;
+  if (!data) throw new Error('Máy chủ không trả về kết quả chấm.');
+  return data;
 }
 
 // LM Studio có API giống OpenAI: /v1/chat/completions, ảnh gửi dạng data URL.

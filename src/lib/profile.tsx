@@ -1,6 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
+import { pullProfile, pushProfile } from '@/lib/cloud';
+import { ensureSession } from '@/lib/supabase';
+
 // Hồ sơ của bé, lưu trên máy. Chưa có hồ sơ nghĩa là app mở lần đầu: hiện màn Khởi động.
 export type ChildProfile = {
   /** Tên thân mật để Cô xưng hô; có thể để trống. */
@@ -29,6 +32,11 @@ type ProfileState = {
   ready: boolean;
   profile: ChildProfile | null;
   saveProfile: (profile: ChildProfile) => Promise<void>;
+  /**
+   * Gọi sau khi ba mẹ đăng nhập: lấy hồ sơ bé trên máy chủ về (nếu có),
+   * nếu chưa có thì đẩy hồ sơ trên máy lên. Trả về hồ sơ đang dùng.
+   */
+  syncAfterSignIn: () => Promise<ChildProfile | null>;
 };
 
 const ProfileContext = createContext<ProfileState | null>(null);
@@ -43,13 +51,37 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       .finally(() => setReady(true));
   }, []);
 
-  async function saveProfile(next: ChildProfile) {
+  async function saveLocal(next: ChildProfile) {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     setProfile(next);
   }
 
+  async function saveProfile(next: ChildProfile) {
+    await saveLocal(next);
+    // Chưa đăng nhập thì tạo tài khoản ẩn danh để vẫn chấm bài bằng Claude và lưu lên máy chủ.
+    ensureSession()
+      .then(() => pushProfile(next))
+      .catch((error) => console.warn('Chưa lưu được hồ sơ lên máy chủ:', error));
+  }
+
+  async function syncAfterSignIn() {
+    try {
+      const remote = await pullProfile();
+      if (remote) {
+        await saveLocal(remote);
+        return remote;
+      }
+      if (profile) await pushProfile(profile);
+    } catch (error) {
+      console.warn('Chưa đồng bộ được hồ sơ:', error);
+    }
+    return profile;
+  }
+
   return (
-    <ProfileContext.Provider value={{ ready, profile, saveProfile }}>{children}</ProfileContext.Provider>
+    <ProfileContext.Provider value={{ ready, profile, saveProfile, syncAfterSignIn }}>
+      {children}
+    </ProfileContext.Provider>
   );
 }
 

@@ -1,0 +1,6 @@
+# Cấu hình Supabase CLI cho dự án Gia sư tiểu học (chỉ dùng khi chạy lệnh npx supabase ...).
+project_id = "gia-su-tieu-hoc"
+
+[functions.cham-bai]
+# Hàm tự kiểm tra người dùng bằng supabase.auth.getUser() ở trong code.
+verify_jwt = true

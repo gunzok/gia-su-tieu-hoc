@@ -1,32 +1,89 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
-import type { ReactNode } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
+import { BigButton } from '@/components/big-button';
 import { Card } from '@/components/card';
 import { Mascot } from '@/components/mascot';
 import { OnboardingHeader } from '@/components/onboarding-header';
 import { Screen } from '@/components/screen';
-import { Palette, Radius, Spacing } from '@/constants/theme';
+import { FontFamily, Palette, Radius, Spacing } from '@/constants/theme';
+import { sendEmailCode, signInWithGoogle, useAuth, verifyEmailCode } from '@/lib/auth';
+import { useProfile } from '@/lib/profile';
 
-// Đăng nhập thật (Google, Apple, số điện thoại, mã trường) chưa làm: cần máy chủ tài khoản
-// và bản app build riêng. Tạm thời các nút chỉ báo "sắp có"; "Bỏ qua" đi tiếp tới Hồ sơ của bé.
+// Apple, số điện thoại và mã trường chưa làm (Apple cần tài khoản Apple Developer,
+// SMS cần dịch vụ trả phí). Các nút đó tạm báo "sắp có".
 function comingSoon() {
-  Alert.alert(
-    'Sắp có nhé!',
-    'Tính năng đăng nhập đang được chuẩn bị. Ba mẹ bấm "Bỏ qua" để dùng app ngay, kết quả vẫn được lưu trên máy này.',
-  );
+  Alert.alert('Sắp có nhé!', 'Cách đăng nhập này đang được chuẩn bị. Ba mẹ dùng email hoặc Google trước nhé.');
 }
 
-const skipToProfile = () => router.push('/ho-so');
+function showError(error: unknown) {
+  Alert.alert('Chưa đăng nhập được', error instanceof Error ? error.message : String(error));
+}
 
-// Thiết kế Stitch "Đăng nhập Ba Mẹ - SSO Google".
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Thiết kế Stitch "Đăng nhập Ba Mẹ - SSO Google". Mở được lúc mới cài app (trước Hồ sơ của bé)
+// và từ tab Tiến độ (khi đã có hồ sơ).
 export default function ParentLoginScreen() {
+  const { configured } = useAuth();
+  const { profile, syncAfterSignIn } = useProfile();
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [busy, setBusy] = useState<'email' | 'code' | 'google' | null>(null);
+
+  function leave() {
+    if (profile && router.canGoBack()) router.back();
+    else router.push('/ho-so');
+  }
+
+  // Đăng nhập xong: lấy hồ sơ bé trên máy chủ về. Có hồ sơ thì vào thẳng app, chưa có thì tạo.
+  async function afterSignIn() {
+    const synced = await syncAfterSignIn();
+    if (!synced) router.replace('/ho-so');
+    else if (profile && router.canGoBack()) router.back();
+    else router.replace('/');
+  }
+
+  function guard(action: () => Promise<void>, kind: NonNullable<typeof busy>) {
+    if (!configured) {
+      Alert.alert('Chưa nối máy chủ', 'App chưa được nối với Supabase. Xem hướng dẫn trong docs/supabase.md.');
+      return;
+    }
+    setBusy(kind);
+    action()
+      .catch(showError)
+      .finally(() => setBusy(null));
+  }
+
+  const sendCode = () =>
+    guard(async () => {
+      const trimmed = email.trim().toLowerCase();
+      if (!emailPattern.test(trimmed)) throw new Error('Ba mẹ kiểm tra lại địa chỉ email giúp Cô nhé.');
+      await sendEmailCode(trimmed);
+      setEmail(trimmed);
+      setCodeSent(true);
+    }, 'email');
+
+  const confirmCode = () =>
+    guard(async () => {
+      if (!/^\d{6}$/.test(code)) throw new Error('Mã gồm 6 chữ số trong email ba mẹ vừa nhận.');
+      await verifyEmailCode(email, code);
+      await afterSignIn();
+    }, 'code');
+
+  const loginWithGoogle = () =>
+    guard(async () => {
+      if (await signInWithGoogle()) await afterSignIn();
+    }, 'google');
+
   return (
     <Screen>
-      <OnboardingHeader title="Ba Mẹ đăng nhập" onSkip={skipToProfile} />
+      <OnboardingHeader title="Ba Mẹ đăng nhập" onSkip={leave} />
 
       <Card style={styles.welcome}>
         <View style={styles.avatarWrap}>
@@ -60,22 +117,84 @@ export default function ParentLoginScreen() {
         </View>
       </Card>
 
+      <Card>
+        <View style={styles.emailTitle}>
+          <MaterialIcons name="mail-outline" size={22} color={Palette.blue} />
+          <AppText variant="headlineSm">{codeSent ? 'Nhập mã trong email' : 'Đăng nhập bằng email'}</AppText>
+        </View>
+        {codeSent ? (
+          <>
+            <AppText variant="bodySm" color={Palette.inkSoft}>
+              Cô đã gửi mã 6 số tới {email}. Ba mẹ mở hộp thư (cả mục Spam) rồi nhập mã vào đây.
+            </AppText>
+            <TextInput
+              value={code}
+              onChangeText={(text) => setCode(text.replace(/\D/g, '').slice(0, 6))}
+              placeholder="••••••"
+              placeholderTextColor={Palette.inkSoft}
+              keyboardType="number-pad"
+              textContentType="oneTimeCode"
+              autoComplete="one-time-code"
+              maxLength={6}
+              style={[styles.input, styles.codeInput]}
+            />
+            <BigButton label="Xác nhận" icon="check" onPress={confirmCode} loading={busy === 'code'} />
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setCodeSent(false);
+                setCode('');
+              }}
+              style={styles.linkButton}>
+              <AppText variant="labelMd" color={Palette.blue}>
+                Đổi email khác
+              </AppText>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              placeholder="email.cua.ba.me@gmail.com"
+              placeholderTextColor={Palette.inkSoft}
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              autoComplete="email"
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.input}
+            />
+            <BigButton label="Gửi mã đăng nhập" icon="send" onPress={sendCode} loading={busy === 'email'} />
+          </>
+        )}
+      </Card>
+
       <View style={styles.buttons}>
         <LoginButton
-          icon={<FontAwesome name="google" size={22} color="#4285F4" />}
+          icon={
+            busy === 'google' ? (
+              <ActivityIndicator color={Palette.ink} />
+            ) : (
+              <FontAwesome name="google" size={22} color="#4285F4" />
+            )
+          }
           label="Tiếp tục với Google"
           tint={Palette.white}
           bordered
+          onPress={loginWithGoogle}
         />
         <LoginButton
           icon={<FontAwesome name="apple" size={24} color={Palette.ink} />}
           label="Đăng nhập bằng Apple"
           tint={Palette.surfaceStrong}
+          onPress={comingSoon}
         />
         <LoginButton
           icon={<MaterialIcons name="smartphone" size={24} color={Palette.ink} />}
           label="Đăng nhập bằng Số điện thoại"
           tint={Palette.surfaceMuted}
+          onPress={comingSoon}
         />
       </View>
 
@@ -110,7 +229,7 @@ export default function ParentLoginScreen() {
         <View style={styles.flex}>
           <AppText variant="labelLg">An toàn & bảo mật cho trẻ em</AppText>
           <AppText variant="bodySm" color={Palette.inkSoft}>
-            Bài làm và kết quả của bé chỉ lưu trên máy này. Ảnh chỉ gửi đi để chấm bài.
+            Ảnh bài làm chỉ gửi đi để chấm, không lưu lại. Kết quả chấm chỉ ba mẹ xem được.
           </AppText>
         </View>
       </View>
@@ -123,16 +242,18 @@ function LoginButton({
   label,
   tint,
   bordered,
+  onPress,
 }: {
   icon: ReactNode;
   label: string;
   tint: string;
   bordered?: boolean;
+  onPress: () => void;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
-      onPress={comingSoon}
+      onPress={onPress}
       style={({ pressed }) => [
         styles.loginButton,
         { backgroundColor: tint },
@@ -209,6 +330,30 @@ const styles = StyleSheet.create({
   },
   buttons: {
     gap: Spacing.three,
+  },
+  emailTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  input: {
+    minHeight: 56,
+    borderRadius: Radius.full,
+    backgroundColor: Palette.surfaceMuted,
+    paddingHorizontal: Spacing.four,
+    fontFamily: FontFamily.bodyMedium,
+    fontSize: 17,
+    color: Palette.ink,
+  },
+  codeInput: {
+    fontFamily: FontFamily.heading,
+    fontSize: 28,
+    letterSpacing: 10,
+    textAlign: 'center',
+  },
+  linkButton: {
+    alignSelf: 'center',
+    padding: Spacing.two,
   },
   loginButton: {
     minHeight: 60,
