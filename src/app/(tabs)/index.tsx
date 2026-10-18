@@ -13,10 +13,10 @@ import { Palette, Radius, Spacing } from '@/constants/theme';
 import { SubjectNames, type Subject } from '@/lib/grading';
 import { loadHistory, type HistoryEntry } from '@/lib/history';
 import { useHomeworkSession } from '@/lib/homework-session';
+import { avatarEmoji, useProfile } from '@/lib/profile';
 import { allSubjects, averageScore } from '@/lib/progress';
 import { speakVietnamese } from '@/lib/speech';
 
-const greeting = 'Chào con yêu! Hôm nay cô trò mình cùng làm bài tập thật nhanh nhé!';
 
 const subjectStyles: Record<Subject, { tint: string; dot: string; ink: string; icon: IconName; hint: string }> = {
   toan: { tint: Palette.mintSoft, dot: Palette.blue, ink: Palette.blueDark, icon: 'calculate', hint: 'Số & Hình' },
@@ -31,6 +31,9 @@ const subjectStyles: Record<Subject, { tint: string; dot: string; ink: string; i
 
 export default function HomeScreen() {
   const { grade, setSubject } = useHomeworkSession();
+  const { profile } = useProfile();
+  const childName = profile?.name ? `${profile.name} yêu` : 'con yêu';
+  const greeting = `Chào ${childName}! Hôm nay cô trò mình cùng làm bài tập thật nhanh nhé!`;
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   useFocusEffect(
@@ -46,14 +49,28 @@ export default function HomeScreen() {
 
   return (
     <Screen>
-      <AppHeader subtitle={`Lớp ${grade}`} right={<HeaderPill icon="📚" label={`${history.length} bài`} />} />
+      <AppHeader
+        subtitle={`Lớp ${grade}`}
+        right={
+          <View style={styles.headerRight}>
+            <HeaderPill icon="📚" label={`${history.length} bài`} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Hồ sơ của bé"
+              onPress={() => router.push('/sua-ho-so')}
+              style={({ pressed }) => [styles.avatarButton, pressed && styles.pressed]}>
+              <AppText style={styles.avatarEmoji}>{avatarEmoji(profile?.avatar ?? '')}</AppText>
+            </Pressable>
+          </View>
+        }
+      />
 
       <Card style={styles.greetingCard}>
         <View style={styles.greetingRow}>
           <Mascot variant="full" size={96} />
           <View style={styles.bubble}>
             <AppText variant="labelLg" color={Palette.blueDark}>
-              Chào con yêu! 🌟
+              Chào {childName}! 🌟
             </AppText>
             <AppText variant="bodyMd">Hôm nay cô trò mình cùng làm bài tập thật nhanh nhé!</AppText>
           </View>
@@ -176,6 +193,23 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.85,
     transform: [{ scale: 0.98 }],
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  avatarButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Palette.mintSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarEmoji: {
+    fontSize: 24,
+    lineHeight: 30,
   },
   greetingCard: {
     gap: Spacing.three,

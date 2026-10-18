@@ -21,13 +21,15 @@ type Props = {
   onPress: () => void;
   variant?: Variant;
   icon?: IconName;
+  /** Đặt icon sau chữ (ví dụ mũi tên "đi tiếp"). */
+  iconAfter?: boolean;
   disabled?: boolean;
   loading?: boolean;
   compact?: boolean;
 };
 
 // Nút viên thuốc phẳng; bấm vào thì hơi thu nhỏ lại.
-export function BigButton({ label, onPress, variant = 'primary', icon, disabled, loading, compact }: Props) {
+export function BigButton({ label, onPress, variant = 'primary', icon, iconAfter, disabled, loading, compact }: Props) {
   const colors = variantColors[variant];
   const inactive = disabled || loading;
 
@@ -54,10 +56,11 @@ export function BigButton({ label, onPress, variant = 'primary', icon, disabled,
             <ActivityIndicator color={colors.text} />
           ) : (
             <>
-              {icon && <MaterialIcons name={icon} size={compact ? 20 : 24} color={colors.text} />}
+              {icon && !iconAfter && <MaterialIcons name={icon} size={compact ? 20 : 24} color={colors.text} />}
               <AppText variant={compact ? 'labelMd' : 'labelLg'} color={colors.text} style={styles.label}>
                 {label}
               </AppText>
+              {icon && iconAfter && <MaterialIcons name={icon} size={compact ? 20 : 24} color={colors.text} />}
             </>
           )}
         </View>

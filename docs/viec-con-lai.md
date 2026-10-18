@@ -12,7 +12,9 @@ Thiết kế Stitch "AI Gia Sư Tiểu Học" có các phần dưới đây như
 - [ ] Đố vui có thưởng ở Trang chủ
 - [ ] Cửa hàng đổi quà bằng sao (2 màn hình trong Stitch)
 - [ ] Môn Tiếng Anh
-- [ ] Tên và ảnh đại diện của bé (thiết kế ghi "Minh Khang", "Lớp 3A")
+- [x] Tên, lớp và ảnh đại diện của bé — màn Hồ sơ (18/10/2026; ảnh đại diện tạm dùng emoji)
+- [ ] Đăng nhập Ba Mẹ thật (Google, Apple, số điện thoại, mã trường): mới có giao diện, các nút
+      báo "sắp có". Cần máy chủ tài khoản (Firebase/Supabase) và build bản app riêng bằng EAS
 - [ ] Màn Quét bài: chụp nhiều trang
 - [ ] Màn Chữa bài: nút "Thử lại câu này", "Hỏi Thầy Cú"
 - [ ] Màn Tiến độ: chọn Tuần / Tháng / Học kỳ, mục tiêu, tải phiếu bài tập PDF, gửi lời động viên tới máy bé

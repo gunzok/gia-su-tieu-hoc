@@ -29,8 +29,15 @@ type HomeworkSession = {
 
 const HomeworkSessionContext = createContext<HomeworkSession | null>(null);
 
-export function HomeworkSessionProvider({ children }: { children: ReactNode }) {
-  const [grade, setGrade] = useState(2);
+export function HomeworkSessionProvider({
+  children,
+  initialGrade = 2,
+}: {
+  children: ReactNode;
+  /** Lớp của bé trong hồ sơ; vẫn đổi được ngay trên màn Quét bài. */
+  initialGrade?: number;
+}) {
+  const [grade, setGrade] = useState(initialGrade);
   const [subject, setSubject] = useState<Subject>('toan');
   const [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [grading, setGrading] = useState(false);

@@ -9,13 +9,13 @@ import {
   PlusJakartaSans_800ExtraBold,
   useFonts,
 } from '@expo-google-fonts/plus-jakarta-sans';
-import { DefaultTheme, ThemeProvider } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
 import { Palette } from '@/constants/theme';
 import { HomeworkSessionProvider } from '@/lib/homework-session';
+import { ProfileProvider, useProfile } from '@/lib/profile';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -24,7 +24,7 @@ const theme = {
   colors: { ...DefaultTheme.colors, background: Palette.background, primary: Palette.blue },
 };
 
-export default function TabLayout() {
+export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     PlusJakartaSans_600SemiBold,
     PlusJakartaSans_700Bold,
@@ -39,10 +39,33 @@ export default function TabLayout() {
 
   return (
     <ThemeProvider value={theme}>
-      <HomeworkSessionProvider>
-        <AnimatedSplashOverlay />
-        <AppTabs />
-      </HomeworkSessionProvider>
+      <ProfileProvider>
+        <RootNavigator />
+      </ProfileProvider>
     </ThemeProvider>
+  );
+}
+
+// Chưa có hồ sơ bé: chỉ vào được Khởi động / Đăng nhập / Hồ sơ (mở app sẽ vào Khởi động).
+// Có hồ sơ rồi: vào thẳng các tab; sửa hồ sơ ở màn "sua-ho-so".
+function RootNavigator() {
+  const { ready, profile } = useProfile();
+  if (!ready) return null;
+
+  return (
+    <HomeworkSessionProvider key={profile?.grade ?? 0} initialGrade={profile?.grade}>
+      <AnimatedSplashOverlay />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Palette.background } }}>
+        <Stack.Protected guard={!profile} redirectTo="/">
+          <Stack.Screen name="khoi-dong" />
+          <Stack.Screen name="dang-nhap" />
+          <Stack.Screen name="ho-so" />
+        </Stack.Protected>
+        <Stack.Protected guard={!!profile} redirectTo="/khoi-dong">
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="sua-ho-so" />
+        </Stack.Protected>
+      </Stack>
+    </HomeworkSessionProvider>
   );
 }
