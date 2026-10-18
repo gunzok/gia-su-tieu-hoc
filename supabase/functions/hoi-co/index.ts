@@ -1,0 +1,99 @@
+// Supabase Edge Function "hoi-co": bé hỏi thêm cô về một câu trong bài vừa chấm.
+// Claude API key chỉ nằm ở đây (Supabase secret ANTHROPIC_API_KEY), không nằm trong app.
+//
+// Triển khai:  npx supabase functions deploy hoi-co
+
+import Anthropic from 'npm:@anthropic-ai/sdk@0.135.0';
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
+import { ASK_LIMITS, askSystemPrompt, cleanAnswer, type AskRequest, type AskTurn } from '../_shared/hoi-co.ts';
+
+const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function isText(value: unknown, max: number) {
+  return typeof value === 'string' && value.trim().length > 0 && value.length <= max;
+}
+
+function validTurns(value: unknown): value is AskTurn[] {
+  if (!Array.isArray(value) || value.length === 0 || value.length > ASK_LIMITS.maxTurns) return false;
+  return value.every(
+    (turn, index) =>
+      turn &&
+      // Xen kẽ bé hỏi / cô đáp, bắt đầu và kết thúc bằng câu bé hỏi.
+      turn.role === (index % 2 === 0 ? 'user' : 'assistant') &&
+      isText(turn.content, turn.role === 'user' ? ASK_LIMITS.maxChars : 2000),
+  ) && value.length % 2 === 1;
+}
+
+Deno.serve(async (req) => {
+  if (req.method !== 'POST') return json({ error: 'Chỉ nhận POST' }, 405);
+
+  const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+    global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
+  });
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) return json({ error: 'Chưa đăng nhập' }, 401);
+
+  let body: Partial<AskRequest>;
+  try {
+    body = await req.json();
+  } catch {
+    return json({ error: 'Dữ liệu gửi lên không đúng' }, 400);
+  }
+  const { subject, grade, item, turns } = body;
+  const teacher = body.teacher === 'thay' ? 'thay' : 'co';
+  if (
+    (subject !== 'toan' && subject !== 'tieng-viet') ||
+    typeof grade !== 'number' ||
+    !Number.isInteger(grade) ||
+    grade < 1 ||
+    grade > 5 ||
+    !item ||
+    !isText(item.question, 1000) ||
+    typeof item.childAnswer !== 'string' ||
+    typeof item.explanation !== 'string' ||
+    !validTurns(turns)
+  ) {
+    return json({ error: 'Thiếu câu hỏi hoặc dữ liệu bài' }, 400);
+  }
+
+  try {
+    const response = await anthropic.beta.messages.create({
+      model: 'claude-opus-5-5',
+      max_tokens: 2000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      // Trò chuyện ngắn: nghĩ ít cho nhanh và rẻ.
+      output_config: { effort: 'low' },
+      system: askSystemPrompt({
+        subject,
+        grade,
+        teacher,
+        item: {
+          question: item.question,
+          childAnswer: item.childAnswer.slice(0, 1000),
+          correctAnswer: typeof item.correctAnswer === 'string' ? item.correctAnswer.slice(0, 500) : undefined,
+          correct: !!item.correct,
+          explanation: item.explanation.slice(0, 2000),
+        },
+      }),
+      messages: turns.map((turn) => ({ role: turn.role, content: turn.content })),
+    });
+
+    const text = response.content.find((block) => block.type === 'text');
+    if (response.stop_reason === 'refusal' || !text || text.type !== 'text') {
+      return json({ answer: `Câu này ${teacher === 'thay' ? 'thầy' : 'cô'} chưa trả lời được. Con hỏi bố mẹ giúp nhé!` });
+    }
+    return json({ answer: cleanAnswer(text.text) });
+  } catch (error) {
+    console.error('Lỗi gọi Claude:', error);
+    return json({ error: 'Máy chủ chưa trả lời được' }, 502);
+  }
+});

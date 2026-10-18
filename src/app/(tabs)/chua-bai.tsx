@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppHeader } from '@/components/app-header';
+import { AskTeacherButton } from '@/components/ask-teacher-button';
 import { AppText } from '@/components/app-text';
 import { BigButton } from '@/components/big-button';
 import { Card } from '@/components/card';
@@ -14,9 +15,11 @@ import { FontFamily, Palette, Radius, Spacing } from '@/constants/theme';
 import { SubjectNames, type GradedItem } from '@/lib/grading';
 import { loadHistory, type HistoryEntry } from '@/lib/history';
 import { useHomeworkSession } from '@/lib/homework-session';
+import { openAskTeacher } from '@/lib/hoi-co';
 import { itemSpeech } from '@/lib/item-speech';
 import { useTeacher } from '@/lib/profile';
 import { praiseForScore } from '@/lib/progress';
+import { SoundWave } from '@/components/sound-wave';
 
 const waveHeights = [14, 24, 18, 32, 22, 36, 26, 18, 30, 16, 24, 12, 20, 28];
 const waveColors = [Palette.blue, Palette.amber, Palette.white, Palette.coral];
@@ -134,17 +137,7 @@ export default function ReviewScreen() {
           </AppText>
         </View>
 
-        <View style={styles.wave}>
-          {waveHeights.map((height, index) => (
-            <View
-              key={index}
-              style={[
-                styles.waveBar,
-                { height: feedbackSpeaking ? height : 8, backgroundColor: waveColors[index % waveColors.length] },
-              ]}
-            />
-          ))}
-        </View>
+        <SoundWave active={feedbackSpeaking} heights={waveHeights} colors={waveColors} gap={7} restHeight={8} style={styles.wave} />
 
         <View style={styles.voiceControls}>
           <RoundButton icon="replay" label="Nghe lại từ đầu" onPress={replay} />
@@ -171,12 +164,16 @@ export default function ReviewScreen() {
             </View>
           </View>
           <AppText variant="bodySm" color={Palette.inkSoft}>
-            Bấm nút loa ở từng câu để nghe {T.word} giảng lại câu đó nhé!
+            Bấm nút loa để nghe {T.word} giảng lại, hoặc bấm Hỏi {T.word} nếu con còn thắc mắc nhé!
           </AppText>
           {entry.items.map((item, index) => {
             const speakProps = {
               speakingNow: speaking && activeItem === index,
               onSpeak: () => toggleItem(index),
+              onAsk: () => {
+                stopSpeech();
+                openAskTeacher({ item, number: index + 1, subject: entry.subject, grade: entry.grade });
+              },
             };
             return item.correct ? (
               <CorrectRow key={index} item={item} number={index + 1} {...speakProps} />
@@ -228,9 +225,10 @@ type RowProps = {
   /** Câu này đang được đọc. */
   speakingNow: boolean;
   onSpeak: () => void;
+  onAsk: () => void;
 };
 
-function CorrectRow({ item, number, speakingNow, onSpeak }: RowProps) {
+function CorrectRow({ item, number, speakingNow, onSpeak, onAsk }: RowProps) {
   return (
     <View style={[styles.row, { backgroundColor: Palette.surfaceMuted }]}>
       <View style={styles.rowHeader}>
@@ -243,17 +241,20 @@ function CorrectRow({ item, number, speakingNow, onSpeak }: RowProps) {
         </View>
         <ItemSpeakButton speakingNow={speakingNow} onSpeak={onSpeak} number={number} />
       </View>
-      <View style={styles.correctPill}>
-        <MaterialIcons name="check-circle-outline" size={18} color={Palette.blueDark} />
-        <AppText variant="labelMd" color={Palette.blueDark}>
-          Đúng rồi! Giỏi quá
-        </AppText>
+      <View style={styles.rowActions}>
+        <View style={styles.correctPill}>
+          <MaterialIcons name="check-circle-outline" size={18} color={Palette.blueDark} />
+          <AppText variant="labelMd" color={Palette.blueDark}>
+            Đúng rồi! Giỏi quá
+          </AppText>
+        </View>
+        <AskTeacherButton onPress={onAsk} />
       </View>
     </View>
   );
 }
 
-function WrongRow({ item, number, speakingNow, onSpeak }: RowProps) {
+function WrongRow({ item, number, speakingNow, onSpeak, onAsk }: RowProps) {
   const T = useTeacher();
   return (
     <View style={[styles.row, { backgroundColor: Palette.coralSoft }]}>
@@ -272,11 +273,14 @@ function WrongRow({ item, number, speakingNow, onSpeak }: RowProps) {
         </View>
         <ItemSpeakButton speakingNow={speakingNow} onSpeak={onSpeak} number={number} />
       </View>
-      <View style={styles.fixTag}>
-        <MaterialIcons name="lightbulb-outline" size={16} color={Palette.coralInk} />
-        <AppText variant="labelMd" color={Palette.coralInk}>
-          Cùng {T.Title} sửa nha
-        </AppText>
+      <View style={styles.rowActions}>
+        <View style={styles.fixTag}>
+          <MaterialIcons name="lightbulb-outline" size={16} color={Palette.coralInk} />
+          <AppText variant="labelMd" color={Palette.coralInk}>
+            Cùng {T.Title} sửa nha
+          </AppText>
+        </View>
+        <AskTeacherButton onPress={onAsk} />
       </View>
       <View style={styles.explainBox}>
         <AppText variant="bodyMd">{item.explanation}</AppText>
@@ -347,16 +351,8 @@ const styles = StyleSheet.create({
   },
   wave: {
     height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
     backgroundColor: 'rgba(255,255,255,0.45)',
     borderRadius: Radius.full,
-  },
-  waveBar: {
-    width: 5,
-    borderRadius: 3,
   },
   voiceControls: {
     flexDirection: 'row',
@@ -411,8 +407,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  rowActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
   correctPill: {
-    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
@@ -422,7 +424,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one + 2,
   },
   fixTag: {
-    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,

@@ -5,12 +5,15 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
+import { AskTeacherButton } from '@/components/ask-teacher-button';
 import { Card } from '@/components/card';
 import { ItemSpeakButton } from '@/components/item-speak-button';
 import { Screen } from '@/components/screen';
+import { SoundWave } from '@/components/sound-wave';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 import { SubjectNames } from '@/lib/grading';
 import { findHistoryEntry, type HistoryEntry } from '@/lib/history';
+import { openAskTeacher } from '@/lib/hoi-co';
 import { itemSpeech } from '@/lib/item-speech';
 import { signedPageUrls } from '@/lib/page-images';
 import { useTeacher } from '@/lib/profile';
@@ -146,6 +149,14 @@ export default function GradingDetailScreen() {
               <AppText variant="labelLg" color={Palette.blueDark}>
                 {speakingKey === 'feedback' ? 'Dừng' : 'Nghe lại'}
               </AppText>
+              <SoundWave
+                active={speakingKey === 'feedback'}
+                heights={[10, 18, 12, 20, 14]}
+                colors={[Palette.blueDark]}
+                barWidth={4}
+                gap={4}
+                restHeight={6}
+              />
             </Pressable>
           </Card>
 
@@ -171,6 +182,15 @@ export default function GradingDetailScreen() {
                       {item.explanation}
                     </AppText>
                   )}
+                  <View style={styles.askRow}>
+                    <AskTeacherButton
+                      onPress={() => {
+                        stopSpeaking();
+                        setSpeakingKey(null);
+                        openAskTeacher({ item, number: index + 1, subject: entry.subject, grade: entry.grade });
+                      }}
+                    />
+                  </View>
                 </View>
                 <ItemSpeakButton
                   number={index + 1}
@@ -247,6 +267,10 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
     paddingHorizontal: Spacing.three + 4,
     paddingVertical: Spacing.two + 2,
+  },
+  askRow: {
+    flexDirection: 'row',
+    marginTop: Spacing.one,
   },
   item: {
     flexDirection: 'row',

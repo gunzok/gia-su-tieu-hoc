@@ -9,13 +9,15 @@ import { BigButton, type IconName } from '@/components/big-button';
 import { Card } from '@/components/card';
 import { Mascot } from '@/components/mascot';
 import { Screen } from '@/components/screen';
+import { PulseRing, SoundWave } from '@/components/sound-wave';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 import { SubjectNames, type Subject } from '@/lib/grading';
+import { useGreeting } from '@/lib/greetings';
 import { loadHistory, type HistoryEntry } from '@/lib/history';
 import { useHomeworkSession } from '@/lib/homework-session';
 import { avatarEmoji, useProfile, useTeacher } from '@/lib/profile';
 import { allSubjects, averageScore } from '@/lib/progress';
-import { speakVietnamese } from '@/lib/speech';
+import { speakVietnamese, stopSpeaking } from '@/lib/speech';
 
 
 const subjectStyles: Record<Subject, { tint: string; dot: string; ink: string; icon: IconName; hint: string }> = {
@@ -34,14 +36,31 @@ export default function HomeScreen() {
   const { profile } = useProfile();
   const T = useTeacher();
   const childName = profile?.name ? `${profile.name} yêu` : 'con yêu';
-  const greeting = `Chào ${childName}! Hôm nay ${T.word} trò mình cùng làm bài tập thật nhanh nhé!`;
+  const greeting = useGreeting(childName, T);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [speaking, setSpeaking] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       loadHistory().then(setHistory);
+      return () => {
+        stopSpeaking();
+        setSpeaking(false);
+      };
     }, []),
   );
+
+  function toggleGreeting() {
+    if (speaking) {
+      stopSpeaking();
+      setSpeaking(false);
+      return;
+    }
+    setSpeaking(true);
+    // Bỏ emoji ở tiêu đề để giọng đọc không đọc tên biểu tượng.
+    const title = greeting.title.replace(/[^\p{L}\p{N}\s,.!?]/gu, '').trim();
+    speakVietnamese(`${title} ${greeting.body}`, { onDone: () => setSpeaking(false) }, T.id);
+  }
 
   function startSubject(subject: Subject) {
     setSubject(subject);
@@ -71,20 +90,31 @@ export default function HomeScreen() {
           <Mascot variant="full" size={96} />
           <View style={styles.bubble}>
             <AppText variant="labelLg" color={Palette.blueDark}>
-              Chào {childName}! 🌟
+              {greeting.title}
             </AppText>
-            <AppText variant="bodyMd">Hôm nay {T.word} trò mình cùng làm bài tập thật nhanh nhé!</AppText>
+            <AppText variant="bodyMd">{greeting.body}</AppText>
           </View>
         </View>
         <Pressable
           accessibilityRole="button"
-          onPress={() => speakVietnamese(greeting)}
-          style={({ pressed }) => [styles.listenButton, pressed && styles.pressed]}>
-          <MaterialIcons name="volume-up" size={22} color={Palette.blueDark} />
+          accessibilityLabel={speaking ? 'Dừng đọc' : `Nghe ${T.word} dặn hôm nay`}
+          onPress={toggleGreeting}
+          style={({ pressed }) => [styles.listenButton, speaking && styles.listenActive, pressed && styles.pressed]}>
+          <View style={styles.listenIcon}>
+            <PulseRing active={speaking} size={30} color={Palette.blueDark} />
+            <MaterialIcons name={speaking ? 'stop' : 'volume-up'} size={22} color={Palette.blueDark} />
+          </View>
           <AppText variant="labelLg" color={Palette.blueDark} style={styles.flex}>
-            Nghe {T.Title} dặn hôm nay
+            {speaking ? `${T.Title} đang nói…` : `Nghe ${T.Title} dặn hôm nay`}
           </AppText>
-          <WaveBars />
+          <SoundWave
+            active={speaking}
+            heights={[10, 18, 12, 22, 14]}
+            colors={[Palette.blueDark]}
+            barWidth={4}
+            gap={4}
+            restHeight={10}
+          />
         </Pressable>
       </Card>
 
@@ -174,16 +204,6 @@ export default function HomeScreen() {
   );
 }
 
-function WaveBars() {
-  return (
-    <View style={styles.wave}>
-      {[10, 18, 12, 22, 14].map((height, index) => (
-        <View key={index} style={[styles.waveBar, { height }]} />
-      ))}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
@@ -237,15 +257,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     minHeight: 52,
   },
-  wave: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  listenActive: {
+    backgroundColor: Palette.mintSoft,
   },
-  waveBar: {
-    width: 4,
-    borderRadius: 2,
-    backgroundColor: Palette.blueDark,
+  listenIcon: {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   hero: {
     backgroundColor: Palette.surfaceStrong,

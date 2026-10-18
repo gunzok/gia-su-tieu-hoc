@@ -71,6 +71,7 @@ function RootNavigator() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="sua-ho-so" />
           <Stack.Screen name="bai-cham/[id]" />
+          <Stack.Screen name="hoi-co" options={{ presentation: 'modal' }} />
         </Stack.Protected>
         {/* Đăng nhập mở được cả lúc mới cài app lẫn từ tab Tiến độ. */}
         <Stack.Screen name="dang-nhap" />
