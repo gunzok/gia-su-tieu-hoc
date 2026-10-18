@@ -8,3 +8,7 @@ verify_jwt = true
 [functions.hoi-co]
 # Bé hỏi thêm cô về một câu; hàm tự kiểm tra người dùng như cham-bai.
 verify_jwt = true
+
+[functions.doc-loi]
+# Đọc lời cô/thầy bằng giọng AI (Google); hàm tự kiểm tra người dùng như cham-bai.
+verify_jwt = true

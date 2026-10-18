@@ -2,7 +2,7 @@
   "expo": {
     "name": "GiaSuTieuHoc",
     "slug": "gia-su-tieu-hoc",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "giasutieuhoc",
@@ -65,6 +65,13 @@
         "./plugins/ten-hien-thi.js",
         {
           "displayName": "Gia sư Tiểu học"
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ]
     ],

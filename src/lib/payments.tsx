@@ -30,6 +30,7 @@ const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY;
 export const plusPerks = [
   'Chấm bài bằng Claude ở mọi nơi',
   'Chọn học cùng Thầy giáo hoặc Cô giáo',
+  'Giọng cô, thầy đọc tự nhiên như người thật',
   'Lưu kết quả lên máy chủ, xem trên nhiều máy',
 ];
 
