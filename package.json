@@ -57,7 +57,8 @@
     "build:preview": "node scripts/ban-build.js build preview android",
     "build:dev": "node scripts/ban-build.js build development android",
     "update:preview": "node scripts/ban-build.js update",
-    "version:set": "node scripts/ban-build.js version"
+    "version:set": "node scripts/ban-build.js version",
+    "env:eas": "node scripts/ban-build.js env"
   },
   "private": true
 }
