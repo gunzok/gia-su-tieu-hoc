@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { deleteAllGradings, pullGradings, pushGradings, setGradingImages } from '@/lib/cloud';
 import type { GradingEngine, GradingResult, Subject } from '@/lib/grading';
-import { deleteLocalPages, deleteRemotePages, uploadPages } from '@/lib/page-images';
+import { deleteAllLocalPages, deleteLocalPages, deleteRemotePages, uploadPages } from '@/lib/page-images';
 
 export type HistoryEntry = GradingResult & {
   id: string;
@@ -82,6 +82,12 @@ export async function addHistoryEntry(entry: HistoryEntry) {
   pushGradings([entry])
     .then(() => uploadMissingPages(entry))
     .catch((error) => console.warn('Chưa lưu được bài chấm lên máy chủ:', error));
+}
+
+/** Chỉ xoá lịch sử và ảnh trên máy này (dùng sau khi đã xoá tài khoản trên máy chủ). */
+export async function clearLocalHistory() {
+  await AsyncStorage.removeItem(STORAGE_KEY);
+  deleteAllLocalPages();
 }
 
 export async function clearHistory() {

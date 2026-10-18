@@ -1,4 +1,4 @@
-import type { User } from '@supabase/supabase-js';
+import { FunctionsHttpError, type User } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
@@ -100,4 +100,25 @@ export async function signOut() {
   if (!supabase) return;
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
+}
+
+/**
+ * Xoá tài khoản và toàn bộ dữ liệu của bé trên máy chủ (hàm "xoa-tai-khoan"), rồi thoát
+ * phiên trên máy này. Dữ liệu trên máy do màn gọi tự xoá (hồ sơ, lịch sử, ảnh).
+ */
+export async function deleteAccount() {
+  if (!supabase) return;
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) return;
+  const { error } = await supabase.functions.invoke('xoa-tai-khoan', { method: 'POST' });
+  if (error) {
+    let message = 'Chưa xoá được tài khoản. Ba mẹ kiểm tra mạng rồi thử lại nhé.';
+    if (error instanceof FunctionsHttpError) {
+      const body = await (error.context as Response).json().catch(() => null);
+      if (typeof body?.error === 'string') message = body.error;
+    }
+    throw new Error(message);
+  }
+  // Tài khoản đã bị xoá trên máy chủ nên chỉ cần quên phiên trên máy này.
+  await supabase.auth.signOut({ scope: 'local' });
 }

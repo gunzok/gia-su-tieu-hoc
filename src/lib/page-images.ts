@@ -31,6 +31,12 @@ export function deleteLocalPages(entryId: string) {
   if (dir.exists) dir.delete();
 }
 
+/** Xoá mọi ảnh bài làm trên máy (khi xoá tài khoản). */
+export function deleteAllLocalPages() {
+  const dir = new Directory(Paths.document, 'bai-lam');
+  if (dir.exists) dir.delete();
+}
+
 /** Tải ảnh trên máy lên kho Supabase; trả về đường dẫn trong kho, hoặc null nếu chưa tải được. */
 export async function uploadPages(entryId: string, localUris: string[]) {
   const userId = await currentUserId();

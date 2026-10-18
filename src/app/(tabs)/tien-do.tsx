@@ -7,6 +7,7 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { AccountCard } from '@/components/account-card';
 import { AppHeader } from '@/components/app-header';
 import { PlusCard } from '@/components/plus-card';
+import { PrivacyCard } from '@/components/privacy-card';
 import { AppText } from '@/components/app-text';
 import { ChoiceChips } from '@/components/choice-chips';
 import { type IconName } from '@/components/big-button';
@@ -83,6 +84,7 @@ export default function ProgressScreen() {
 
       <AccountCard />
       <PlusCard />
+      <PrivacyCard />
 
       {history.length === 0 ? (
         <Card style={styles.empty}>
