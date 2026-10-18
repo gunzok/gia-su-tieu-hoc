@@ -194,11 +194,14 @@ async function gradeWithLmStudio(params: GradeParams): Promise<GradingResult> {
   }
 }
 
+// /api/v0/models của LM Studio cho biết model nào đang được nạp; ưu tiên model biết nhìn ảnh.
 async function firstLoadedModel(signal: AbortSignal): Promise<string> {
-  const response = await fetch(`${lmStudioUrl}/v1/models`, { signal });
+  const response = await fetch(`${lmStudioUrl}/api/v0/models`, { signal });
   if (!response.ok) throw new Error(`LM Studio trả lỗi ${response.status}`);
   const data = await response.json();
-  const id: string | undefined = data?.data?.[0]?.id;
+  const models: { id: string; type?: string; state?: string }[] = data?.data ?? [];
+  const loaded = models.filter((m) => m.state === 'loaded');
+  const id = (loaded.find((m) => m.type === 'vlm') ?? loaded[0])?.id;
   if (!id) throw new Error('LM Studio chưa nạp model nào.');
   return id;
 }
