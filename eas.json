@@ -6,30 +6,20 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "channel": "development",
-      "ios": {
-        "scheme": "GiasuTieuhoc"
-      }
+      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
-      "channel": "preview",
-      "ios": {
-        "scheme": "GiasuTieuhoc"
-      }
+      "channel": "preview"
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production",
-      "ios": {
-        "scheme": "GiasuTieuhoc"
-      }
+      "channel": "production"
     },
     "preview-simulator": {
       "extends": "preview",
       "ios": {
-        "simulator": true,
-        "scheme": "GiasuTieuhoc"
+        "simulator": true
       }
     }
   }

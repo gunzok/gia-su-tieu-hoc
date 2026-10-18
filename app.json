@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Gia sư Tiểu học",
+    "name": "GiaSuTieuHoc",
     "slug": "gia-su-tieu-hoc",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -59,6 +59,12 @@
           "android": {
             "usesCleartextTraffic": true
           }
+        }
+      ],
+      [
+        "./plugins/ten-hien-thi.js",
+        {
+          "displayName": "Gia sư Tiểu học"
         }
       ]
     ],
