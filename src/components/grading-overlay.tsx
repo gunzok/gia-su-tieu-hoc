@@ -13,13 +13,14 @@ import Animated, {
 import { AppText } from '@/components/app-text';
 import { Mascot } from '@/components/mascot';
 import { Palette, Radius, Spacing } from '@/constants/theme';
+import { useTeacher } from '@/lib/profile';
 
 // Các bước hiện lần lượt để bé biết cô vẫn đang làm việc.
-const steps = [
-  { icon: '👀', text: 'Cô đang đọc bài của con…' },
-  { icon: '✏️', text: 'Cô đang kiểm tra từng câu…' },
-  { icon: '🧮', text: 'Cô đang tính lại đáp số…' },
-  { icon: '💬', text: 'Cô đang viết lời nhận xét…' },
+const stepTexts = [
+  { icon: '👀', text: 'đang đọc bài của con…' },
+  { icon: '✏️', text: 'đang kiểm tra từng câu…' },
+  { icon: '🧮', text: 'đang tính lại đáp số…' },
+  { icon: '💬', text: 'đang viết lời nhận xét…' },
 ];
 const stepSeconds = 6;
 const frameSize = 168;
@@ -32,6 +33,8 @@ type Props = {
 // Chỉ gắn vào khi đang chấm, nên mỗi lần chấm đều đếm lại từ 0.
 export function GradingOverlay({ photoUri }: Props) {
   const [seconds, setSeconds] = useState(0);
+  const T = useTeacher();
+  const steps = stepTexts.map((step) => ({ ...step, text: `${T.Title} ${step.text}` }));
 
   useEffect(() => {
     const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
@@ -64,13 +67,13 @@ export function GradingOverlay({ photoUri }: Props) {
           style={styles.card}
           accessible
           accessibilityRole="progressbar"
-          accessibilityLabel="Cô đang chấm bài, con đợi một chút nhé">
+          accessibilityLabel={`${T.Title} đang chấm bài, con đợi một chút nhé`}>
           <Animated.View style={mascotStyle}>
             <Mascot size={88} />
           </Animated.View>
 
           <AppText variant="headlineLg" style={styles.center}>
-            Cô đang chấm bài
+            {T.Title} đang chấm bài
           </AppText>
 
           {photoUri && (
@@ -105,8 +108,8 @@ export function GradingOverlay({ photoUri }: Props) {
           </View>
           <AppText variant="bodySm" color={Palette.inkSoft} style={styles.center}>
             {seconds < 40
-              ? 'Con đợi cô một chút nhé, đừng tắt máy!'
-              : 'Bài hơi dài, cô cần thêm chút thời gian. Sắp xong rồi!'}
+              ? `Con đợi ${T.word} một chút nhé, đừng tắt máy!`
+              : `Bài hơi dài, ${T.word} cần thêm chút thời gian. Sắp xong rồi!`}
           </AppText>
         </View>
       </View>

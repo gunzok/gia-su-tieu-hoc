@@ -6,6 +6,7 @@ import { gradeHomework, type Subject } from '@/lib/grading';
 import { addHistoryEntry, type HistoryEntry } from '@/lib/history';
 import { getPremiumStatus } from '@/lib/payments';
 import { preparePhotoForGrading } from '@/lib/prepare-photo';
+import { useTeacher } from '@/lib/profile';
 import { speakVietnamese, stopSpeaking } from '@/lib/speech';
 
 // Trạng thái bài đang làm, dùng chung giữa các tab Trang chủ / Quét bài / Chữa bài.
@@ -40,7 +41,7 @@ async function localGradingNotice(): Promise<Notice> {
   const { isPremium } = await getPremiumStatus();
   return {
     id: Date.now(),
-    title: isPremium ? 'Máy chủ đang bận' : 'Bạn chưa mua gói Cô Giáo Nhí Plus',
+    title: isPremium ? 'Máy chủ đang bận' : 'Bạn chưa mua gói Gia sư Tiểu học Plus',
     message:
       'Bài này được chấm bằng AI trên máy tính ở nhà (LM Studio), kết quả có thể kém chính xác hơn.',
   };
@@ -60,12 +61,13 @@ export function HomeworkSessionProvider({
   const [grading, setGrading] = useState(false);
   const [latest, setLatest] = useState<HistoryEntry | null>(null);
   const [speaking, setSpeaking] = useState(false);
+  const teacher = useTeacher();
   const [notice, setNotice] = useState<Notice | null>(null);
   const dismissNotice = useCallback(() => setNotice(null), []);
 
   function speak(text: string) {
     setSpeaking(true);
-    speakVietnamese(text, { onDone: () => setSpeaking(false) });
+    speakVietnamese(text, { onDone: () => setSpeaking(false) }, teacher.id);
   }
 
   // Giữ cố định để màn Chữa bài dùng làm hàm dọn dẹp khi rời tab.
@@ -104,7 +106,7 @@ export function HomeworkSessionProvider({
     setGrading(true);
     try {
       const imageBase64 = await preparePhotoForGrading(photo);
-      const { result: graded, engine } = await gradeHomework({ imageBase64, subject, grade });
+      const { result: graded, engine } = await gradeHomework({ imageBase64, subject, grade, teacher: teacher.id });
       const entry: HistoryEntry = {
         ...graded,
         id: String(Date.now()),

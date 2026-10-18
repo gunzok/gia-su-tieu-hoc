@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Palette, Spacing } from '@/constants/theme';
+import { APP_NAME } from '@/lib/teacher';
 
 type Props = {
   title: string;
@@ -25,7 +26,7 @@ export function OnboardingHeader({ title, onSkip }: Props) {
       </Pressable>
       <View style={styles.titles}>
         <AppText variant="labelSm" color={Palette.blue}>
-          CÔ GIÁO NHÍ
+          {APP_NAME.toUpperCase()}
         </AppText>
         <AppText variant="labelLg">{title}</AppText>
       </View>

@@ -16,7 +16,7 @@ Khi chưa làm các bước dưới, app vẫn chạy: dữ liệu chỉ lưu tr
 ## 2. Bật cách đăng nhập (Authentication)
 1. **Authentication → Sign In / Providers → Email**: bật Email. Để đăng nhập bằng mã 6 số:
    **Authentication → Emails → Magic Link**, sửa nội dung thư cho có `{{ .Token }}` (ví dụ
-   "Mã đăng nhập Cô Giáo Nhí của ba mẹ là: {{ .Token }}").
+   "Mã đăng nhập Gia sư Tiểu học của ba mẹ là: {{ .Token }}").
    Lưu ý: dịch vụ gửi thư có sẵn của Supabase chỉ gửi được vài thư mỗi giờ; khi có nhiều người dùng
    cần nối dịch vụ gửi thư riêng (SMTP, ví dụ Resend).
 2. **Anonymous sign-ins**: bật (cho máy chưa đăng nhập vẫn chấm bài bằng Claude và lưu kết quả).

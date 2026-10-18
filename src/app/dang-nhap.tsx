@@ -13,6 +13,7 @@ import { Screen } from '@/components/screen';
 import { FontFamily, Palette, Radius, Spacing } from '@/constants/theme';
 import { sendEmailCode, signInWithGoogle, useAuth, verifyEmailCode } from '@/lib/auth';
 import { useProfile } from '@/lib/profile';
+import { APP_NAME } from '@/lib/teacher';
 
 // Apple, số điện thoại và mã trường chưa làm (Apple cần tài khoản Apple Developer,
 // SMS cần dịch vụ trả phí). Các nút đó tạm báo "sắp có".
@@ -63,7 +64,7 @@ export default function ParentLoginScreen() {
   const sendCode = () =>
     guard(async () => {
       const trimmed = email.trim().toLowerCase();
-      if (!emailPattern.test(trimmed)) throw new Error('Ba mẹ kiểm tra lại địa chỉ email giúp Cô nhé.');
+      if (!emailPattern.test(trimmed)) throw new Error('Ba mẹ kiểm tra lại địa chỉ email nhé.');
       await sendEmailCode(trimmed);
       setEmail(trimmed);
       setCodeSent(true);
@@ -110,7 +111,7 @@ export default function ParentLoginScreen() {
           </View>
           <View style={styles.flex}>
             <AppText variant="labelMd" color={Palette.blue}>
-              Cô Giáo Nhí nhắn gửi:
+              {APP_NAME} nhắn gửi:
             </AppText>
             <AppText variant="bodySm">“Con sẽ được hướng dẫn học từng bước nhẹ nhàng, vui vẻ và không áp lực!”</AppText>
           </View>
@@ -125,7 +126,7 @@ export default function ParentLoginScreen() {
         {codeSent ? (
           <>
             <AppText variant="bodySm" color={Palette.inkSoft}>
-              Cô đã gửi mã 6 số tới {email}. Ba mẹ mở hộp thư (cả mục Spam) rồi nhập mã vào đây.
+              Mã 6 số đã được gửi tới {email}. Ba mẹ mở hộp thư (cả mục Spam) rồi nhập mã vào đây.
             </AppText>
             <TextInput
               value={code}

@@ -7,6 +7,7 @@ import { BigButton, type IconName } from '@/components/big-button';
 import { Mascot } from '@/components/mascot';
 import { Screen } from '@/components/screen';
 import { Palette, Radius, Spacing } from '@/constants/theme';
+import { APP_NAME } from '@/lib/teacher';
 
 const features: { icon: IconName; title: string; hint: string; tint: string }[] = [
   { icon: 'bolt', title: 'Chấm bài tức thì', hint: 'Chuẩn xác & vui', tint: Palette.mintSoft },
@@ -14,7 +15,7 @@ const features: { icon: IconName; title: string; hint: string; tint: string }[] 
   { icon: 'insights', title: 'Tiến độ cho ba mẹ', hint: 'Theo dõi mỗi ngày', tint: Palette.coralSoft },
 ];
 
-// Màn chào khi mở app lần đầu (thiết kế Stitch "Khởi động - Cô Giáo Nhí").
+// Màn chào khi mở app lần đầu (thiết kế Stitch "Khởi động").
 export default function WelcomeScreen() {
   return (
     <Screen>
@@ -39,7 +40,7 @@ export default function WelcomeScreen() {
 
       <View style={styles.titleBlock}>
         <AppText variant="headlineXl" color={Palette.blue} style={styles.center}>
-          Cô Giáo Nhí 🪄
+          {APP_NAME} 🪄
         </AppText>
         <AppText variant="bodyLg" color={Palette.inkSoft} style={styles.center}>
           Bạn đồng hành học tập thông minh & dịu dàng của con mỗi ngày.

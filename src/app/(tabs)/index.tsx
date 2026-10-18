@@ -13,7 +13,7 @@ import { Palette, Radius, Spacing } from '@/constants/theme';
 import { SubjectNames, type Subject } from '@/lib/grading';
 import { loadHistory, type HistoryEntry } from '@/lib/history';
 import { useHomeworkSession } from '@/lib/homework-session';
-import { avatarEmoji, useProfile } from '@/lib/profile';
+import { avatarEmoji, useProfile, useTeacher } from '@/lib/profile';
 import { allSubjects, averageScore } from '@/lib/progress';
 import { speakVietnamese } from '@/lib/speech';
 
@@ -32,8 +32,9 @@ const subjectStyles: Record<Subject, { tint: string; dot: string; ink: string; i
 export default function HomeScreen() {
   const { grade, setSubject } = useHomeworkSession();
   const { profile } = useProfile();
+  const T = useTeacher();
   const childName = profile?.name ? `${profile.name} yêu` : 'con yêu';
-  const greeting = `Chào ${childName}! Hôm nay cô trò mình cùng làm bài tập thật nhanh nhé!`;
+  const greeting = `Chào ${childName}! Hôm nay ${T.word} trò mình cùng làm bài tập thật nhanh nhé!`;
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   useFocusEffect(
@@ -72,7 +73,7 @@ export default function HomeScreen() {
             <AppText variant="labelLg" color={Palette.blueDark}>
               Chào {childName}! 🌟
             </AppText>
-            <AppText variant="bodyMd">Hôm nay cô trò mình cùng làm bài tập thật nhanh nhé!</AppText>
+            <AppText variant="bodyMd">Hôm nay {T.word} trò mình cùng làm bài tập thật nhanh nhé!</AppText>
           </View>
         </View>
         <Pressable
@@ -81,7 +82,7 @@ export default function HomeScreen() {
           style={({ pressed }) => [styles.listenButton, pressed && styles.pressed]}>
           <MaterialIcons name="volume-up" size={22} color={Palette.blueDark} />
           <AppText variant="labelLg" color={Palette.blueDark} style={styles.flex}>
-            Nghe Cô dặn hôm nay
+            Nghe {T.Title} dặn hôm nay
           </AppText>
           <WaveBars />
         </Pressable>
@@ -97,10 +98,10 @@ export default function HomeScreen() {
           </AppText>
         </View>
         <AppText variant="headlineLg" style={styles.center}>
-          Chấm bài cùng Cô ngay!
+          Chấm bài cùng {T.Title} ngay!
         </AppText>
         <AppText variant="bodyMd" color={Palette.inkSoft} style={styles.center}>
-          Chỉ 1 bức ảnh, Cô sẽ sửa lỗi sai và giảng lại cho con nghe ngay.
+          Chỉ 1 bức ảnh, {T.Title} sẽ sửa lỗi sai và giảng lại cho con nghe ngay.
         </AppText>
         <BigButton label="Chụp bài tập 📸" icon="camera" onPress={() => router.navigate('/quet-bai')} />
       </View>

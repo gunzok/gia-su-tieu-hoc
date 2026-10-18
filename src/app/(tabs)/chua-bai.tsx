@@ -13,6 +13,7 @@ import { FontFamily, Palette, Radius, Spacing } from '@/constants/theme';
 import { SubjectNames, type GradedItem } from '@/lib/grading';
 import { loadHistory, type HistoryEntry } from '@/lib/history';
 import { useHomeworkSession } from '@/lib/homework-session';
+import { useTeacher } from '@/lib/profile';
 import { praiseForScore } from '@/lib/progress';
 
 const waveHeights = [14, 24, 18, 32, 22, 36, 26, 18, 30, 16, 24, 12, 20, 28];
@@ -20,6 +21,7 @@ const waveColors = [Palette.blue, Palette.amber, Palette.white, Palette.coral];
 
 export default function ReviewScreen() {
   const { latest, startOver, speaking, speak, stopSpeech } = useHomeworkSession();
+  const T = useTeacher();
   const [saved, setSaved] = useState<HistoryEntry | null>(null);
 
   useFocusEffect(
@@ -56,7 +58,7 @@ export default function ReviewScreen() {
             Chưa có bài nào được chấm
           </AppText>
           <AppText variant="bodyMd" color={Palette.inkSoft} style={styles.center}>
-            Con chụp bài tập đã làm, Cô sẽ chấm và giảng lại ở đây nhé!
+            Con chụp bài tập đã làm, {T.Title} sẽ chấm và giảng lại ở đây nhé!
           </AppText>
           <BigButton label="Chụp bài ngay" icon="photo-camera" onPress={scanAnother} />
         </Card>
@@ -82,8 +84,8 @@ export default function ReviewScreen() {
           </AppText>
           <AppText variant="bodyMd" color={Palette.amberInk}>
             {entry.items.length > 0
-              ? `Con làm đúng ${correctCount}/${entry.items.length} câu. Cùng sửa với Cô nhé!`
-              : 'Cô chưa đọc được bài, con chụp lại giúp Cô nhé!'}
+              ? `Con làm đúng ${correctCount}/${entry.items.length} câu. Cùng sửa với ${T.word} nhé!`
+              : `${T.Title} chưa đọc được bài, con chụp lại giúp ${T.word} nhé!`}
           </AppText>
         </View>
         <View style={styles.medal}>
@@ -96,10 +98,10 @@ export default function ReviewScreen() {
           <Mascot size={60} background={Palette.white} />
           <View style={styles.flex}>
             <AppText variant="headlineSm" color={Palette.blueDark}>
-              {speaking ? 'Cô Giáo Nhí đang giảng' : 'Lời Cô nhận xét'}
+              {speaking ? `${T.name} đang giảng` : `Lời ${T.word} nhận xét`}
             </AppText>
             <AppText variant="bodySm" color={Palette.blueDark}>
-              Con lắng nghe giọng Cô nhé!
+              Con lắng nghe giọng {T.word} nhé!
             </AppText>
           </View>
         </View>
@@ -127,7 +129,7 @@ export default function ReviewScreen() {
           <RoundButton icon="replay" label="Nghe lại từ đầu" onPress={replay} />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={speaking ? 'Dừng đọc' : 'Nghe Cô nhận xét'}
+            accessibilityLabel={speaking ? 'Dừng đọc' : `Nghe ${T.word} nhận xét`}
             onPress={toggleSpeech}
             style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}>
             <MaterialIcons name={speaking ? 'pause' : 'play-arrow'} size={40} color={Palette.white} />
@@ -215,6 +217,7 @@ function CorrectRow({ item, number }: { item: GradedItem; number: number }) {
 }
 
 function WrongRow({ item, number }: { item: GradedItem; number: number }) {
+  const T = useTeacher();
   return (
     <View style={[styles.row, { backgroundColor: Palette.coralSoft }]}>
       <View style={styles.rowHeader}>
@@ -234,7 +237,7 @@ function WrongRow({ item, number }: { item: GradedItem; number: number }) {
       <View style={styles.fixTag}>
         <MaterialIcons name="lightbulb-outline" size={16} color={Palette.coralInk} />
         <AppText variant="labelMd" color={Palette.coralInk}>
-          Cùng Cô sửa nha
+          Cùng {T.Title} sửa nha
         </AppText>
       </View>
       <View style={styles.explainBox}>

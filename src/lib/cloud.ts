@@ -47,7 +47,13 @@ export async function pushProfile(profile: ChildProfile) {
   const { error } = await supabase
     .from('children')
     .upsert(
-      { name: profile.name, grade: profile.grade, avatar: profile.avatar, updated_at: new Date().toISOString() },
+      {
+        name: profile.name,
+        grade: profile.grade,
+        avatar: profile.avatar,
+        teacher: profile.teacher ?? 'co',
+        updated_at: new Date().toISOString(),
+      },
       { onConflict: 'owner_id' },
     );
   if (error) throw error;
@@ -55,7 +61,7 @@ export async function pushProfile(profile: ChildProfile) {
 
 export async function pullProfile(): Promise<ChildProfile | null> {
   if (!supabase || !(await currentUserId())) return null;
-  const { data, error } = await supabase.from('children').select('name, grade, avatar').maybeSingle();
+  const { data, error } = await supabase.from('children').select('name, grade, avatar, teacher').maybeSingle();
   if (error) throw error;
   return data;
 }

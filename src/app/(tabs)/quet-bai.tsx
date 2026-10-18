@@ -13,6 +13,7 @@ import { Screen } from '@/components/screen';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 import { SubjectNames } from '@/lib/grading';
 import { useHomeworkSession } from '@/lib/homework-session';
+import { useTeacher } from '@/lib/profile';
 import { allSubjects, SubjectIcons } from '@/lib/progress';
 
 const gradeOptions = [1, 2, 3, 4, 5].map((g) => ({ value: g, label: `Lớp ${g}` }));
@@ -24,6 +25,7 @@ const subjectOptions = allSubjects.map((s) => ({
 export default function ScanScreen() {
   const { grade, setGrade, subject, setSubject, photo, grading, pickPhoto, submitForGrading } =
     useHomeworkSession();
+  const T = useTeacher();
 
   async function handleGrade() {
     const done = await submitForGrading();
@@ -74,7 +76,7 @@ export default function ScanScreen() {
       </View>
 
       {/* Đặt ngay dưới khung ảnh để không bị thanh tab che sau khi chọn ảnh. */}
-      {photo && <BigButton label="Cô chấm bài nhé!" icon="auto-fix-high" onPress={handleGrade} loading={grading} />}
+      {photo && <BigButton label={`${T.Title} chấm bài nhé!`} icon="auto-fix-high" onPress={handleGrade} loading={grading} />}
 
       <View style={styles.controls}>
         <SideControl icon="photo-library" label="Từ Album" onPress={() => pickPhoto('library')} />
@@ -97,9 +99,9 @@ export default function ScanScreen() {
         <Mascot size={64} />
         <View style={styles.bubble}>
           <AppText variant="labelMd" color={Palette.blue}>
-            Cô Giáo Nhí ♡
+            {T.name} ♡
           </AppText>
-          <AppText variant="bodyMd">Con chụp ngay ngắn và đủ sáng để Cô chấm bài thật nhanh nhé! 🌸</AppText>
+          <AppText variant="bodyMd">Con chụp ngay ngắn và đủ sáng để {T.word} chấm bài thật nhanh nhé! 🌸</AppText>
         </View>
       </View>
 

@@ -7,7 +7,7 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.135.0';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-import { resultSchema, systemPrompt, type Subject } from '../_shared/cham-bai.ts';
+import { resultSchema, systemPrompt, type Subject, type TeacherVoice } from '../_shared/cham-bai.ts';
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 
@@ -32,13 +32,15 @@ Deno.serve(async (req) => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) return json({ error: 'Chưa đăng nhập' }, 401);
 
-  let body: { imageBase64?: unknown; subject?: unknown; grade?: unknown };
+  let body: { imageBase64?: unknown; subject?: unknown; grade?: unknown; teacher?: unknown };
   try {
     body = await req.json();
   } catch {
     return json({ error: 'Dữ liệu gửi lên không đúng' }, 400);
   }
   const { imageBase64, subject, grade } = body;
+  // Gói Plus mới chọn được Thầy; máy chủ chưa kiểm tra gói nên chỉ nhận đúng 2 giá trị.
+  const teacher: TeacherVoice = body.teacher === 'thay' ? 'thay' : 'co';
   if (
     typeof imageBase64 !== 'string' ||
     imageBase64.length === 0 ||
@@ -62,13 +64,13 @@ Deno.serve(async (req) => {
         effort: 'medium',
         format: { type: 'json_schema', schema: resultSchema },
       },
-      system: systemPrompt(subject as Subject, grade),
+      system: systemPrompt(subject as Subject, grade, teacher),
       messages: [
         {
           role: 'user',
           content: [
             { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } },
-            { type: 'text', text: 'Cô chấm bài này giúp con nhé.' },
+            { type: 'text', text: `${teacher === 'thay' ? 'Thầy' : 'Cô'} chấm bài này giúp con nhé.` },
           ],
         },
       ],

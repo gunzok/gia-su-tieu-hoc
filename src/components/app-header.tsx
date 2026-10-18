@@ -4,19 +4,20 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/app-text';
 import { Mascot } from '@/components/mascot';
 import { Palette, Radius, Spacing } from '@/constants/theme';
+import { APP_NAME } from '@/lib/teacher';
 
 type Props = {
   subtitle: string;
   right?: ReactNode;
 };
 
-// Thanh đầu trang: ảnh cô giáo + "Cô Giáo Nhí" + dòng phụ, bên phải có thể gắn huy hiệu.
+// Thanh đầu trang: ảnh gia sư + tên app + dòng phụ, bên phải có thể gắn huy hiệu.
 export function AppHeader({ subtitle, right }: Props) {
   return (
     <View style={styles.row}>
       <Mascot size={44} />
       <View style={styles.titles}>
-        <AppText variant="headlineSm">Cô Giáo Nhí</AppText>
+        <AppText variant="headlineSm">{APP_NAME}</AppText>
         <AppText variant="bodySm" color={Palette.inkSoft}>
           {subtitle}
         </AppText>

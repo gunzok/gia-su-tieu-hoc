@@ -3,6 +3,7 @@ import {
   systemPrompt,
   type GradingResult,
   type Subject,
+  type TeacherVoice,
 } from '../../supabase/functions/_shared/cham-bai';
 import { ensureSession, supabase } from '@/lib/supabase';
 
@@ -27,6 +28,8 @@ type GradeParams = {
   imageBase64: string;
   subject: Subject;
   grade: number;
+  /** Xưng "cô" hay "thầy" trong lời nhận xét. */
+  teacher: TeacherVoice;
 };
 
 /** "claude": chấm qua máy chủ Supabase; "local": chấm bằng AI trên máy tính ở nhà (LM Studio). */
@@ -46,7 +49,7 @@ export async function gradeHomework(
     } catch (lmStudioError) {
       console.warn('Claude lỗi:', claudeError, '— LM Studio lỗi:', lmStudioError);
       throw new Error(
-        'Cô chưa chấm được bài. Bố mẹ kiểm tra mạng Internet, hoặc bật LM Studio trên máy tính ở nhà nhé.',
+        'Chưa chấm được bài. Bố mẹ kiểm tra mạng Internet, hoặc bật LM Studio trên máy tính ở nhà nhé.',
       );
     }
   }
@@ -108,7 +111,7 @@ async function gradeWithLmStudio(params: GradeParams): Promise<GradingResult> {
           json_schema: { name: 'ket_qua_cham_bai', strict: true, schema: resultSchema },
         },
         messages: [
-          { role: 'system', content: systemPrompt(params.subject, params.grade) },
+          { role: 'system', content: systemPrompt(params.subject, params.grade, params.teacher) },
           {
             role: 'user',
             content: [
@@ -116,7 +119,7 @@ async function gradeWithLmStudio(params: GradeParams): Promise<GradingResult> {
                 type: 'image_url',
                 image_url: { url: `data:image/jpeg;base64,${params.imageBase64}` },
               },
-              { type: 'text', text: 'Cô chấm bài này giúp con nhé.' },
+              { type: 'text', text: `${params.teacher === 'thay' ? 'Thầy' : 'Cô'} chấm bài này giúp con nhé.` },
             ],
           },
         ],

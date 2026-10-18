@@ -1,6 +1,6 @@
 # Thanh toán bằng RevenueCat — các bước khi sẵn sàng bán
 
-Hiện app **chưa** cài RevenueCat. Phần khung nằm ở `src/lib/payments.ts` (gói Miễn phí / Cô Giáo Nhí Plus,
+Hiện app **chưa** cài RevenueCat. Phần khung nằm ở `src/lib/payments.ts` (gói Miễn phí / Gia sư Tiểu học Plus,
 hàm kiểm tra quyền `getPremiumStatus`, hàm `purchasePremium`). Tất cả người dùng đang ở gói Miễn phí.
 
 ## Cần chuẩn bị (ba mẹ / chủ dự án tự làm)

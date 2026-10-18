@@ -14,6 +14,7 @@ import { Palette, Radius, Spacing } from '@/constants/theme';
 import { SubjectNames, type Subject } from '@/lib/grading';
 import { clearHistory, loadHistory, type HistoryEntry } from '@/lib/history';
 import { accuracy, allSubjects, averageScore, scoreLabel, SubjectIcons, thisWeek } from '@/lib/progress';
+import { useTeacher } from '@/lib/profile';
 import { speakVietnamese } from '@/lib/speech';
 
 const subjectBarColors: Record<Subject, { bar: string; ink: string }> = {
@@ -32,6 +33,7 @@ function formatDate(iso: string) {
 
 export default function ProgressScreen() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const teacher = useTeacher();
 
   useFocusEffect(
     useCallback(() => {
@@ -142,7 +144,7 @@ export default function ProgressScreen() {
             <View style={styles.noteHeader}>
               <Mascot size={56} />
               <View style={styles.flex}>
-                <AppText variant="headlineSm">Cô Giáo Nhí</AppText>
+                <AppText variant="headlineSm">{teacher.name}</AppText>
                 <AppText variant="labelMd" color={Palette.blue}>
                   Nhận xét mới nhất · {formatDate(history[0].createdAt)}
                 </AppText>
@@ -150,13 +152,13 @@ export default function ProgressScreen() {
             </View>
             <Pressable
               accessibilityRole="button"
-              onPress={() => speakVietnamese(history[0].parentNote)}
+              onPress={() => speakVietnamese(history[0].parentNote, undefined, teacher.id)}
               style={({ pressed }) => [styles.listenRow, pressed && styles.pressed]}>
               <View style={styles.playDot}>
                 <MaterialIcons name="play-arrow" size={26} color={Palette.white} />
               </View>
               <AppText variant="labelLg" style={styles.flex}>
-                Nghe Cô nhận xét 🎧
+                Nghe {teacher.word} nhận xét 🎧
               </AppText>
             </Pressable>
             <View style={styles.tipBox}>

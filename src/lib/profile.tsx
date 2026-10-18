@@ -3,6 +3,8 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 
 import { pullProfile, pushProfile } from '@/lib/cloud';
 import { ensureSession } from '@/lib/supabase';
+import { useIsPremium } from '@/lib/payments';
+import { teacherOf, type TeacherId } from '@/lib/teacher';
 
 // Hồ sơ của bé, lưu trên máy. Chưa có hồ sơ nghĩa là app mở lần đầu: hiện màn Khởi động.
 export type ChildProfile = {
@@ -10,6 +12,8 @@ export type ChildProfile = {
   name: string;
   grade: number;
   avatar: string;
+  /** Học cùng Cô giáo hay Thầy giáo; Thầy chỉ chọn được khi có gói Plus. */
+  teacher?: TeacherId;
 };
 
 export const avatarOptions = [
@@ -89,4 +93,11 @@ export function useProfile() {
   const state = useContext(ProfileContext);
   if (!state) throw new Error('useProfile phải nằm trong ProfileProvider');
   return state;
+}
+
+/** Gia sư bé đang học cùng. Hết gói Plus thì quay về Cô giáo. */
+export function useTeacher() {
+  const { profile } = useProfile();
+  const isPremium = useIsPremium();
+  return teacherOf(isPremium ? profile?.teacher : 'co');
 }

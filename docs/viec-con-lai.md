@@ -22,5 +22,5 @@ Thiết kế Stitch "AI Gia Sư Tiểu Học" có các phần dưới đây như
 - [ ] Màn Tiến độ: chọn Tuần / Tháng / Học kỳ, mục tiêu, tải phiếu bài tập PDF, gửi lời động viên tới máy bé
 
 ## Cần quyết định
-- [x] Tên linh vật: đã chốt "Cô Giáo Nhí" theo thiết kế Flat Pastel mới (18/10/2026)
+- [x] Tên app: "Gia sư Tiểu học"; gia sư là Cô giáo (mặc định) hoặc Thầy giáo (gói Plus) — 18/10/2026
 - [ ] Có cần chế độ tối không (hiện đã tắt)

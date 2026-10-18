@@ -1,7 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { BigButton, type IconName } from '@/components/big-button';
@@ -10,7 +10,10 @@ import { Mascot } from '@/components/mascot';
 import { OnboardingHeader } from '@/components/onboarding-header';
 import { Screen } from '@/components/screen';
 import { FontFamily, Palette, Radius, Spacing } from '@/constants/theme';
+import { useIsPremium } from '@/lib/payments';
 import { avatarOptions, useProfile } from '@/lib/profile';
+import { speakVietnamese } from '@/lib/speech';
+import { APP_NAME, teachers, type TeacherId } from '@/lib/teacher';
 
 const gradeOptions: { grade: number; icon: IconName; hint: string }[] = [
   { grade: 1, icon: 'spellcheck', hint: 'Làm quen chữ & số' },
@@ -26,9 +29,26 @@ export default function ProfileScreen() {
   const [name, setName] = useState(profile?.name ?? '');
   const [grade, setGrade] = useState(profile?.grade ?? 2);
   const [avatar, setAvatar] = useState<string>(profile?.avatar ?? avatarOptions[0].id);
+  const isPremium = useIsPremium();
+  const [teacher, setTeacher] = useState<TeacherId>(profile?.teacher ?? 'co');
+  // Hết gói Plus thì lưu lại là Cô giáo.
+  const chosenTeacher: TeacherId = isPremium ? teacher : 'co';
   const editing = profile !== null;
 
-  async function finish(next = { name: name.trim(), grade, avatar }) {
+  function pickTeacher(id: TeacherId) {
+    if (id === 'thay' && !isPremium) {
+      Alert.alert(
+        'Dành cho gói Plus',
+        'Chọn học cùng Thầy giáo (hình và giọng đọc của thầy) chỉ có trong gói Gia sư Tiểu học Plus. Gói trả phí sẽ sớm mở bán nhé!',
+      );
+      return;
+    }
+    setTeacher(id);
+    const T = teachers[id];
+    speakVietnamese(`Chào con, ${T.word} là ${T.word} giáo của con đây!`, undefined, id);
+  }
+
+  async function finish(next = { name: name.trim(), grade, avatar, teacher: chosenTeacher }) {
     await saveProfile(next);
     // Lần đầu: lưu xong thì các tab mở khoá, vào Trang chủ. Đang sửa: quay lại màn trước.
     if (editing && router.canGoBack()) router.back();
@@ -39,13 +59,13 @@ export default function ProfileScreen() {
     <Screen>
       <OnboardingHeader
         title={editing ? 'Sửa hồ sơ của bé' : 'Hồ sơ của bé'}
-        onSkip={editing ? undefined : () => finish({ name: '', grade, avatar })}
+        onSkip={editing ? undefined : () => finish({ name: '', grade, avatar, teacher: chosenTeacher })}
       />
 
       <Card style={styles.greeting}>
         <Mascot variant="full" size={84} />
         <View style={styles.bubble}>
-          <AppText variant="labelLg">Cô Giáo Nhí chào con nhé! 👋</AppText>
+          <AppText variant="labelLg">{APP_NAME} chào con nhé! 👋</AppText>
           <AppText variant="bodyMd">Con tên là gì và năm nay con lên lớp mấy rồi nhỉ?</AppText>
         </View>
       </Card>
@@ -83,7 +103,7 @@ export default function ProfileScreen() {
       <Card>
         <SectionTitle icon="edit" title="Tên thân mật của con" />
         <AppText variant="bodySm" color={Palette.inkSoft}>
-          Tên bé dùng để Cô xưng hô và khen ngợi mỗi ngày
+          Tên bé dùng để gia sư xưng hô và khen ngợi mỗi ngày
         </AppText>
         <View style={styles.inputRow}>
           <MaterialIcons name="sentiment-satisfied-alt" size={24} color={Palette.blue} />
@@ -102,6 +122,46 @@ export default function ProfileScreen() {
               <MaterialIcons name="close" size={22} color={Palette.inkSoft} />
             </Pressable>
           )}
+        </View>
+      </Card>
+
+      <Card>
+        <SectionTitle icon="record-voice-over" title="Con muốn học cùng ai?" />
+        <AppText variant="bodySm" color={Palette.inkSoft}>
+          Hình ảnh, cách xưng hô và giọng đọc lời nhận xét
+        </AppText>
+        <View style={styles.teacherRow}>
+          {(Object.keys(teachers) as TeacherId[]).map((id) => {
+            const option = teachers[id];
+            const locked = id === 'thay' && !isPremium;
+            const selected = chosenTeacher === id;
+            return (
+              <Pressable
+                key={id}
+                accessibilityRole="button"
+                accessibilityState={{ selected, disabled: locked }}
+                accessibilityLabel={locked ? `${option.name}, chỉ dành cho gói Plus` : option.name}
+                onPress={() => pickTeacher(id)}
+                style={[styles.teacherTile, selected && styles.teacherTileSelected]}>
+                <View style={[styles.teacherImageWrap, locked && styles.locked]}>
+                  <Mascot teacher={id} size={84} background={Palette.white} />
+                </View>
+                <AppText variant="labelLg">{option.name}</AppText>
+                {locked ? (
+                  <View style={styles.plusTag}>
+                    <MaterialIcons name="lock-outline" size={14} color={Palette.amberInk} />
+                    <AppText variant="labelSm" color={Palette.amberInk}>
+                      Gói Plus
+                    </AppText>
+                  </View>
+                ) : (
+                  <AppText variant="bodySm" color={selected ? Palette.blueDark : Palette.inkSoft}>
+                    {selected ? 'Đang chọn' : 'Chạm để nghe thử'}
+                  </AppText>
+                )}
+              </Pressable>
+            );
+          })}
         </View>
       </Card>
 
@@ -139,7 +199,7 @@ export default function ProfileScreen() {
       </Card>
 
       <BigButton
-        label={editing ? 'Lưu hồ sơ' : 'Hoàn tất & Vào học cùng Cô'}
+        label={editing ? 'Lưu hồ sơ' : 'Hoàn tất & Vào học thôi!'}
         variant="mint"
         icon="rocket-launch"
         iconAfter
@@ -256,6 +316,39 @@ const styles = StyleSheet.create({
   },
   gradeTileWide: {
     flexBasis: '100%',
+  },
+  teacherRow: {
+    flexDirection: 'row',
+    gap: Spacing.two + 2,
+  },
+  teacherTile: {
+    flex: 1,
+    alignItems: 'center',
+    gap: Spacing.one + 2,
+    borderRadius: Radius.lg,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    backgroundColor: Palette.surfaceMuted,
+    paddingVertical: Spacing.three,
+  },
+  teacherTileSelected: {
+    backgroundColor: Palette.mint,
+    borderColor: Palette.blue,
+  },
+  teacherImageWrap: {
+    marginBottom: Spacing.one,
+  },
+  locked: {
+    opacity: 0.45,
+  },
+  plusTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
+    backgroundColor: Palette.amber,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.two + 2,
+    paddingVertical: Spacing.half + 1,
   },
   gradeTileSelected: {
     borderColor: Palette.blue,
