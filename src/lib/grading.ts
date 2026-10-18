@@ -67,7 +67,7 @@ const spokenSymbols: [RegExp, string][] = [
   [/\s*=\s*/g, ' bằng '],
 ];
 
-function speakable(text: string) {
+export function speakable(text: string) {
   return spokenSymbols.reduce((out, [pattern, word]) => out.replace(pattern, word), text);
 }
 

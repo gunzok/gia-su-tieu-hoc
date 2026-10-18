@@ -6,10 +6,12 @@ import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 're
 
 import { AppText } from '@/components/app-text';
 import { Card } from '@/components/card';
+import { ItemSpeakButton } from '@/components/item-speak-button';
 import { Screen } from '@/components/screen';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 import { SubjectNames } from '@/lib/grading';
 import { findHistoryEntry, type HistoryEntry } from '@/lib/history';
+import { itemSpeech } from '@/lib/item-speech';
 import { signedPageUrls } from '@/lib/page-images';
 import { useTeacher } from '@/lib/profile';
 import { SubjectIcons } from '@/lib/progress';
@@ -32,6 +34,18 @@ export default function GradingDetailScreen() {
   const [entry, setEntry] = useState<HistoryEntry | null | undefined>(undefined);
   const [remoteUris, setRemoteUris] = useState<string[]>([]);
   const T = useTeacher();
+  // Đang đọc gì: 'feedback' (lời nhận xét chung), số thứ tự câu, hoặc null.
+  const [speakingKey, setSpeakingKey] = useState<'feedback' | number | null>(null);
+
+  function toggleSpeak(key: 'feedback' | number, text: string) {
+    if (speakingKey === key) {
+      stopSpeaking();
+      setSpeakingKey(null);
+      return;
+    }
+    setSpeakingKey(key);
+    speakVietnamese(text, { onDone: () => setSpeakingKey((current) => (current === key ? null : current)) }, T.id);
+  }
   const { width } = useWindowDimensions();
 
   useEffect(() => {
@@ -126,11 +140,11 @@ export default function GradingDetailScreen() {
             <AppText variant="bodyLg">{entry.spokenFeedback}</AppText>
             <Pressable
               accessibilityRole="button"
-              onPress={() => speakVietnamese(entry.spokenFeedback, undefined, T.id)}
+              onPress={() => toggleSpeak('feedback', entry.spokenFeedback)}
               style={styles.listen}>
-              <MaterialIcons name="volume-up" size={22} color={Palette.blueDark} />
+              <MaterialIcons name={speakingKey === 'feedback' ? 'stop' : 'volume-up'} size={22} color={Palette.blueDark} />
               <AppText variant="labelLg" color={Palette.blueDark}>
-                Nghe lại
+                {speakingKey === 'feedback' ? 'Dừng' : 'Nghe lại'}
               </AppText>
             </Pressable>
           </Card>
@@ -158,6 +172,11 @@ export default function GradingDetailScreen() {
                     </AppText>
                   )}
                 </View>
+                <ItemSpeakButton
+                  number={index + 1}
+                  speakingNow={speakingKey === index}
+                  onSpeak={() => toggleSpeak(index, itemSpeech(item, index + 1, T))}
+                />
               </View>
             ))}
           </Card>

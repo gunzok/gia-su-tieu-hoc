@@ -154,7 +154,13 @@ export function HomeworkSessionProvider({
       await addHistoryEntry(entry);
       return true;
     } catch (error) {
-      Alert.alert('Chưa chấm được bài', error instanceof Error ? error.message : String(error));
+      // Lý do cụ thể chỉ ghi vào log; ba mẹ và bé thấy một lời nhắn chung, dễ hiểu.
+      console.warn('Chưa chấm được bài:', error);
+      Alert.alert(
+        'Kết nối đang có vấn đề',
+        'Bố mẹ vui lòng kiểm tra lại Internet và thử lại sau nhé.',
+        [{ text: 'Đã hiểu' }],
+      );
       return false;
     } finally {
       setGrading(false);

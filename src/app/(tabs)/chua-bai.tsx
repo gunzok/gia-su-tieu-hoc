@@ -7,12 +7,14 @@ import { AppHeader } from '@/components/app-header';
 import { AppText } from '@/components/app-text';
 import { BigButton } from '@/components/big-button';
 import { Card } from '@/components/card';
+import { ItemSpeakButton } from '@/components/item-speak-button';
 import { Mascot } from '@/components/mascot';
 import { Screen } from '@/components/screen';
 import { FontFamily, Palette, Radius, Spacing } from '@/constants/theme';
 import { SubjectNames, type GradedItem } from '@/lib/grading';
 import { loadHistory, type HistoryEntry } from '@/lib/history';
 import { useHomeworkSession } from '@/lib/homework-session';
+import { itemSpeech } from '@/lib/item-speech';
 import { useTeacher } from '@/lib/profile';
 import { praiseForScore } from '@/lib/progress';
 
@@ -23,6 +25,9 @@ export default function ReviewScreen() {
   const { latest, startOver, speaking, speak, stopSpeech } = useHomeworkSession();
   const T = useTeacher();
   const [saved, setSaved] = useState<HistoryEntry | null>(null);
+  // Câu đang được giảng lại (null = lời nhận xét chung).
+  const [activeItem, setActiveItem] = useState<number | null>(null);
+  const feedbackSpeaking = speaking && activeItem === null;
 
   useFocusEffect(
     useCallback(() => {
@@ -35,12 +40,28 @@ export default function ReviewScreen() {
 
   function toggleSpeech() {
     if (!entry) return;
-    if (speaking) stopSpeech();
-    else speak(entry.spokenFeedback);
+    if (feedbackSpeaking) {
+      stopSpeech();
+    } else {
+      setActiveItem(null);
+      speak(entry.spokenFeedback);
+    }
   }
 
   function replay() {
-    if (entry) speak(entry.spokenFeedback);
+    if (!entry) return;
+    setActiveItem(null);
+    speak(entry.spokenFeedback);
+  }
+
+  function toggleItem(index: number) {
+    if (!entry) return;
+    if (speaking && activeItem === index) {
+      stopSpeech();
+    } else {
+      setActiveItem(index);
+      speak(itemSpeech(entry.items[index], index + 1, T));
+    }
   }
 
   function scanAnother() {
@@ -98,7 +119,7 @@ export default function ReviewScreen() {
           <Mascot size={60} background={Palette.white} />
           <View style={styles.flex}>
             <AppText variant="headlineSm" color={Palette.blueDark}>
-              {speaking ? `${T.name} đang giảng` : `Lời ${T.word} nhận xét`}
+              {feedbackSpeaking ? `${T.name} đang giảng` : `Lời ${T.word} nhận xét`}
             </AppText>
             <AppText variant="bodySm" color={Palette.blueDark}>
               Con lắng nghe giọng {T.word} nhé!
@@ -119,7 +140,7 @@ export default function ReviewScreen() {
               key={index}
               style={[
                 styles.waveBar,
-                { height: speaking ? height : 8, backgroundColor: waveColors[index % waveColors.length] },
+                { height: feedbackSpeaking ? height : 8, backgroundColor: waveColors[index % waveColors.length] },
               ]}
             />
           ))}
@@ -129,10 +150,10 @@ export default function ReviewScreen() {
           <RoundButton icon="replay" label="Nghe lại từ đầu" onPress={replay} />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={speaking ? 'Dừng đọc' : `Nghe ${T.word} nhận xét`}
+            accessibilityLabel={feedbackSpeaking ? 'Dừng đọc' : `Nghe ${T.word} nhận xét`}
             onPress={toggleSpeech}
             style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}>
-            <MaterialIcons name={speaking ? 'pause' : 'play-arrow'} size={40} color={Palette.white} />
+            <MaterialIcons name={feedbackSpeaking ? 'pause' : 'play-arrow'} size={40} color={Palette.white} />
           </Pressable>
           <View style={styles.roundButtonSpacer} />
         </View>
@@ -149,13 +170,20 @@ export default function ReviewScreen() {
               <AppText variant="labelSm">{entry.items.length} câu</AppText>
             </View>
           </View>
-          {entry.items.map((item, index) =>
-            item.correct ? (
-              <CorrectRow key={index} item={item} number={index + 1} />
+          <AppText variant="bodySm" color={Palette.inkSoft}>
+            Bấm nút loa ở từng câu để nghe {T.word} giảng lại câu đó nhé!
+          </AppText>
+          {entry.items.map((item, index) => {
+            const speakProps = {
+              speakingNow: speaking && activeItem === index,
+              onSpeak: () => toggleItem(index),
+            };
+            return item.correct ? (
+              <CorrectRow key={index} item={item} number={index + 1} {...speakProps} />
             ) : (
-              <WrongRow key={index} item={item} number={index + 1} />
-            ),
-          )}
+              <WrongRow key={index} item={item} number={index + 1} {...speakProps} />
+            );
+          })}
         </Card>
       )}
 
@@ -194,7 +222,15 @@ function NumberBubble({ number, tint, ink }: { number: number; tint: string; ink
   );
 }
 
-function CorrectRow({ item, number }: { item: GradedItem; number: number }) {
+type RowProps = {
+  item: GradedItem;
+  number: number;
+  /** Câu này đang được đọc. */
+  speakingNow: boolean;
+  onSpeak: () => void;
+};
+
+function CorrectRow({ item, number, speakingNow, onSpeak }: RowProps) {
   return (
     <View style={[styles.row, { backgroundColor: Palette.surfaceMuted }]}>
       <View style={styles.rowHeader}>
@@ -205,6 +241,7 @@ function CorrectRow({ item, number }: { item: GradedItem; number: number }) {
             Con làm: {item.childAnswer}
           </AppText>
         </View>
+        <ItemSpeakButton speakingNow={speakingNow} onSpeak={onSpeak} number={number} />
       </View>
       <View style={styles.correctPill}>
         <MaterialIcons name="check-circle-outline" size={18} color={Palette.blueDark} />
@@ -216,7 +253,7 @@ function CorrectRow({ item, number }: { item: GradedItem; number: number }) {
   );
 }
 
-function WrongRow({ item, number }: { item: GradedItem; number: number }) {
+function WrongRow({ item, number, speakingNow, onSpeak }: RowProps) {
   const T = useTeacher();
   return (
     <View style={[styles.row, { backgroundColor: Palette.coralSoft }]}>
@@ -233,6 +270,7 @@ function WrongRow({ item, number }: { item: GradedItem; number: number }) {
             ) : null}
           </AppText>
         </View>
+        <ItemSpeakButton speakingNow={speakingNow} onSpeak={onSpeak} number={number} />
       </View>
       <View style={styles.fixTag}>
         <MaterialIcons name="lightbulb-outline" size={16} color={Palette.coralInk} />
