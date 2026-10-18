@@ -25,7 +25,19 @@ export type GradingResult = {
 // Trước khi phát hành phải chuyển lời gọi này sang server riêng.
 const apiKey = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY;
 
-const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+// Không chờ quá lâu khi mất mạng, để kịp chuyển sang LM Studio.
+const client = new Anthropic({
+  apiKey,
+  dangerouslyAllowBrowser: true,
+  maxRetries: 1,
+  timeout: 90_000,
+});
+
+// LM Studio chạy trên máy tính ở nhà, dùng khi không chấm được bằng Claude.
+// Ví dụ: http://192.168.1.13:1234 (địa chỉ máy tính trong mạng Wi-Fi nhà).
+const lmStudioUrl = process.env.EXPO_PUBLIC_LMSTUDIO_URL?.replace(/\/+$/, '');
+const lmStudioModel = process.env.EXPO_PUBLIC_LMSTUDIO_MODEL;
+const lmStudioTimeoutMs = 240_000;
 
 const resultSchema = {
   type: 'object',
@@ -71,11 +83,30 @@ function systemPrompt(subject: Subject, grade: number) {
 Nếu ảnh không phải bài tập, trả về score 0, items rỗng và nhẹ nhàng nhờ bé chụp lại bài làm.`;
 }
 
-export async function gradeHomework(params: {
+type GradeParams = {
   imageBase64: string;
   subject: Subject;
   grade: number;
-}): Promise<GradingResult> {
+};
+
+/** Chấm bằng Claude; nếu không được thì tự chuyển sang LM Studio ở nhà, không báo cho bé. */
+export async function gradeHomework(params: GradeParams): Promise<GradingResult> {
+  try {
+    return await gradeWithClaude(params);
+  } catch (claudeError) {
+    if (!lmStudioUrl) throw claudeError;
+    try {
+      return await gradeWithLmStudio(params);
+    } catch (lmStudioError) {
+      console.warn('Claude lỗi:', claudeError, '— LM Studio lỗi:', lmStudioError);
+      throw new Error(
+        'Cô chưa chấm được bài. Bố mẹ kiểm tra mạng Internet, hoặc bật LM Studio trên máy tính ở nhà nhé.',
+      );
+    }
+  }
+}
+
+async function gradeWithClaude(params: GradeParams): Promise<GradingResult> {
   if (!apiKey) {
     throw new Error('Chưa có API key. Hãy thêm EXPO_PUBLIC_ANTHROPIC_API_KEY vào file .env.local.');
   }
@@ -116,4 +147,66 @@ export async function gradeHomework(params: {
     throw new Error('AI không trả về kết quả chấm.');
   }
   return JSON.parse(text.text) as GradingResult;
+}
+
+// LM Studio có API giống OpenAI: /v1/chat/completions, ảnh gửi dạng data URL.
+async function gradeWithLmStudio(params: GradeParams): Promise<GradingResult> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), lmStudioTimeoutMs);
+  try {
+    const model = lmStudioModel ?? (await firstLoadedModel(controller.signal));
+    const response = await fetch(`${lmStudioUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model,
+        temperature: 0.2,
+        max_tokens: 4000,
+        response_format: {
+          type: 'json_schema',
+          json_schema: { name: 'ket_qua_cham_bai', strict: true, schema: resultSchema },
+        },
+        messages: [
+          { role: 'system', content: systemPrompt(params.subject, params.grade) },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: { url: `data:image/jpeg;base64,${params.imageBase64}` },
+              },
+              { type: 'text', text: 'Cô chấm bài này giúp con nhé.' },
+            ],
+          },
+        ],
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`LM Studio trả lỗi ${response.status}: ${await response.text()}`);
+    }
+    const data = await response.json();
+    const content: string | undefined = data?.choices?.[0]?.message?.content;
+    if (!content) throw new Error('LM Studio không trả về kết quả chấm.');
+    return parseJsonObject(content);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function firstLoadedModel(signal: AbortSignal): Promise<string> {
+  const response = await fetch(`${lmStudioUrl}/v1/models`, { signal });
+  if (!response.ok) throw new Error(`LM Studio trả lỗi ${response.status}`);
+  const data = await response.json();
+  const id: string | undefined = data?.data?.[0]?.id;
+  if (!id) throw new Error('LM Studio chưa nạp model nào.');
+  return id;
+}
+
+// Model chạy trên máy đôi khi viết thêm chữ quanh JSON, nên chỉ lấy phần {...}.
+function parseJsonObject(text: string): GradingResult {
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start === -1 || end <= start) throw new Error('LM Studio trả về kết quả không đúng dạng.');
+  return JSON.parse(text.slice(start, end + 1)) as GradingResult;
 }
