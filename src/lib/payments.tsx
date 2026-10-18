@@ -42,6 +42,12 @@ let configured = false;
 /** Gọi một lần lúc mở app. Không có key thì bỏ qua: app chạy như gói Miễn phí. */
 function configurePurchases() {
   if (configured || !apiKey) return configured;
+  // Key Test Store (test_…) làm sập bản phát hành (RevenueCat cố ý). Bản không phải dev thì bỏ qua,
+  // app chạy như gói Miễn phí cho tới khi thay bằng key iOS/Android thật.
+  if (!__DEV__ && apiKey.startsWith('test_')) {
+    console.warn('Bỏ qua RevenueCat: key Test Store không dùng được ở bản phát hành.');
+    return false;
+  }
   try {
     if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.WARN);
     Purchases.configure({ apiKey });

@@ -20,7 +20,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "vn.giasutieuhoc.app",
-      "permissions": [
+      "blockedPermissions": [
         "android.permission.RECORD_AUDIO"
       ]
     },
@@ -60,6 +60,12 @@
       "eas": {
         "projectId": "8a540a62-bf7a-4ffe-9da1-ec3017e4edd8"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8a540a62-bf7a-4ffe-9da1-ec3017e4edd8"
     }
   }
 }
