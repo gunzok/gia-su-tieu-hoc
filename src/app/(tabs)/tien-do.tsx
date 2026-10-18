@@ -1,5 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
+import Constants from 'expo-constants';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
@@ -19,6 +20,7 @@ import { clearHistory, loadHistory, type HistoryEntry } from '@/lib/history';
 import { accuracy, allSubjects, averageScore, scoreLabel, SubjectIcons, thisWeek } from '@/lib/progress';
 import { useTeacher } from '@/lib/profile';
 import { speakVietnamese } from '@/lib/speech';
+import { APP_NAME } from '@/lib/teacher';
 
 const subjectBarColors: Record<Subject, { bar: string; ink: string }> = {
   toan: { bar: Palette.mint, ink: Palette.blueDark },
@@ -241,6 +243,10 @@ export default function ProgressScreen() {
           </Pressable>
         </>
       )}
+
+      <AppText variant="bodySm" color={Palette.inkSoft} style={styles.center}>
+        {APP_NAME} {Constants.expoConfig?.version}
+      </AppText>
     </Screen>
   );
 }

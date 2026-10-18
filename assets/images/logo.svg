@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Solid full-bleed edge-to-edge mint background, square, no rounded corners, no shadow -->
+  <rect width="512" height="512" fill="#7BD3BA"/>
+
+  <!-- Centered Symbol within ~60% safe area (256, 256 is center) -->
+  <g id="app-icon-symbol">
+    <!-- Back bookmark / ribbon peeking from behind book -->
+    <path d="M 256 160 L 256 220 L 268 208 L 280 220 L 280 160 Z" fill="#FFB4A2" stroke="#006B58" stroke-width="8" stroke-linejoin="round"/>
+
+    <!-- Open Book Base / Back Cover -->
+    <path d="M 116 350 C 160 338 210 342 256 362 C 302 342 352 338 396 350 L 396 366 C 352 354 302 358 256 378 C 210 358 160 354 116 366 Z" fill="#FFE484" stroke="#006B58" stroke-width="9" stroke-linejoin="round"/>
+
+    <!-- Left Book Page (White with subtle inner page thickness) -->
+    <path d="M 256 358 C 210 336 162 332 118 344 L 118 248 C 162 236 210 240 256 262 Z" fill="#FFFFFF" stroke="#006B58" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+    
+    <!-- Left page pastel warm decorative lines -->
+    <path d="M 150 274 C 180 268 215 272 236 282" fill="none" stroke="#7BD3BA" stroke-width="7" stroke-linecap="round"/>
+    <path d="M 150 298 C 180 292 215 296 236 306" fill="none" stroke="#7BD3BA" stroke-width="7" stroke-linecap="round"/>
+    <path d="M 150 322 C 175 317 205 320 225 329" fill="none" stroke="#7BD3BA" stroke-width="7" stroke-linecap="round"/>
+
+    <!-- Right Book Page (Soft Butter Yellow) -->
+    <path d="M 256 358 C 302 336 350 332 394 344 L 394 248 C 350 236 302 240 256 262 Z" fill="#FFF8D6" stroke="#006B58" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+
+    <!-- Right page pastel decorative lines -->
+    <path d="M 276 282 C 297 272 332 268 362 274" fill="none" stroke="#FFB4A2" stroke-width="7" stroke-linecap="round"/>
+    <path d="M 276 306 C 297 296 332 292 362 298" fill="none" stroke="#FFB4A2" stroke-width="7" stroke-linecap="round"/>
+    <path d="M 287 329 C 307 320 337 317 362 322" fill="none" stroke="#FFB4A2" stroke-width="7" stroke-linecap="round"/>
+
+    <!-- Book Spine center line -->
+    <line x1="256" y1="262" x2="256" y2="368" stroke="#006B58" stroke-width="10" stroke-linecap="round"/>
+
+    <!-- Cute Smiling Star rising from center of the book -->
+    <!-- Star Path centered at (256, 175) -->
+    <g transform="translate(256, 182)">
+      <!-- Star Body -->
+      <path d="M 0 -58 
+               L 16 -18 
+               L 58 -16 
+               L 26 16 
+               L 36 58 
+               L 0 34 
+               L -36 58 
+               L -26 16 
+               L -58 -16 
+               L -16 -18 Z" 
+            fill="#FFE484" stroke="#006B58" stroke-width="9" stroke-linejoin="round"/>
+
+      <!-- Star Face (Happy eyes, blush, cute smile) -->
+      <!-- Left Eye -->
+      <circle cx="-13" cy="2" r="4.5" fill="#006B58"/>
+      <!-- Right Eye -->
+      <circle cx="13" cy="2" r="4.5" fill="#006B58"/>
+      <!-- Blush Cheeks -->
+      <ellipse cx="-20" cy="11" rx="5" ry="3" fill="#FFB4A2"/>
+      <ellipse cx="20" cy="11" rx="5" ry="3" fill="#FFB4A2"/>
+      <!-- Smile mouth -->
+      <path d="M -7 10 Q 0 17 7 10" fill="none" stroke="#006B58" stroke-width="4.5" stroke-linecap="round"/>
+    </g>
+
+    <!-- Tiny Playful Pencil tilted to the right of the book -->
+    <g transform="translate(345, 175) rotate(24)">
+      <!-- Pencil Body -->
+      <rect x="-11" y="-30" width="22" height="48" rx="2" fill="#FFB4A2" stroke="#006B58" stroke-width="7" stroke-linejoin="round"/>
+      <!-- Pencil Stripe detail -->
+      <line x1="-3" y1="-30" x2="-3" y2="18" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+      <!-- Wooden Tip Cone -->
+      <polygon points="-11,18 11,18 0,42" fill="#FFF2BD" stroke="#006B58" stroke-width="7" stroke-linejoin="round"/>
+      <!-- Lead Tip -->
+      <polygon points="-4.5,32 4.5,32 0,42" fill="#006B58"/>
+      <!-- Eraser Ferrule Band -->
+      <rect x="-11" y="-38" width="22" height="8" fill="#E2E8F0" stroke="#006B58" stroke-width="7" stroke-linejoin="round"/>
+      <!-- Eraser Top -->
+      <path d="M -11 -38 C -11 -48 11 -48 11 -38 Z" fill="#FFE484" stroke="#006B58" stroke-width="7" stroke-linejoin="round"/>
+    </g>
+
+    <!-- Small gentle sparkle stars around symbol for playful magic learning touch -->
+    <!-- Sparkle 1 top left -->
+    <path d="M 148 162 Q 148 178 132 178 Q 148 178 148 194 Q 148 178 164 178 Q 148 178 148 162 Z" fill="#FFE484" stroke="#006B58" stroke-width="4" stroke-linejoin="round"/>
+    <!-- Tiny circle pastel dot -->
+    <circle cx="178" cy="150" r="5" fill="#FFFFFF" stroke="#006B58" stroke-width="3.5"/>
+    <!-- Sparkle 2 bottom right -->
+    <circle cx="395" cy="225" r="5.5" fill="#FFF8D6" stroke="#006B58" stroke-width="3.5"/>
+  </g>
+</svg>
