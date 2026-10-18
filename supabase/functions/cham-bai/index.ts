@@ -3,6 +3,7 @@
 //
 // Triển khai:  npx supabase functions deploy cham-bai
 // Đặt key:     npx supabase secrets set ANTHROPIC_API_KEY=...
+//              npx supabase secrets set REVENUECAT_SECRET_KEY=...  (để biết ai có gói Plus)
 
 import Anthropic from 'npm:@anthropic-ai/sdk@0.135.0';
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -17,11 +18,48 @@ const maxImageBase64Length = 6_000_000;
 // Số trang tối đa mỗi lần chấm (khớp MAX_PAGES trong app).
 const maxPages = 6;
 
+// Số lần chấm bằng Claude mỗi ngày (tính theo giờ Việt Nam), đếm trong bảng grading_usage.
+const freeDailyLimit = 3;
+const plusDailyLimit = 50;
+// Entitlement gói Plus; phải trùng PRO_ENTITLEMENT trong src/lib/payments.tsx.
+const proEntitlement = 'gia_sư_tiểu_học_pro';
+const vietnamOffsetMs = 7 * 60 * 60 * 1000;
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { 'Content-Type': 'application/json' },
   });
+}
+
+function startOfTodayInVietnam() {
+  const vietnamNow = new Date(Date.now() + vietnamOffsetMs);
+  vietnamNow.setUTCHours(0, 0, 0, 0);
+  return new Date(vietnamNow.getTime() - vietnamOffsetMs);
+}
+
+// Hỏi RevenueCat xem tài khoản có gói Plus không (app đã gắn RevenueCat với id Supabase).
+// Chưa đặt REVENUECAT_SECRET_KEY hoặc RevenueCat lỗi thì tính là gói Miễn phí.
+async function hasPlus(userId: string) {
+  const secretKey = Deno.env.get('REVENUECAT_SECRET_KEY');
+  if (!secretKey) return false;
+  try {
+    const response = await fetch(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(userId)}`, {
+      headers: { Authorization: `Bearer ${secretKey}` },
+    });
+    if (!response.ok) {
+      console.error('RevenueCat trả lỗi', response.status, await response.text());
+      return false;
+    }
+    const data = await response.json();
+    const entitlement = data?.subscriber?.entitlements?.[proEntitlement];
+    if (!entitlement) return false;
+    // Gói trọn đời không có ngày hết hạn.
+    return entitlement.expires_date == null || new Date(entitlement.expires_date).getTime() > Date.now();
+  } catch (error) {
+    console.error('Lỗi gọi RevenueCat:', error);
+    return false;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -56,6 +94,50 @@ Deno.serve(async (req) => {
     grade > 5
   ) {
     return json({ error: 'Thiếu ảnh, môn hoặc lớp' }, 400);
+  }
+
+  // Ghi lượt trước rồi mới đếm, để hai lần gửi cùng lúc không lọt quá giới hạn.
+  const userId = userData.user.id;
+  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  const { data: usage, error: usageError } = await admin
+    .from('grading_usage')
+    .insert({ owner_id: userId, pages: images.length })
+    .select('id')
+    .single();
+  if (usageError || !usage) {
+    console.error('Lỗi ghi lượt chấm:', usageError);
+    return json({ error: 'Máy chủ chưa chấm được bài' }, 500);
+  }
+  const refundUsage = () => admin.from('grading_usage').delete().eq('id', usage.id);
+
+  const { count, error: countError } = await admin
+    .from('grading_usage')
+    .select('id', { count: 'exact', head: true })
+    .eq('owner_id', userId)
+    .gte('created_at', startOfTodayInVietnam().toISOString());
+  if (countError || count === null) {
+    console.error('Lỗi đếm lượt chấm:', countError);
+    await refundUsage();
+    return json({ error: 'Máy chủ chưa chấm được bài' }, 500);
+  }
+  // Chỉ hỏi RevenueCat khi đã dùng hết lượt miễn phí.
+  if (count > freeDailyLimit) {
+    const plus = await hasPlus(userId);
+    const limit = plus ? plusDailyLimit : freeDailyLimit;
+    if (count > limit) {
+      await refundUsage();
+      return json(
+        {
+          error: plus
+            ? `Hôm nay con đã chấm ${limit} bài rồi, giỏi quá! Con nghỉ ngơi, mai mình chấm tiếp nhé.`
+            : `Hôm nay con đã chấm đủ ${limit} bài rồi. Mai con chấm tiếp nhé! Ba mẹ có thể mở gói Plus để chấm nhiều bài hơn.`,
+          code: 'het-luot',
+          limit,
+          plus,
+        },
+        429,
+      );
+    }
   }
 
   try {
@@ -95,6 +177,8 @@ Deno.serve(async (req) => {
     return json(JSON.parse(text.text));
   } catch (error) {
     console.error('Lỗi gọi Claude:', error);
+    // Chưa chấm được thì trả lại lượt cho bé.
+    await refundUsage();
     return json({ error: 'Máy chủ chưa chấm được bài' }, 502);
   }
 });
