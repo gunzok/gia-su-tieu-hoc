@@ -10,7 +10,7 @@ import { Mascot } from '@/components/mascot';
 import { OnboardingHeader } from '@/components/onboarding-header';
 import { Screen } from '@/components/screen';
 import { FontFamily, Palette, Radius, Spacing } from '@/constants/theme';
-import { useIsPremium } from '@/lib/payments';
+import { purchaseErrorMessage, usePremium } from '@/lib/payments';
 import { avatarOptions, useProfile } from '@/lib/profile';
 import { speakVietnamese } from '@/lib/speech';
 import { APP_NAME, teachers, type TeacherId } from '@/lib/teacher';
@@ -29,7 +29,7 @@ export default function ProfileScreen() {
   const [name, setName] = useState(profile?.name ?? '');
   const [grade, setGrade] = useState(profile?.grade ?? 2);
   const [avatar, setAvatar] = useState<string>(profile?.avatar ?? avatarOptions[0].id);
-  const isPremium = useIsPremium();
+  const { isPremium, showPaywall } = usePremium();
   const [teacher, setTeacher] = useState<TeacherId>(profile?.teacher ?? 'co');
   // Hết gói Plus thì lưu lại là Cô giáo.
   const chosenTeacher: TeacherId = isPremium ? teacher : 'co';
@@ -39,7 +39,23 @@ export default function ProfileScreen() {
     if (id === 'thay' && !isPremium) {
       Alert.alert(
         'Dành cho gói Plus',
-        'Chọn học cùng Thầy giáo (hình và giọng đọc của thầy) chỉ có trong gói Gia sư Tiểu học Plus. Gói trả phí sẽ sớm mở bán nhé!',
+        'Chọn học cùng Thầy giáo (hình và giọng đọc của thầy) có trong gói Gia sư Tiểu học Plus.',
+        [
+          { text: 'Để sau', style: 'cancel' },
+          {
+            text: 'Xem gói Plus',
+            onPress: () => {
+              // Mua xong quay lại đây: isPremium đổi thành true, chạm Thầy giáo là chọn được.
+              setTeacher('thay');
+              try {
+                showPaywall();
+              } catch (error) {
+                const message = purchaseErrorMessage(error);
+                if (message) Alert.alert('Chưa xong', message);
+              }
+            },
+          },
+        ],
       );
       return;
     }

@@ -17,6 +17,7 @@ import { NoticeToast } from '@/components/notice-toast';
 import { Palette } from '@/constants/theme';
 import { AuthProvider } from '@/lib/auth';
 import { HomeworkSessionProvider } from '@/lib/homework-session';
+import { PremiumProvider } from '@/lib/payments';
 import { ProfileProvider, useProfile } from '@/lib/profile';
 
 SplashScreen.preventAutoHideAsync();
@@ -42,9 +43,11 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={theme}>
       <AuthProvider>
-        <ProfileProvider>
-          <RootNavigator />
-        </ProfileProvider>
+        <PremiumProvider>
+          <ProfileProvider>
+            <RootNavigator />
+          </ProfileProvider>
+        </PremiumProvider>
       </AuthProvider>
     </ThemeProvider>
   );
@@ -70,6 +73,7 @@ function RootNavigator() {
         </Stack.Protected>
         {/* Đăng nhập mở được cả lúc mới cài app lẫn từ tab Tiến độ. */}
         <Stack.Screen name="dang-nhap" />
+        <Stack.Screen name="goi-plus" options={{ presentation: 'modal' }} />
       </Stack>
       <NoticeToast />
     </HomeworkSessionProvider>

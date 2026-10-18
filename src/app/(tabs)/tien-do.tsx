@@ -5,6 +5,7 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { AccountCard } from '@/components/account-card';
 import { AppHeader } from '@/components/app-header';
+import { PlusCard } from '@/components/plus-card';
 import { AppText } from '@/components/app-text';
 import { type IconName } from '@/components/big-button';
 import { Card } from '@/components/card';
@@ -77,6 +78,7 @@ export default function ProgressScreen() {
       </View>
 
       <AccountCard />
+      <PlusCard />
 
       {history.length === 0 ? (
         <Card style={styles.empty}>
