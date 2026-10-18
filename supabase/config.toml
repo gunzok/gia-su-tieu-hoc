@@ -4,3 +4,7 @@ project_id = "gia-su-tieu-hoc"
 [functions.cham-bai]
 # Hàm tự kiểm tra người dùng bằng supabase.auth.getUser() ở trong code.
 verify_jwt = true
+
+[functions.xoa-tai-khoan]
+# Hàm tự kiểm tra người dùng bằng supabase.auth.getUser() ở trong code.
+verify_jwt = true
