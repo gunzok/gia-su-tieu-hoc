@@ -59,7 +59,8 @@
     "build:dev": "node scripts/ban-build.js build development android",
     "update:preview": "node scripts/ban-build.js update",
     "version:set": "node scripts/ban-build.js version",
-    "env:eas": "node scripts/ban-build.js env"
+    "env:eas": "node scripts/ban-build.js env",
+    "build:ios-sim": "node scripts/ban-build.js build preview-simulator ios"
   },
   "private": true
 }

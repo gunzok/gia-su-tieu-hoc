@@ -2,6 +2,7 @@
 //
 //   npm run build:preview            build APK Android bản preview
 //   npm run build:dev                build bản thử (development) Android
+//   npm run build:ios-sim            build bản iOS hoàn chỉnh cho iPhone giả lập (không cần tài khoản Apple)
 //   npm run update:preview -- "Ghi chú thay đổi"
 //   npm run version:set -- 0.2.0     đổi version (sau đó phải build lại)
 //   npm run env:eas                  đưa các khoá EXPO_PUBLIC_ trong .env.local lên EAS
