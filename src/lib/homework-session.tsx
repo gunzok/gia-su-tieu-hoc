@@ -4,10 +4,14 @@ import { Alert } from 'react-native';
 
 import { gradeHomework, type Subject } from '@/lib/grading';
 import { addHistoryEntry, type HistoryEntry } from '@/lib/history';
+import { savePagesLocally } from '@/lib/page-images';
 import { getPremiumStatus } from '@/lib/payments';
 import { preparePhotoForGrading } from '@/lib/prepare-photo';
 import { useTeacher } from '@/lib/profile';
 import { speakVietnamese, stopSpeaking } from '@/lib/speech';
+
+/** Số trang tối đa mỗi lần chấm (khớp maxPages trong supabase/functions/cham-bai). */
+export const MAX_PAGES = 6;
 
 // Trạng thái bài đang làm, dùng chung giữa các tab Trang chủ / Quét bài / Chữa bài.
 type HomeworkSession = {
@@ -15,10 +19,13 @@ type HomeworkSession = {
   setGrade: (grade: number) => void;
   subject: Subject;
   setSubject: (subject: Subject) => void;
-  photo: ImagePicker.ImagePickerAsset | null;
+  /** Các trang đã chụp / chọn, theo thứ tự. */
+  photos: ImagePicker.ImagePickerAsset[];
+  removePhoto: (index: number) => void;
   grading: boolean;
   /** Kết quả chấm gần nhất trong lần mở app này. */
   latest: HistoryEntry | null;
+  /** Chụp thêm một trang, hoặc chọn nhiều trang từ album (thêm vào sau các trang đã có). */
   pickPhoto: (source: 'camera' | 'library') => Promise<void>;
   /** Trả về true nếu chấm xong. */
   submitForGrading: () => Promise<boolean>;
@@ -57,7 +64,7 @@ export function HomeworkSessionProvider({
 }) {
   const [grade, setGrade] = useState(initialGrade);
   const [subject, setSubject] = useState<Subject>('toan');
-  const [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [photos, setPhotos] = useState<ImagePicker.ImagePickerAsset[]>([]);
   const [grading, setGrading] = useState(false);
   const [latest, setLatest] = useState<HistoryEntry | null>(null);
   const [speaking, setSpeaking] = useState(false);
@@ -86,10 +93,19 @@ export function HomeworkSessionProvider({
       return;
     }
 
+    const remaining = MAX_PAGES - photos.length;
+    if (remaining <= 0) {
+      Alert.alert('Đủ trang rồi', `Mỗi lần chấm tối đa ${MAX_PAGES} trang. Con chấm bộ này trước nhé!`);
+      return;
+    }
     const options: ImagePicker.ImagePickerOptions = {
       mediaTypes: ['images'],
       // Lấy ảnh gốc chất lượng cao; lúc chấm mới thu nhỏ và nén (xem prepare-photo.ts).
       quality: 1,
+      // Album: chọn nhiều trang một lần, theo thứ tự bấm chọn.
+      allowsMultipleSelection: source === 'library',
+      selectionLimit: remaining,
+      orderedSelection: true,
     };
     const picked =
       source === 'camera'
@@ -98,24 +114,40 @@ export function HomeworkSessionProvider({
     if (picked.canceled) return;
 
     stopSpeech();
-    setPhoto(picked.assets[0]);
+    setPhotos((current) => [...current, ...picked.assets].slice(0, MAX_PAGES));
   }
 
   async function submitForGrading() {
-    if (!photo) return false;
+    if (photos.length === 0) return false;
     setGrading(true);
     try {
-      const imageBase64 = await preparePhotoForGrading(photo);
-      const { result: graded, engine } = await gradeHomework({ imageBase64, subject, grade, teacher: teacher.id });
+      const prepared = await Promise.all(photos.map(preparePhotoForGrading));
+      const { result: graded, engine } = await gradeHomework({
+        images: prepared.map((page) => page.base64),
+        subject,
+        grade,
+        teacher: teacher.id,
+      });
+      const id = String(Date.now());
+      // Giữ ảnh các trang để ba mẹ xem lại; lỗi lưu ảnh thì vẫn giữ kết quả chấm.
+      const pages = await savePagesLocally(
+        id,
+        prepared.map((page) => page.uri),
+      ).catch((error) => {
+        console.warn('Chưa lưu được ảnh bài làm trên máy:', error);
+        return [];
+      });
       const entry: HistoryEntry = {
         ...graded,
-        id: String(Date.now()),
+        id,
         createdAt: new Date().toISOString(),
         subject,
         grade,
+        pages,
+        engine,
       };
       setLatest(entry);
-      setPhoto(null);
+      setPhotos([]);
       speak(graded.spokenFeedback);
       // Báo mỗi lần chấm bằng LM Studio, bằng thông báo nhỏ tự ẩn để không làm phiền bé.
       if (engine === 'local') localGradingNotice().then(setNotice);
@@ -131,7 +163,11 @@ export function HomeworkSessionProvider({
 
   function startOver() {
     stopSpeech();
-    setPhoto(null);
+    setPhotos([]);
+  }
+
+  function removePhoto(index: number) {
+    setPhotos((current) => current.filter((_, i) => i !== index));
   }
 
   return (
@@ -141,7 +177,8 @@ export function HomeworkSessionProvider({
         setGrade,
         subject,
         setSubject,
-        photo,
+        photos,
+        removePhoto,
         grading,
         latest,
         pickPhoto,

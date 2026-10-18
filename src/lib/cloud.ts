@@ -14,7 +14,23 @@ type GradingRow = {
   parent_note: string;
   items: HistoryEntry['items'];
   created_at: string;
+  image_paths: string[];
+  engine: HistoryEntry['engine'] | null;
+  child_id?: string | null;
 };
+
+const gradingColumns =
+  'local_id, subject, grade, score, spoken_feedback, parent_note, items, created_at, image_paths, engine, child_id';
+
+// Bé của tài khoản này (hiện mỗi tài khoản một bé); nhớ lại để khỏi hỏi máy chủ mỗi lần.
+let cachedChildId: { userId: string; childId: string | null } | null = null;
+
+async function childIdFor(userId: string) {
+  if (cachedChildId?.userId === userId && cachedChildId.childId) return cachedChildId.childId;
+  const { data } = await supabase!.from('children').select('id').maybeSingle();
+  cachedChildId = { userId, childId: data?.id ?? null };
+  return cachedChildId.childId;
+}
 
 function toRow(entry: HistoryEntry): GradingRow {
   return {
@@ -26,6 +42,8 @@ function toRow(entry: HistoryEntry): GradingRow {
     parent_note: entry.parentNote,
     items: entry.items,
     created_at: entry.createdAt,
+    image_paths: entry.imagePaths ?? [],
+    engine: entry.engine ?? null,
   };
 }
 
@@ -39,6 +57,9 @@ function fromRow(row: GradingRow): HistoryEntry {
     parentNote: row.parent_note,
     items: row.items,
     createdAt: row.created_at,
+    imagePaths: row.image_paths ?? [],
+    engine: row.engine ?? undefined,
+    childId: row.child_id ?? undefined,
   };
 }
 
@@ -67,10 +88,22 @@ export async function pullProfile(): Promise<ChildProfile | null> {
 }
 
 export async function pushGradings(entries: HistoryEntry[]) {
-  if (!supabase || entries.length === 0 || !(await currentUserId())) return;
+  const userId = await currentUserId();
+  if (!supabase || entries.length === 0 || !userId) return;
+  const childId = await childIdFor(userId);
   const { error } = await supabase
     .from('gradings')
-    .upsert(entries.map(toRow), { onConflict: 'owner_id,local_id', ignoreDuplicates: true });
+    .upsert(
+      entries.map((entry) => ({ ...toRow(entry), child_id: childId })),
+      { onConflict: 'owner_id,local_id', ignoreDuplicates: true },
+    );
+  if (error) throw error;
+}
+
+/** Gắn ảnh các trang (đã tải lên kho) vào bài chấm trên máy chủ. */
+export async function setGradingImages(localId: string, imagePaths: string[]) {
+  if (!supabase || !(await currentUserId())) return;
+  const { error } = await supabase.from('gradings').update({ image_paths: imagePaths }).eq('local_id', localId);
   if (error) throw error;
 }
 
@@ -79,7 +112,7 @@ export async function pullGradings(limit: number): Promise<HistoryEntry[] | null
   if (!supabase || !(await currentUserId())) return null;
   const { data, error } = await supabase
     .from('gradings')
-    .select('local_id, subject, grade, score, spoken_feedback, parent_note, items, created_at')
+    .select(gradingColumns)
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) throw error;

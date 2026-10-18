@@ -230,7 +230,7 @@ export default function ParentLoginScreen() {
         <View style={styles.flex}>
           <AppText variant="labelLg">An toàn & bảo mật cho trẻ em</AppText>
           <AppText variant="bodySm" color={Palette.inkSoft}>
-            Ảnh bài làm chỉ gửi đi để chấm, không lưu lại. Kết quả chấm chỉ ba mẹ xem được.
+            Ảnh bài làm và kết quả chấm được cất trong kho riêng, chỉ tài khoản ba mẹ xem được.
           </AppText>
         </View>
       </View>

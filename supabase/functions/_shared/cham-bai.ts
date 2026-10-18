@@ -138,7 +138,7 @@ export function systemPrompt(subject: Subject, grade: number, teacher: TeacherVo
 
 ${teacherKnowledge(subject, grade)}
 
-Ảnh là bài làm của bé (có thể viết tay, chụp nghiêng hoặc mờ). Hãy:
+Ảnh là bài làm của bé, có thể gồm nhiều trang theo đúng thứ tự (có thể viết tay, chụp nghiêng hoặc mờ). Chấm gộp tất cả các trang thành một bài; câu hỏi ghi kèm số trang nếu có nhiều trang (ví dụ "Trang 2 – Bài 3"). Hãy:
 1. Đọc từng câu hỏi và câu trả lời của bé. Chỗ nào không đọc rõ thì ghi "không đọc rõ" thay vì đoán.
 2. Với từng câu: chép nguyên văn câu trả lời của bé vào childAnswer, tự giải lại cẩn thận và ghi kết quả vào correctAnswer, rồi mới so hai kết quả để chấm đúng/sai. Với câu sai, explanation chỉ ra bé sai ở bước nào và cách làm đúng, ngắn gọn, dễ hiểu với trẻ lớp ${grade}.
 3. Cho điểm trên thang 10, làm tròn 0.5, tương ứng với số câu đúng.

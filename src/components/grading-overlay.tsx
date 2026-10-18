@@ -27,11 +27,13 @@ const frameSize = 168;
 
 type Props = {
   photoUri?: string;
+  /** Số trang đang chấm (hiện "3 trang" khi nhiều hơn 1). */
+  pageCount?: number;
 };
 
 // Màn chờ khi đang chấm bài: cú nhún nhảy, ảnh bài có vạch quét, các bước và số giây đã chờ.
 // Chỉ gắn vào khi đang chấm, nên mỗi lần chấm đều đếm lại từ 0.
-export function GradingOverlay({ photoUri }: Props) {
+export function GradingOverlay({ photoUri, pageCount = 1 }: Props) {
   const [seconds, setSeconds] = useState(0);
   const T = useTeacher();
   const steps = stepTexts.map((step) => ({ ...step, text: `${T.Title} ${step.text}` }));
@@ -73,7 +75,7 @@ export function GradingOverlay({ photoUri }: Props) {
           </Animated.View>
 
           <AppText variant="headlineLg" style={styles.center}>
-            {T.Title} đang chấm bài
+            {pageCount > 1 ? `${T.Title} đang chấm ${pageCount} trang` : `${T.Title} đang chấm bài`}
           </AppText>
 
           {photoUri && (

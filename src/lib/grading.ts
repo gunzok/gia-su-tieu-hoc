@@ -25,7 +25,8 @@ const lmStudioModel = process.env.EXPO_PUBLIC_LMSTUDIO_MODEL;
 const lmStudioTimeoutMs = 240_000;
 
 type GradeParams = {
-  imageBase64: string;
+  /** Các trang bài làm (JPEG base64), theo thứ tự. */
+  images: string[];
   subject: Subject;
   grade: number;
   /** Xưng "cô" hay "thầy" trong lời nhận xét. */
@@ -115,10 +116,10 @@ async function gradeWithLmStudio(params: GradeParams): Promise<GradingResult> {
           {
             role: 'user',
             content: [
-              {
+              ...params.images.map((image) => ({
                 type: 'image_url',
-                image_url: { url: `data:image/jpeg;base64,${params.imageBase64}` },
-              },
+                image_url: { url: `data:image/jpeg;base64,${image}` },
+              })),
               { type: 'text', text: `${params.teacher === 'thay' ? 'Thầy' : 'Cô'} chấm bài này giúp con nhé.` },
             ],
           },

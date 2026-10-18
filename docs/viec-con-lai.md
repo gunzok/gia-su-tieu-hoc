@@ -17,7 +17,7 @@ Thiết kế Stitch "AI Gia Sư Tiểu Học" có các phần dưới đây như
       chờ tạo dự án Supabase theo docs/supabase.md để chạy thật
 - [ ] Đăng nhập Apple, số điện thoại (SMS), mã trường: vẫn báo "sắp có"
 - [x] Thanh toán RevenueCat: SDK, Paywall, Customer Center đã nối (18/10/2026); còn cấu hình dashboard + build riêng để mua thật (docs/thanh-toan-revenuecat.md)
-- [ ] Màn Quét bài: chụp nhiều trang
+- [x] Chụp / chọn nhiều trang (tối đa 6) và chấm một lần; lưu ảnh + bài chấm theo bé, tra cứu theo môn (18/10/2026)
 - [ ] Màn Chữa bài: nút "Thử lại câu này", "Hỏi Thầy Cú"
 - [ ] Màn Tiến độ: chọn Tuần / Tháng / Học kỳ, mục tiêu, tải phiếu bài tập PDF, gửi lời động viên tới máy bé
 

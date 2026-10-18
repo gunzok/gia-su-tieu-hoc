@@ -14,6 +14,8 @@ const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 const subjects: Subject[] = ['toan', 'tieng-viet'];
 // Ảnh đã được app thu nhỏ còn khoảng vài trăm KB; chặn ảnh quá lớn để tránh lạm dụng.
 const maxImageBase64Length = 6_000_000;
+// Số trang tối đa mỗi lần chấm (khớp MAX_PAGES trong app).
+const maxPages = 6;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -32,19 +34,21 @@ Deno.serve(async (req) => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) return json({ error: 'Chưa đăng nhập' }, 401);
 
-  let body: { imageBase64?: unknown; subject?: unknown; grade?: unknown; teacher?: unknown };
+  let body: { images?: unknown; imageBase64?: unknown; subject?: unknown; grade?: unknown; teacher?: unknown };
   try {
     body = await req.json();
   } catch {
     return json({ error: 'Dữ liệu gửi lên không đúng' }, 400);
   }
-  const { imageBase64, subject, grade } = body;
+  const { subject, grade } = body;
+  // Nhiều trang: images[]; app bản cũ gửi một ảnh imageBase64.
+  const images = Array.isArray(body.images) ? body.images : [body.imageBase64];
   // Gói Plus mới chọn được Thầy; máy chủ chưa kiểm tra gói nên chỉ nhận đúng 2 giá trị.
   const teacher: TeacherVoice = body.teacher === 'thay' ? 'thay' : 'co';
   if (
-    typeof imageBase64 !== 'string' ||
-    imageBase64.length === 0 ||
-    imageBase64.length > maxImageBase64Length ||
+    images.length === 0 ||
+    images.length > maxPages ||
+    !images.every((image) => typeof image === 'string' && image.length > 0 && image.length <= maxImageBase64Length) ||
     !subjects.includes(subject as Subject) ||
     typeof grade !== 'number' ||
     !Number.isInteger(grade) ||
@@ -69,7 +73,10 @@ Deno.serve(async (req) => {
         {
           role: 'user',
           content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } },
+            ...(images as string[]).map((data) => ({
+              type: 'image' as const,
+              source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data },
+            })),
             { type: 'text', text: `${teacher === 'thay' ? 'Thầy' : 'Cô'} chấm bài này giúp con nhé.` },
           ],
         },

@@ -1,5 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useFocusEffect } from 'expo-router';
+import { Image } from 'expo-image';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
@@ -7,6 +8,7 @@ import { AccountCard } from '@/components/account-card';
 import { AppHeader } from '@/components/app-header';
 import { PlusCard } from '@/components/plus-card';
 import { AppText } from '@/components/app-text';
+import { ChoiceChips } from '@/components/choice-chips';
 import { type IconName } from '@/components/big-button';
 import { Card } from '@/components/card';
 import { Mascot } from '@/components/mascot';
@@ -34,6 +36,8 @@ function formatDate(iso: string) {
 
 export default function ProgressScreen() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [filter, setFilter] = useState<Subject | 'all'>('all');
+  const shown = filter === 'all' ? history : history.filter((entry) => entry.subject === filter);
   const teacher = useTeacher();
 
   useFocusEffect(
@@ -210,9 +214,24 @@ export default function ProgressScreen() {
 
           <View style={styles.section}>
             <AppText variant="headlineSm">Lịch sử chấm bài</AppText>
-            {history.map((entry) => (
-              <HistoryCard key={entry.id} entry={entry} />
-            ))}
+            <ChoiceChips
+              options={[
+                { value: 'all' as const, label: `Tất cả (${history.length})` },
+                ...allSubjects.map((subject) => ({
+                  value: subject,
+                  label: `${SubjectIcons[subject]} ${SubjectNames[subject]} (${history.filter((entry) => entry.subject === subject).length})`,
+                })),
+              ]}
+              value={filter}
+              onChange={setFilter}
+            />
+            {shown.length === 0 ? (
+              <AppText variant="bodyMd" color={Palette.inkSoft}>
+                Chưa có bài nào của môn này.
+              </AppText>
+            ) : (
+              shown.map((entry) => <HistoryCard key={entry.id} entry={entry} />)
+            )}
           </View>
 
           <Pressable accessibilityRole="button" onPress={confirmClear} style={styles.clear}>
@@ -241,41 +260,51 @@ function StatTile(props: { icon: IconName; value: string; label: string; tint: s
 }
 
 function HistoryCard({ entry }: { entry: HistoryEntry }) {
-  const wrongItems = entry.items.filter((item) => !item.correct);
+  const wrongCount = entry.items.filter((item) => !item.correct).length;
+  const pageCount = Math.max(entry.pages?.length ?? 0, entry.imagePaths?.length ?? 0);
+  const thumbnail = entry.pages?.[0];
 
   return (
-    <Card style={styles.historyCard}>
-      <View style={styles.historyHeader}>
-        <View style={styles.flex}>
-          <AppText variant="labelLg">
-            {SubjectIcons[entry.subject]} {SubjectNames[entry.subject]} · Lớp {entry.grade}
-          </AppText>
-          <AppText variant="bodySm" color={Palette.inkSoft}>
-            {formatDate(entry.createdAt)}
-          </AppText>
-        </View>
-        <View style={styles.historyScore}>
-          <AppText variant="labelLg" color={Palette.blueDark}>
-            {entry.score}/10
-          </AppText>
-        </View>
-      </View>
-
-      <AppText variant="bodyMd">{entry.parentNote}</AppText>
-
-      {wrongItems.length > 0 && (
-        <View style={styles.wrongList}>
-          <AppText variant="labelMd" color={Palette.coralDark}>
-            Câu bé làm sai ({wrongItems.length}):
-          </AppText>
-          {wrongItems.map((item, index) => (
-            <AppText key={index} variant="bodySm" color={Palette.inkSoft}>
-              • {item.question}: {item.explanation}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Xem bài ${SubjectNames[entry.subject]} ngày ${formatDate(entry.createdAt)}`}
+      onPress={() => router.push({ pathname: '/bai-cham/[id]', params: { id: entry.id } })}
+      style={({ pressed }) => pressed && styles.pressed}>
+      <Card style={styles.historyCard}>
+        <View style={styles.historyHeader}>
+          {thumbnail ? (
+            <Image source={{ uri: thumbnail }} style={styles.thumbnail} contentFit="cover" />
+          ) : (
+            <View style={[styles.thumbnail, styles.thumbnailEmpty]}>
+              <AppText style={styles.thumbnailEmoji}>{SubjectIcons[entry.subject]}</AppText>
+            </View>
+          )}
+          <View style={styles.flex}>
+            <AppText variant="labelLg">
+              {SubjectNames[entry.subject]} · Lớp {entry.grade}
             </AppText>
-          ))}
+            <AppText variant="bodySm" color={Palette.inkSoft}>
+              {formatDate(entry.createdAt)}
+              {pageCount > 0 ? ` · ${pageCount} trang` : ''}
+            </AppText>
+            {wrongCount > 0 && (
+              <AppText variant="labelSm" color={Palette.coralDark}>
+                {wrongCount} câu cần sửa
+              </AppText>
+            )}
+          </View>
+          <View style={styles.historyScore}>
+            <AppText variant="labelLg" color={Palette.blueDark}>
+              {entry.score}/10
+            </AppText>
+          </View>
+          <MaterialIcons name="chevron-right" size={24} color={Palette.inkSoft} />
         </View>
-      )}
-    </Card>
+        <AppText variant="bodySm" numberOfLines={2}>
+          {entry.parentNote}
+        </AppText>
+      </Card>
+    </Pressable>
   );
 }
 
@@ -414,8 +443,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one + 2,
   },
-  wrongList: {
-    gap: Spacing.half,
+  thumbnail: {
+    width: 56,
+    height: 72,
+    borderRadius: 12,
+    backgroundColor: Palette.surfaceMuted,
+  },
+  thumbnailEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbnailEmoji: {
+    fontSize: 26,
+    lineHeight: 32,
   },
   clear: {
     alignSelf: 'center',

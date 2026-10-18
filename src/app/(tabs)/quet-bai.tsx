@@ -1,7 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppHeader } from '@/components/app-header';
 import { AppText } from '@/components/app-text';
@@ -12,19 +12,24 @@ import { Mascot } from '@/components/mascot';
 import { Screen } from '@/components/screen';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 import { SubjectNames } from '@/lib/grading';
-import { useHomeworkSession } from '@/lib/homework-session';
+import { MAX_PAGES, useHomeworkSession } from '@/lib/homework-session';
 import { useTeacher } from '@/lib/profile';
 import { allSubjects, SubjectIcons } from '@/lib/progress';
 
-const gradeOptions = [1, 2, 3, 4, 5].map((g) => ({ value: g, label: `Lớp ${g}` }));
+const gradeOptions = [1, 2, 3, 4, 5].map((g) => ({
+  value: g,
+  label: `Lớp ${g}`,
+}));
 const subjectOptions = allSubjects.map((s) => ({
   value: s,
   label: `${SubjectIcons[s]} ${SubjectNames[s]}`,
 }));
 
 export default function ScanScreen() {
-  const { grade, setGrade, subject, setSubject, photo, grading, pickPhoto, submitForGrading } =
+  const { grade, setGrade, subject, setSubject, photos, removePhoto, grading, pickPhoto, submitForGrading } =
     useHomeworkSession();
+  const count = photos.length;
+  const full = count >= MAX_PAGES;
   const T = useTeacher();
 
   async function handleGrade() {
@@ -44,17 +49,50 @@ export default function ScanScreen() {
       <View style={styles.stage}>
         <View style={styles.statusPill}>
           <MaterialIcons
-            name={photo ? 'check-circle-outline' : 'center-focus-weak'}
+            name={count ? 'check-circle-outline' : 'center-focus-weak'}
             size={18}
             color={Palette.blue}
           />
-          <AppText variant="labelMd">{photo ? 'Đã chụp trang vở của con! 📸' : 'Đặt vở vào khung nhé'}</AppText>
+          <AppText variant="labelMd">
+            {count ? `Đã có ${count}/${MAX_PAGES} trang vở 📸` : 'Đặt vở vào khung nhé'}
+          </AppText>
         </View>
 
-        <View style={styles.frame}>
-          {photo ? (
-            <Image source={{ uri: photo.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-          ) : (
+        {count > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pages}>
+            {photos.map((page, index) => (
+              <View key={`${page.uri}-${index}`} style={styles.page}>
+                <Image source={{ uri: page.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                <View style={styles.pageNumber}>
+                  <AppText variant="labelSm" color={Palette.white}>
+                    Trang {index + 1}
+                  </AppText>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Bỏ trang ${index + 1}`}
+                  onPress={() => removePhoto(index)}
+                  hitSlop={8}
+                  style={styles.pageRemove}>
+                  <MaterialIcons name="close" size={18} color={Palette.white} />
+                </Pressable>
+              </View>
+            ))}
+            {!full && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Chụp thêm trang"
+                onPress={() => pickPhoto('camera')}
+                style={[styles.page, styles.addPage]}>
+                <MaterialIcons name="add-a-photo" size={32} color={Palette.blue} />
+                <AppText variant="labelMd" color={Palette.blue}>
+                  Thêm trang
+                </AppText>
+              </Pressable>
+            )}
+          </ScrollView>
+        ) : (
+          <View style={styles.frame}>
             <View style={styles.placeholder}>
               <View style={styles.placeholderLineShort} />
               <View style={styles.placeholderLine} />
@@ -66,8 +104,8 @@ export default function ScanScreen() {
               </View>
               <View style={styles.placeholderLine} />
             </View>
-          )}
-        </View>
+          </View>
+        )}
 
         <View style={styles.tips}>
           <Tip icon="light-mode" label="Đủ ánh sáng" />
@@ -76,21 +114,29 @@ export default function ScanScreen() {
       </View>
 
       {/* Đặt ngay dưới khung ảnh để không bị thanh tab che sau khi chọn ảnh. */}
-      {photo && <BigButton label={`${T.Title} chấm bài nhé!`} icon="auto-fix-high" onPress={handleGrade} loading={grading} />}
+      {count > 0 && (
+        <BigButton
+          label={count > 1 ? `${T.Title} chấm ${count} trang nhé!` : `${T.Title} chấm bài nhé!`}
+          icon="auto-fix-high"
+          onPress={handleGrade}
+          loading={grading}
+        />
+      )}
 
       <View style={styles.controls}>
         <SideControl icon="photo-library" label="Từ Album" onPress={() => pickPhoto('library')} />
         <View style={styles.shutterColumn}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={photo ? 'Chụp lại' : 'Chụp ngay'}
+            accessibilityLabel={count ? 'Chụp thêm trang' : 'Chụp ngay'}
+            disabled={full}
             onPress={() => pickPhoto('camera')}
             style={({ pressed }) => [styles.shutterRing, pressed && styles.pressed]}>
             <View style={styles.shutter}>
               <MaterialIcons name="photo-camera" size={38} color={Palette.blueDark} />
             </View>
           </Pressable>
-          <AppText variant="labelMd">{photo ? 'Chụp lại' : 'Chụp ngay'}</AppText>
+          <AppText variant="labelMd">{full ? 'Đủ trang' : count ? 'Chụp thêm trang' : 'Chụp ngay'}</AppText>
         </View>
         <View style={styles.sideControl} />
       </View>
@@ -101,11 +147,13 @@ export default function ScanScreen() {
           <AppText variant="labelMd" color={Palette.blue}>
             {T.name} ♡
           </AppText>
-          <AppText variant="bodyMd">Con chụp ngay ngắn và đủ sáng để {T.word} chấm bài thật nhanh nhé! 🌸</AppText>
+          <AppText variant="bodyMd">
+            Con chụp ngay ngắn và đủ sáng để {T.word} chấm bài thật nhanh nhé! 🌸
+          </AppText>
         </View>
       </View>
 
-      {grading && <GradingOverlay photoUri={photo?.uri} />}
+      {grading && <GradingOverlay photoUri={photos[0]?.uri} pageCount={count} />}
     </Screen>
   );
 }
@@ -165,6 +213,45 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     overflow: 'hidden',
     backgroundColor: Palette.white,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: Palette.blue,
+  },
+  pages: {
+    gap: Spacing.two + 2,
+    paddingVertical: Spacing.one,
+  },
+  page: {
+    width: 150,
+    aspectRatio: 3 / 4,
+    borderRadius: Radius.md,
+    overflow: 'hidden',
+    backgroundColor: Palette.white,
+  },
+  pageNumber: {
+    position: 'absolute',
+    left: Spacing.two,
+    bottom: Spacing.two,
+    backgroundColor: 'rgba(17,28,45,0.65)',
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+  },
+  pageRemove: {
+    position: 'absolute',
+    top: Spacing.two,
+    right: Spacing.two,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(17,28,45,0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addPage: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
     borderWidth: 2,
     borderStyle: 'dashed',
     borderColor: Palette.blue,

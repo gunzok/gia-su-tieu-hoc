@@ -70,6 +70,7 @@ function RootNavigator() {
         <Stack.Protected guard={!!profile} redirectTo="/khoi-dong">
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="sua-ho-so" />
+          <Stack.Screen name="bai-cham/[id]" />
         </Stack.Protected>
         {/* Đăng nhập mở được cả lúc mới cài app lẫn từ tab Tiến độ. */}
         <Stack.Screen name="dang-nhap" />
