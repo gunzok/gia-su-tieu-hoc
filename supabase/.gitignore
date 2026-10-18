@@ -1,0 +1,3 @@
+# Supabase CLI tạo khi chạy lệnh link, chỉ dùng trên máy này.
+.temp/
+.branches/
