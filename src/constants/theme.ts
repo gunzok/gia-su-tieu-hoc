@@ -1,37 +1,40 @@
 /**
- * Màu, font và khoảng cách của app, lấy theo thiết kế "AI Gia Sư Tiểu Học" trên Stitch.
- * App chỉ có giao diện sáng (nền kem ấm) cho dễ nhìn với trẻ nhỏ.
+ * Màu, font và khoảng cách của app, lấy theo thiết kế "Cô Giáo Nhí (Flat Pastel)"
+ * trong dự án Stitch "AI Gia Sư Tiểu Học": phẳng, màu pastel bạc hà / đào / vàng nhạt.
  */
 
 import '@/global.css';
 
 import { Platform } from 'react-native';
 
-// Bảng màu chính của thiết kế. Mỗi màu có bản đậm (viền dưới nút 3D) và bản nhạt (nền thẻ).
+// Tên giữ như cũ để các màn hình không phải đổi: "blue" là màu chính (xanh lá đậm),
+// "mint" bạc hà, "coral" hồng đào, "amber" vàng nhạt.
 export const Palette = {
-  background: '#FFFDF7',
+  background: '#F9F9FF',
   surface: '#FFFFFF',
-  surfaceMuted: '#F3EFE6',
-  border: '#ECE6D9',
-  ink: '#1E293B',
-  inkSoft: '#64748B',
+  surfaceMuted: '#F0F3FF',
+  surfaceStrong: '#DEE8FF',
+  border: '#E3E9F7',
+  ink: '#111C2D',
+  inkSoft: '#5B6573',
 
-  blue: '#3B82F6',
-  blueDark: '#1D4ED8',
-  blueSoft: '#E0ECFF',
+  blue: '#006B58',
+  blueDark: '#005141',
+  blueSoft: '#E7EEFF',
 
-  amber: '#FFB800',
-  amberDark: '#D99A00',
-  amberSoft: '#FFF4D6',
-  amberInk: '#6B4B00',
+  amber: '#F9DE7F',
+  amberDark: '#DFC569',
+  amberSoft: '#FFF6D6',
+  amberInk: '#554600',
 
-  mint: '#10B981',
-  mintDark: '#047857',
-  mintSoft: '#D7F7EA',
+  mint: '#7BD3BA',
+  mintDark: '#006B58',
+  mintSoft: '#D6F5EA',
 
-  coral: '#FF6B6B',
-  coralDark: '#E04848',
-  coralSoft: '#FFE6E6',
+  coral: '#FBB19F',
+  coralDark: '#BA1A1A',
+  coralSoft: '#FFE6DF',
+  coralInk: '#784134',
 
   white: '#FFFFFF',
 } as const;
@@ -65,30 +68,31 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 export const FontFamily = {
   heading: 'PlusJakartaSans_800ExtraBold',
   headingBold: 'PlusJakartaSans_700Bold',
-  body: 'Lexend_400Regular',
-  bodyMedium: 'Lexend_500Medium',
-  bodySemiBold: 'Lexend_600SemiBold',
+  label: 'PlusJakartaSans_600SemiBold',
+  body: 'NunitoSans_400Regular',
+  bodyMedium: 'NunitoSans_600SemiBold',
+  bodySemiBold: 'NunitoSans_700Bold',
 } as const;
 
 // Thang chữ của thiết kế (đã dùng bản mobile cho tiêu đề lớn).
 export const Type = {
   headlineXl: { fontFamily: FontFamily.heading, fontSize: 30, lineHeight: 38 },
-  headlineLg: { fontFamily: FontFamily.heading, fontSize: 24, lineHeight: 32 },
+  headlineLg: { fontFamily: FontFamily.headingBold, fontSize: 26, lineHeight: 34 },
   headlineMd: { fontFamily: FontFamily.headingBold, fontSize: 22, lineHeight: 30 },
-  headlineSm: { fontFamily: FontFamily.headingBold, fontSize: 19, lineHeight: 26 },
-  bodyLg: { fontFamily: FontFamily.bodyMedium, fontSize: 18, lineHeight: 28 },
+  headlineSm: { fontFamily: FontFamily.headingBold, fontSize: 20, lineHeight: 28 },
+  bodyLg: { fontFamily: FontFamily.body, fontSize: 18, lineHeight: 28 },
   bodyMd: { fontFamily: FontFamily.body, fontSize: 16, lineHeight: 24 },
   bodySm: { fontFamily: FontFamily.body, fontSize: 14, lineHeight: 20 },
-  labelLg: { fontFamily: FontFamily.headingBold, fontSize: 17, lineHeight: 22 },
-  labelMd: { fontFamily: FontFamily.headingBold, fontSize: 14, lineHeight: 18 },
-  labelSm: { fontFamily: FontFamily.headingBold, fontSize: 12, lineHeight: 16 },
+  labelLg: { fontFamily: FontFamily.headingBold, fontSize: 16, lineHeight: 22 },
+  labelMd: { fontFamily: FontFamily.label, fontSize: 14, lineHeight: 18 },
+  labelSm: { fontFamily: FontFamily.label, fontSize: 12, lineHeight: 16 },
 } as const;
 
 export type TypeVariant = keyof typeof Type;
 
 export const Radius = {
   md: 16,
-  lg: 24,
+  lg: 28,
   full: 9999,
 } as const;
 

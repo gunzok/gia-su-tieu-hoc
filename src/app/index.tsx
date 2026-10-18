@@ -1,10 +1,11 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppHeader, HeaderPill } from '@/components/app-header';
 import { AppText } from '@/components/app-text';
-import { BigButton } from '@/components/big-button';
+import { BigButton, type IconName } from '@/components/big-button';
 import { Card } from '@/components/card';
 import { Mascot } from '@/components/mascot';
 import { Screen } from '@/components/screen';
@@ -12,15 +13,20 @@ import { Palette, Radius, Spacing } from '@/constants/theme';
 import { SubjectNames, type Subject } from '@/lib/grading';
 import { loadHistory, type HistoryEntry } from '@/lib/history';
 import { useHomeworkSession } from '@/lib/homework-session';
-import { allSubjects, averageScore, SubjectIcons } from '@/lib/progress';
+import { allSubjects, averageScore } from '@/lib/progress';
 import { speakVietnamese } from '@/lib/speech';
 
-const greeting =
-  'Chào con! Con chụp bài tập đã làm, cô sẽ chấm và nhận xét cho con nghe nhé!';
+const greeting = 'Chào con yêu! Hôm nay cô trò mình cùng làm bài tập thật nhanh nhé!';
 
-const subjectTints: Record<Subject, { soft: string; strong: string; button: 'primary' | 'amber' }> = {
-  toan: { soft: Palette.blueSoft, strong: Palette.blueDark, button: 'primary' },
-  'tieng-viet': { soft: Palette.amberSoft, strong: Palette.amberInk, button: 'amber' },
+const subjectStyles: Record<Subject, { tint: string; dot: string; ink: string; icon: IconName; hint: string }> = {
+  toan: { tint: Palette.mintSoft, dot: Palette.blue, ink: Palette.blueDark, icon: 'calculate', hint: 'Số & Hình' },
+  'tieng-viet': {
+    tint: Palette.coralSoft,
+    dot: Palette.coralInk,
+    ink: Palette.coralInk,
+    icon: 'spellcheck',
+    hint: 'Đọc & Viết',
+  },
 };
 
 export default function HomeScreen() {
@@ -40,70 +46,77 @@ export default function HomeScreen() {
 
   return (
     <Screen>
-      <AppHeader
-        subtitle={`Lớp ${grade}`}
-        right={<HeaderPill icon="📚" label={`${history.length} bài`} />}
-      />
+      <AppHeader subtitle={`Lớp ${grade}`} right={<HeaderPill icon="📚" label={`${history.length} bài`} />} />
 
-      <Card borderColor={Palette.blueSoft} style={styles.greetingCard}>
-        <View style={styles.greetingText}>
-          <View style={styles.tag}>
-            <AppText variant="labelSm" color={Palette.blueDark}>
-              👋 Xin chào!
+      <Card style={styles.greetingCard}>
+        <View style={styles.greetingRow}>
+          <Mascot variant="full" size={96} />
+          <View style={styles.bubble}>
+            <AppText variant="labelLg" color={Palette.blueDark}>
+              Chào con yêu! 🌟
             </AppText>
+            <AppText variant="bodyMd">Hôm nay cô trò mình cùng làm bài tập thật nhanh nhé!</AppText>
           </View>
-          <AppText variant="headlineLg">Hôm nay con học gì nào?</AppText>
-          <BigButton label="🔊 Nghe cô dặn" compact onPress={() => speakVietnamese(greeting)} />
         </View>
-        <Mascot size={92} />
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => speakVietnamese(greeting)}
+          style={({ pressed }) => [styles.listenButton, pressed && styles.pressed]}>
+          <MaterialIcons name="volume-up" size={22} color={Palette.blueDark} />
+          <AppText variant="labelLg" color={Palette.blueDark} style={styles.flex}>
+            Nghe Cô dặn hôm nay
+          </AppText>
+          <WaveBars />
+        </Pressable>
       </Card>
 
       <View style={styles.hero}>
+        <View style={styles.heroIcon}>
+          <MaterialIcons name="photo-camera" size={30} color={Palette.blue} />
+        </View>
         <View style={styles.heroTag}>
-          <AppText variant="labelSm" color={Palette.white}>
-            ⚡ AI SIÊU TỐC
+          <AppText variant="labelSm" color={Palette.ink}>
+            TRỢ THỦ AI THÔNG MINH
           </AppText>
         </View>
-        <AppText variant="headlineXl" color={Palette.white}>
-          Chấm Bài Ngay!
+        <AppText variant="headlineLg" style={styles.center}>
+          Chấm bài cùng Cô ngay!
         </AppText>
-        <AppText variant="bodySm" color={Palette.blueSoft}>
-          Chụp ảnh bài làm, cô chấm điểm và giảng lại cho con nghe.
+        <AppText variant="bodyMd" color={Palette.inkSoft} style={styles.center}>
+          Chỉ 1 bức ảnh, Cô sẽ sửa lỗi sai và giảng lại cho con nghe ngay.
         </AppText>
-        <BigButton label="📷  1 CHẠM CHẤM NGAY" variant="amber" onPress={() => router.navigate('/quet-bai')} />
+        <BigButton label="Chụp bài tập 📸" icon="camera" onPress={() => router.navigate('/quet-bai')} />
       </View>
 
       <View style={styles.section}>
-        <AppText variant="headlineSm">📚 Khám phá môn học</AppText>
+        <AppText variant="headlineSm">Môn học vui vẻ</AppText>
         <View style={styles.subjectRow}>
           {allSubjects.map((subject) => {
-            const tint = subjectTints[subject];
+            const look = subjectStyles[subject];
             const average = averageScore(history.filter((entry) => entry.subject === subject));
             return (
-              <Card key={subject} borderColor={tint.soft} style={styles.subjectCard}>
-                <View style={[styles.subjectIcon, { backgroundColor: tint.soft }]}>
-                  <AppText style={styles.subjectEmoji}>{SubjectIcons[subject]}</AppText>
+              <Pressable
+                key={subject}
+                accessibilityRole="button"
+                onPress={() => startSubject(subject)}
+                style={({ pressed }) => [styles.subjectTile, { backgroundColor: look.tint }, pressed && styles.pressed]}>
+                <View style={[styles.subjectIcon, { backgroundColor: look.dot }]}>
+                  <MaterialIcons name={look.icon} size={28} color={Palette.white} />
                 </View>
-                <AppText variant="labelLg" color={tint.strong} style={styles.center}>
+                <AppText variant="labelLg" color={look.ink}>
                   {SubjectNames[subject]} {grade}
                 </AppText>
-                <AppText variant="bodySm" color={Palette.inkSoft} style={styles.center}>
-                  {average === null ? 'Chưa có bài' : `Điểm TB ${average.toFixed(1)}`}
+                <AppText variant="bodySm" color={look.ink}>
+                  {average === null ? look.hint : `Điểm TB ${average.toFixed(1)}`}
                 </AppText>
-                <BigButton
-                  label="Học ▷"
-                  compact
-                  variant={tint.button}
-                  onPress={() => startSubject(subject)}
-                />
-              </Card>
+              </Pressable>
             );
           })}
         </View>
       </View>
 
       {history[0] && (
-        <Card tint={Palette.amberSoft} borderColor="#FFE3A3" style={styles.latestCard}>
+        <Card tint={Palette.amberSoft} borderColor={Palette.amberSoft} style={styles.latestCard}>
           <View style={styles.latestScore}>
             <AppText variant="headlineLg" color={Palette.amberInk}>
               {history[0].score}
@@ -113,9 +126,11 @@ export default function HomeScreen() {
             </AppText>
           </View>
           <View style={styles.flex}>
-            <AppText variant="labelLg">Bài gần nhất</AppText>
-            <AppText variant="bodySm" color={Palette.inkSoft}>
-              {SubjectNames[history[0].subject]} · Lớp {history[0].grade}
+            <AppText variant="labelSm" color={Palette.amberInk}>
+              BÀI GẦN NHẤT
+            </AppText>
+            <AppText variant="labelLg">
+              {SubjectNames[history[0].subject]} lớp {history[0].grade}
             </AppText>
           </View>
           <BigButton label="Xem lại" compact variant="ghost" onPress={() => router.navigate('/chua-bai')} />
@@ -125,21 +140,29 @@ export default function HomeScreen() {
       <Pressable
         accessibilityRole="button"
         onPress={() => router.navigate('/tien-do')}
-        style={styles.parentRow}>
-        <AppText style={styles.parentEmoji}>👨‍👩‍👧</AppText>
+        style={({ pressed }) => [styles.parentRow, pressed && styles.pressed]}>
+        <View style={styles.parentIcon}>
+          <MaterialIcons name="family-restroom" size={24} color={Palette.blue} />
+        </View>
         <View style={styles.flex}>
-          <AppText variant="labelMd">Góc phụ huynh</AppText>
+          <AppText variant="labelLg">Góc phụ huynh</AppText>
           <AppText variant="bodySm" color={Palette.inkSoft}>
             Xem tiến độ và lời nhận xét cho bố mẹ
           </AppText>
         </View>
-        <View style={styles.parentButton}>
-          <AppText variant="labelMd" color={Palette.blueDark}>
-            Xem ngay
-          </AppText>
-        </View>
+        <MaterialIcons name="chevron-right" size={28} color={Palette.inkSoft} />
       </Pressable>
     </Screen>
+  );
+}
+
+function WaveBars() {
+  return (
+    <View style={styles.wave}>
+      {[10, 18, 12, 22, 14].map((height, index) => (
+        <View key={index} style={[styles.waveBar, { height }]} />
+      ))}
+    </View>
   );
 }
 
@@ -150,37 +173,63 @@ const styles = StyleSheet.create({
   center: {
     textAlign: 'center',
   },
+  pressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
+  },
   greetingCard: {
+    gap: Spacing.three,
+  },
+  greetingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: Palette.blue,
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-  },
-  greetingText: {
-    flex: 1,
     gap: Spacing.two,
-    alignItems: 'flex-start',
   },
-  tag: {
-    backgroundColor: Palette.blueSoft,
-    paddingHorizontal: Spacing.two + 2,
-    paddingVertical: Spacing.one,
+  bubble: {
+    flex: 1,
+    backgroundColor: Palette.surfaceMuted,
+    borderRadius: Radius.md + 4,
+    borderTopLeftRadius: 4,
+    padding: Spacing.three,
+    gap: Spacing.one,
+  },
+  listenButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    backgroundColor: Palette.mint,
     borderRadius: Radius.full,
+    paddingHorizontal: Spacing.four,
+    minHeight: 52,
+  },
+  wave: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  waveBar: {
+    width: 4,
+    borderRadius: 2,
+    backgroundColor: Palette.blueDark,
   },
   hero: {
-    backgroundColor: Palette.blue,
+    backgroundColor: Palette.surfaceStrong,
     borderRadius: Radius.lg,
-    borderBottomWidth: 5,
-    borderColor: Palette.blueDark,
     padding: Spacing.four,
-    gap: Spacing.two,
+    gap: Spacing.two + 2,
+    alignItems: 'center',
+  },
+  heroIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   heroTag: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: Spacing.two + 2,
+    backgroundColor: Palette.white,
+    paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one,
     borderRadius: Radius.full,
   },
@@ -191,21 +240,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.three,
   },
-  subjectCard: {
+  subjectTile: {
     flex: 1,
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.one + 2,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.four,
+    paddingHorizontal: Spacing.two,
   },
   subjectIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: Radius.md,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  subjectEmoji: {
-    fontSize: 38,
-    lineHeight: 46,
+    marginBottom: Spacing.one,
   },
   latestCard: {
     flexDirection: 'row',
@@ -219,18 +268,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
-    backgroundColor: Palette.surfaceMuted,
+    backgroundColor: Palette.surface,
     borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Palette.border,
     padding: Spacing.three,
   },
-  parentEmoji: {
-    fontSize: 28,
-    lineHeight: 36,
-  },
-  parentButton: {
-    backgroundColor: Palette.surface,
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+  parentIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Palette.mintSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

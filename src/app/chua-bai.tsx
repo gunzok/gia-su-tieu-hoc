@@ -1,3 +1,4 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -8,14 +9,14 @@ import { BigButton } from '@/components/big-button';
 import { Card } from '@/components/card';
 import { Mascot } from '@/components/mascot';
 import { Screen } from '@/components/screen';
-import { Palette, Radius, Spacing } from '@/constants/theme';
+import { FontFamily, Palette, Radius, Spacing } from '@/constants/theme';
 import { SubjectNames, type GradedItem } from '@/lib/grading';
 import { loadHistory, type HistoryEntry } from '@/lib/history';
 import { useHomeworkSession } from '@/lib/homework-session';
 import { praiseForScore } from '@/lib/progress';
 
-const waveHeights = [18, 30, 22, 40, 28, 46, 34, 24, 38, 20, 30, 16];
-const waveColors = [Palette.amber, '#7DD3FC', Palette.mint, '#F9A8D4'];
+const waveHeights = [14, 24, 18, 32, 22, 36, 26, 18, 30, 16, 24, 12, 20, 28];
+const waveColors = [Palette.blue, Palette.amber, Palette.white, Palette.coral];
 
 export default function ReviewScreen() {
   const { latest, startOver, speaking, speak, stopSpeech } = useHomeworkSession();
@@ -36,6 +37,10 @@ export default function ReviewScreen() {
     else speak(entry.spokenFeedback);
   }
 
+  function replay() {
+    if (entry) speak(entry.spokenFeedback);
+  }
+
   function scanAnother() {
     startOver();
     router.navigate('/quet-bai');
@@ -46,83 +51,64 @@ export default function ReviewScreen() {
       <Screen>
         <AppHeader subtitle="Chữa bài" />
         <Card style={styles.empty}>
-          <Mascot size={110} />
+          <Mascot variant="full" size={160} />
           <AppText variant="headlineMd" style={styles.center}>
             Chưa có bài nào được chấm
           </AppText>
           <AppText variant="bodyMd" color={Palette.inkSoft} style={styles.center}>
-            Con chụp bài tập đã làm, cô sẽ chấm và giảng lại ở đây nhé!
+            Con chụp bài tập đã làm, Cô sẽ chấm và giảng lại ở đây nhé!
           </AppText>
-          <BigButton label="📷  Chụp bài ngay" variant="amber" onPress={scanAnother} />
+          <BigButton label="Chụp bài ngay" icon="photo-camera" onPress={scanAnother} />
         </Card>
       </Screen>
     );
   }
 
-  const correctItems = entry.items.filter((item) => item.correct);
-  const wrongItems = entry.items.filter((item) => !item.correct);
+  const correctCount = entry.items.filter((item) => item.correct).length;
 
   return (
     <Screen>
       <AppHeader subtitle={`Lớp ${entry.grade} • Chữa bài`} />
 
       <View style={styles.hero}>
-        <View style={styles.trophy}>
-          <AppText style={styles.trophyEmoji}>🏆</AppText>
-          <AppText variant="labelSm" color={Palette.amberInk} style={styles.center}>
-            {praiseForScore(entry.score)}
-          </AppText>
-        </View>
         <View style={styles.heroText}>
-          <View style={styles.scoreRow}>
-            <AppText style={styles.score}>{entry.score}</AppText>
-            <AppText variant="labelLg" color={Palette.ink}>
-              /10 điểm
+          <View style={styles.heroTag}>
+            <AppText variant="labelSm" color={Palette.amberInk}>
+              🏆 {praiseForScore(entry.score)} {entry.score}/10 điểm 🎉
             </AppText>
           </View>
-          {entry.items.length > 0 && (
-            <View style={styles.heroPill}>
-              <AppText variant="labelMd" color={Palette.mintDark}>
-                🎯 Đúng {correctItems.length}/{entry.items.length} câu!
-              </AppText>
-            </View>
-          )}
-        </View>
-        <Mascot size={56} background={Palette.white} />
-      </View>
-
-      <View style={styles.sectionHeader}>
-        <AppText variant="headlineSm">📝 Vở bài tập của con</AppText>
-        <View style={styles.autoTag}>
-          <AppText variant="labelSm" color={Palette.mintDark}>
-            ● {SubjectNames[entry.subject]}
+          <AppText variant="headlineMd" color={Palette.amberInk}>
+            Bài {SubjectNames[entry.subject]} lớp {entry.grade}
+          </AppText>
+          <AppText variant="bodyMd" color={Palette.amberInk}>
+            {entry.items.length > 0
+              ? `Con làm đúng ${correctCount}/${entry.items.length} câu. Cùng sửa với Cô nhé!`
+              : 'Cô chưa đọc được bài, con chụp lại giúp Cô nhé!'}
           </AppText>
         </View>
-      </View>
-
-      {correctItems.length > 0 && (
-        <View style={styles.correctGrid}>
-          {correctItems.map((item, index) => (
-            <CorrectCard key={index} item={item} number={entry.items.indexOf(item) + 1} />
-          ))}
+        <View style={styles.medal}>
+          <MaterialIcons name="military-tech" size={34} color={Palette.amberInk} />
         </View>
-      )}
-
-      {wrongItems.map((item, index) => (
-        <WrongCard key={index} item={item} number={entry.items.indexOf(item) + 1} />
-      ))}
+      </View>
 
       <View style={styles.voiceCard}>
         <View style={styles.voiceHeader}>
-          <Mascot size={52} background={Palette.white} />
+          <Mascot size={60} background={Palette.white} />
           <View style={styles.flex}>
-            <AppText variant="headlineSm" color={Palette.white}>
-              {speaking ? 'Cô đang giảng' : 'Lời cô nhận xét'}
+            <AppText variant="headlineSm" color={Palette.blueDark}>
+              {speaking ? 'Cô Giáo Nhí đang giảng' : 'Lời Cô nhận xét'}
             </AppText>
-            <AppText variant="bodySm" color={Palette.blueSoft}>
-              Con lắng nghe giọng cô nhé!
+            <AppText variant="bodySm" color={Palette.blueDark}>
+              Con lắng nghe giọng Cô nhé!
             </AppText>
           </View>
+        </View>
+
+        <View style={styles.quote}>
+          <MaterialIcons name="record-voice-over" size={22} color={Palette.blue} />
+          <AppText variant="bodyLg" style={styles.flex}>
+            “{entry.spokenFeedback}”
+          </AppText>
         </View>
 
         <View style={styles.wave}>
@@ -131,101 +117,130 @@ export default function ReviewScreen() {
               key={index}
               style={[
                 styles.waveBar,
-                {
-                  height: speaking ? height : 10,
-                  backgroundColor: waveColors[index % waveColors.length],
-                },
+                { height: speaking ? height : 8, backgroundColor: waveColors[index % waveColors.length] },
               ]}
             />
           ))}
         </View>
 
-        <AppText variant="bodyLg" color={Palette.white}>
-          {entry.spokenFeedback}
-        </AppText>
-
         <View style={styles.voiceControls}>
+          <RoundButton icon="replay" label="Nghe lại từ đầu" onPress={replay} />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={speaking ? 'Dừng đọc' : 'Nghe cô nhận xét'}
-            onPress={toggleSpeech}>
-            {({ pressed }) => (
-              <View
-                style={[
-                  styles.playButton,
-                  { borderBottomWidth: pressed ? 2 : 6, transform: [{ translateY: pressed ? 3 : 0 }] },
-                ]}>
-                <AppText style={styles.playEmoji}>{speaking ? '⏸' : '🔊'}</AppText>
-              </View>
-            )}
+            accessibilityLabel={speaking ? 'Dừng đọc' : 'Nghe Cô nhận xét'}
+            onPress={toggleSpeech}
+            style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}>
+            <MaterialIcons name={speaking ? 'pause' : 'play-arrow'} size={40} color={Palette.white} />
           </Pressable>
+          <View style={styles.roundButtonSpacer} />
         </View>
       </View>
 
-      <BigButton label="📷  Chụp bài khác" variant="mint" onPress={scanAnother} />
+      {entry.items.length > 0 && (
+        <Card>
+          <View style={styles.detailHeader}>
+            <MaterialIcons name="menu-book" size={22} color={Palette.blue} />
+            <AppText variant="headlineSm" style={styles.flex}>
+              Chi tiết bài làm trên vở
+            </AppText>
+            <View style={styles.countTag}>
+              <AppText variant="labelSm">{entry.items.length} câu</AppText>
+            </View>
+          </View>
+          {entry.items.map((item, index) =>
+            item.correct ? (
+              <CorrectRow key={index} item={item} number={index + 1} />
+            ) : (
+              <WrongRow key={index} item={item} number={index + 1} />
+            ),
+          )}
+        </Card>
+      )}
+
+      <BigButton label="Chụp bài khác" icon="photo-camera" onPress={scanAnother} />
     </Screen>
   );
 }
 
-function CorrectCard({ item, number }: { item: GradedItem; number: number }) {
+function RoundButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: 'replay';
+  label: string;
+  onPress: () => void;
+}) {
   return (
-    <Card borderColor={Palette.mintSoft} style={styles.correctCard}>
-      <View style={styles.correctHeader}>
-        <AppText variant="labelSm" color={Palette.inkSoft}>
-          Câu {number}
-        </AppText>
-        <View style={styles.check}>
-          <AppText variant="labelLg" color={Palette.mintDark}>
-            ✓
-          </AppText>
-        </View>
-      </View>
-      <AppText variant="labelLg">{item.question}</AppText>
-      <AppText variant="labelLg" color={Palette.mintDark}>
-        = {item.childAnswer}
-      </AppText>
-    </Card>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => [styles.roundButton, pressed && styles.pressed]}>
+      <MaterialIcons name={icon} size={26} color={Palette.blueDark} />
+    </Pressable>
   );
 }
 
-function WrongCard({ item, number }: { item: GradedItem; number: number }) {
+function NumberBubble({ number, tint, ink }: { number: number; tint: string; ink: string }) {
   return (
-    <Card borderColor="#FFD66B">
-      <View style={styles.wrongHeader}>
-        <View style={styles.numberBubble}>
-          <AppText variant="labelMd" color={Palette.amberInk}>
-            {number}
+    <View style={[styles.numberBubble, { backgroundColor: tint }]}>
+      <AppText variant="labelLg" color={ink}>
+        {number}
+      </AppText>
+    </View>
+  );
+}
+
+function CorrectRow({ item, number }: { item: GradedItem; number: number }) {
+  return (
+    <View style={[styles.row, { backgroundColor: Palette.surfaceMuted }]}>
+      <View style={styles.rowHeader}>
+        <NumberBubble number={number} tint={Palette.blueSoft} ink={Palette.blue} />
+        <View style={styles.flex}>
+          <AppText variant="labelLg">{item.question}</AppText>
+          <AppText variant="bodySm" color={Palette.inkSoft}>
+            Con làm: {item.childAnswer}
           </AppText>
         </View>
-        <AppText variant="headlineSm" style={styles.flex}>
-          {item.question}
+      </View>
+      <View style={styles.correctPill}>
+        <MaterialIcons name="check-circle-outline" size={18} color={Palette.blueDark} />
+        <AppText variant="labelMd" color={Palette.blueDark}>
+          Đúng rồi! Giỏi quá
         </AppText>
       </View>
-      <View style={styles.hintTag}>
-        <AppText variant="labelSm" color={Palette.amberInk}>
-          💡 Cùng sửa một xíu nhé!
-        </AppText>
-      </View>
-      <View style={[styles.answerBox, styles.childBox]}>
-        <AppText variant="labelMd" color={Palette.coralDark}>
-          ❌ Con ghi:
-        </AppText>
-        <AppText variant="headlineSm" color={Palette.coralDark} style={styles.strike}>
-          {item.childAnswer}
-        </AppText>
-      </View>
-      <View style={[styles.answerBox, styles.fixBox]}>
-        <AppText variant="labelMd" color={Palette.mintDark}>
-          ✅ Cô giảng:
-        </AppText>
-        {item.correctAnswer && (
-          <AppText variant="headlineSm" color={Palette.mintDark}>
-            {item.correctAnswer}
+    </View>
+  );
+}
+
+function WrongRow({ item, number }: { item: GradedItem; number: number }) {
+  return (
+    <View style={[styles.row, { backgroundColor: Palette.coralSoft }]}>
+      <View style={styles.rowHeader}>
+        <NumberBubble number={number} tint={Palette.coral} ink={Palette.coralInk} />
+        <View style={styles.flex}>
+          <AppText variant="labelLg">{item.question}</AppText>
+          <AppText variant="labelMd" color={Palette.coralDark}>
+            Con viết: <AppText style={styles.strike}>{item.childAnswer}</AppText>
+            {item.correctAnswer ? (
+              <AppText variant="labelMd" color={Palette.blue}>
+                {'  •  '}Đúng là: {item.correctAnswer}
+              </AppText>
+            ) : null}
           </AppText>
-        )}
-        <AppText variant="bodyLg">{item.explanation}</AppText>
+        </View>
       </View>
-    </Card>
+      <View style={styles.fixTag}>
+        <MaterialIcons name="lightbulb-outline" size={16} color={Palette.coralInk} />
+        <AppText variant="labelMd" color={Palette.coralInk}>
+          Cùng Cô sửa nha
+        </AppText>
+      </View>
+      <View style={styles.explainBox}>
+        <AppText variant="bodyMd">{item.explanation}</AppText>
+      </View>
+    </View>
   );
 }
 
@@ -236,131 +251,43 @@ const styles = StyleSheet.create({
   center: {
     textAlign: 'center',
   },
+  pressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.96 }],
+  },
   empty: {
     alignItems: 'center',
     paddingVertical: Spacing.five,
   },
   hero: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    backgroundColor: '#FFE38A',
-    borderColor: Palette.amber,
-    borderWidth: 2,
-    borderBottomWidth: 5,
+    alignItems: 'flex-start',
+    gap: Spacing.three,
+    backgroundColor: Palette.amber,
     borderRadius: Radius.lg,
-    padding: Spacing.three,
-  },
-  trophy: {
-    width: 68,
-    paddingVertical: Spacing.two,
-    backgroundColor: Palette.white,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-  },
-  trophyEmoji: {
-    fontSize: 32,
-    lineHeight: 40,
+    padding: Spacing.four,
   },
   heroText: {
     flex: 1,
     gap: Spacing.two,
   },
-  scoreRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: Spacing.one,
-  },
-  score: {
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    fontSize: 48,
-    lineHeight: 56,
-    color: Palette.blueDark,
-  },
-  heroPill: {
+  heroTag: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    backgroundColor: Palette.white,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one + 2,
     borderRadius: Radius.full,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-    marginBottom: -Spacing.two,
-  },
-  autoTag: {
-    backgroundColor: Palette.mintSoft,
-    paddingHorizontal: Spacing.two + 2,
-    paddingVertical: Spacing.one,
-    borderRadius: Radius.full,
-  },
-  correctGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.three,
-  },
-  correctCard: {
-    flexGrow: 1,
-    flexBasis: '45%',
-    gap: Spacing.one,
-  },
-  correctHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  check: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Palette.mintSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  wrongHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  numberBubble: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Palette.amber,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hintTag: {
-    alignSelf: 'flex-start',
+  medal: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: Palette.amberSoft,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one + 2,
-    borderRadius: Radius.full,
-  },
-  answerBox: {
-    borderRadius: Radius.md,
-    borderWidth: 2,
-    padding: Spacing.three,
-    gap: Spacing.one,
-  },
-  childBox: {
-    backgroundColor: Palette.coralSoft,
-    borderColor: '#FFC2C2',
-  },
-  fixBox: {
-    backgroundColor: Palette.mintSoft,
-    borderColor: Palette.mintDark,
-  },
-  strike: {
-    textDecorationLine: 'line-through',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   voiceCard: {
-    backgroundColor: '#2F6FE4',
-    borderColor: Palette.blueDark,
-    borderBottomWidth: 5,
+    backgroundColor: Palette.mint,
     borderRadius: Radius.lg,
     padding: Spacing.four,
     gap: Spacing.three,
@@ -370,33 +297,106 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.three,
   },
+  quote: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    backgroundColor: Palette.white,
+    borderRadius: Radius.md,
+    padding: Spacing.three,
+  },
   wave: {
-    height: 72,
+    height: 56,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(15,40,110,0.35)',
-    borderRadius: Radius.md,
+    gap: 7,
+    backgroundColor: 'rgba(255,255,255,0.45)',
+    borderRadius: Radius.full,
   },
   waveBar: {
-    width: 8,
-    borderRadius: 4,
+    width: 5,
+    borderRadius: 3,
   },
   voiceControls: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.five,
   },
-  playButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Palette.amber,
-    borderColor: Palette.amberDark,
+  roundButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  playEmoji: {
-    fontSize: 32,
-    lineHeight: 40,
+  roundButtonSpacer: {
+    width: 52,
+  },
+  playButton: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: Palette.blue,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  countTag: {
+    backgroundColor: Palette.blueSoft,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.two + 2,
+    paddingVertical: Spacing.one,
+  },
+  row: {
+    borderRadius: Radius.md + 4,
+    padding: Spacing.three,
+    gap: Spacing.two + 2,
+  },
+  rowHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  numberBubble: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  correctPill: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    backgroundColor: Palette.mintSoft,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one + 2,
+  },
+  fixTag: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    backgroundColor: Palette.coral,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one + 2,
+  },
+  explainBox: {
+    backgroundColor: Palette.white,
+    borderRadius: Radius.md,
+    padding: Spacing.three,
+  },
+  strike: {
+    fontFamily: FontFamily.label,
+    textDecorationLine: 'line-through',
   },
 });

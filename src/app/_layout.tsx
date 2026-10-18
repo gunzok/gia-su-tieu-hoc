@@ -1,9 +1,10 @@
 import {
-  Lexend_400Regular,
-  Lexend_500Medium,
-  Lexend_600SemiBold,
-} from '@expo-google-fonts/lexend';
+  NunitoSans_400Regular,
+  NunitoSans_600SemiBold,
+  NunitoSans_700Bold,
+} from '@expo-google-fonts/nunito-sans';
 import {
+  PlusJakartaSans_600SemiBold,
   PlusJakartaSans_700Bold,
   PlusJakartaSans_800ExtraBold,
   useFonts,
@@ -25,11 +26,12 @@ const theme = {
 
 export default function TabLayout() {
   const [fontsLoaded, fontError] = useFonts({
+    PlusJakartaSans_600SemiBold,
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
-    Lexend_400Regular,
-    Lexend_500Medium,
-    Lexend_600SemiBold,
+    NunitoSans_400Regular,
+    NunitoSans_600SemiBold,
+    NunitoSans_700Bold,
   });
 
   // Giữ màn hình chờ cho đến khi nạp xong font (lỗi font thì vẫn mở app bằng font máy).

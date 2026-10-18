@@ -1,7 +1,9 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Tabs, TabList, TabTrigger, TabSlot, TabTriggerSlotProps, TabListProps } from 'expo-router/ui';
 import { Pressable, StyleSheet, View, type PressableProps } from 'react-native';
 
 import { AppText } from '@/components/app-text';
+import type { IconName } from '@/components/big-button';
 import { MaxContentWidth, Palette, Radius, Spacing } from '@/constants/theme';
 
 export default function AppTabs() {
@@ -11,16 +13,16 @@ export default function AppTabs() {
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="index" href="/" asChild>
-            <TabButton icon="🏠">Trang chủ</TabButton>
+            <TabButton icon="home">Trang chủ</TabButton>
           </TabTrigger>
           <TabTrigger name="quet-bai" href="/quet-bai" asChild>
-            <TabButton icon="📷">Quét bài</TabButton>
+            <TabButton icon="document-scanner">Quét bài</TabButton>
           </TabTrigger>
           <TabTrigger name="chua-bai" href="/chua-bai" asChild>
-            <TabButton icon="🎧">Chữa bài</TabButton>
+            <TabButton icon="auto-fix-high">Chữa bài</TabButton>
           </TabTrigger>
           <TabTrigger name="tien-do" href="/tien-do" asChild>
-            <TabButton icon="🏅">Tiến độ</TabButton>
+            <TabButton icon="emoji-events">Tiến độ</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -33,11 +35,11 @@ export function TabButton({
   isFocused,
   icon,
   ...props
-}: TabTriggerSlotProps & { icon: string }) {
+}: TabTriggerSlotProps & { icon: IconName }) {
   return (
     <Pressable {...(props as PressableProps)} style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}>
       <View style={[styles.iconWrap, isFocused && styles.iconWrapFocused]}>
-        <AppText style={styles.icon}>{icon}</AppText>
+        <MaterialIcons name={icon} size={24} color={isFocused ? Palette.blueDark : Palette.inkSoft} />
       </View>
       <AppText variant="labelSm" color={isFocused ? Palette.blueDark : Palette.inkSoft}>
         {children}
@@ -85,10 +87,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
   },
   iconWrapFocused: {
-    backgroundColor: Palette.blueSoft,
-  },
-  icon: {
-    fontSize: 22,
-    lineHeight: 28,
+    backgroundColor: Palette.mintSoft,
   },
 });

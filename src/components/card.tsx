@@ -5,11 +5,11 @@ import { Palette, Radius, Spacing } from '@/constants/theme';
 type Props = ViewProps & {
   /** Màu nền thẻ, mặc định trắng. */
   tint?: string;
-  /** Màu viền, mặc định viền kem. */
+  /** Màu viền, mặc định viền xanh nhạt. */
   borderColor?: string;
 };
 
-// Thẻ trắng bo tròn, viền kem và "gờ" dưới dày như khối đồ chơi.
+// Thẻ phẳng bo tròn lớn, viền mảnh và bóng rất nhẹ (phong cách Flat Pastel).
 export function Card({ tint = Palette.surface, borderColor = Palette.border, style, ...rest }: Props) {
   return <View style={[styles.card, { backgroundColor: tint, borderColor }, style]} {...rest} />;
 }
@@ -17,9 +17,13 @@ export function Card({ tint = Palette.surface, borderColor = Palette.border, sty
 const styles = StyleSheet.create({
   card: {
     borderRadius: Radius.lg,
-    borderWidth: 2,
-    borderBottomWidth: 5,
-    padding: Spacing.three,
+    borderWidth: 1,
+    padding: Spacing.three + 4,
     gap: Spacing.three,
+    shadowColor: '#1E3A8A',
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
   },
 });

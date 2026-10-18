@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
+import { Mascot } from '@/components/mascot';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 
 type Props = {
@@ -9,17 +10,13 @@ type Props = {
   right?: ReactNode;
 };
 
-// Thanh đầu trang: logo cú + "Gia Sư Nhí" + dòng phụ, bên phải có thể gắn huy hiệu.
+// Thanh đầu trang: ảnh cô giáo + "Cô Giáo Nhí" + dòng phụ, bên phải có thể gắn huy hiệu.
 export function AppHeader({ subtitle, right }: Props) {
   return (
     <View style={styles.row}>
-      <View style={styles.logo}>
-        <AppText style={styles.logoEmoji}>🦉</AppText>
-      </View>
+      <Mascot size={44} />
       <View style={styles.titles}>
-        <AppText variant="headlineSm" color={Palette.blueDark}>
-          Gia Sư Nhí
-        </AppText>
+        <AppText variant="headlineSm">Cô Giáo Nhí</AppText>
         <AppText variant="bodySm" color={Palette.inkSoft}>
           {subtitle}
         </AppText>
@@ -29,11 +26,13 @@ export function AppHeader({ subtitle, right }: Props) {
   );
 }
 
-export function HeaderPill({ icon, label }: { icon: string; label: string }) {
+export function HeaderPill({ icon, label, tint = Palette.amber }: { icon: string; label: string; tint?: string }) {
   return (
-    <View style={styles.pill}>
+    <View style={[styles.pill, { backgroundColor: tint }]}>
       <AppText style={styles.pillIcon}>{icon}</AppText>
-      <AppText variant="labelMd">{label}</AppText>
+      <AppText variant="labelMd" color={Palette.amberInk}>
+        {label}
+      </AppText>
     </View>
   );
 }
@@ -42,19 +41,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
-  },
-  logo: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: Palette.blueSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoEmoji: {
-    fontSize: 26,
-    lineHeight: 32,
+    gap: Spacing.two + 4,
   },
   titles: {
     flex: 1,
@@ -66,12 +53,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderRadius: Radius.full,
-    backgroundColor: Palette.surface,
-    borderWidth: 2,
-    borderColor: Palette.border,
   },
   pillIcon: {
-    fontSize: 16,
+    fontSize: 15,
     lineHeight: 20,
   },
 });

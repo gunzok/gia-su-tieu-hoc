@@ -24,10 +24,10 @@ export function ChoiceChips<T extends string | number>({ options, value, onChang
             style={[
               styles.chip,
               selected
-                ? { backgroundColor: Palette.blue, borderColor: Palette.blueDark }
-                : { backgroundColor: Palette.surface, borderColor: Palette.border },
+                ? { backgroundColor: Palette.mint, borderColor: Palette.mint }
+                : { backgroundColor: Palette.surfaceMuted, borderColor: Palette.surfaceMuted },
             ]}>
-            <AppText variant="labelLg" color={selected ? Palette.white : Palette.ink}>
+            <AppText variant="labelLg" color={selected ? Palette.blueDark : Palette.ink}>
               {option.label}
             </AppText>
           </Pressable>
@@ -48,7 +48,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     borderRadius: Radius.full,
     borderWidth: 2,
-    borderBottomWidth: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
