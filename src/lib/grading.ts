@@ -5,6 +5,8 @@ import {
   type Subject,
   type TeacherVoice,
 } from '../../supabase/functions/_shared/cham-bai';
+import { FunctionsFetchError, FunctionsHttpError } from '@supabase/supabase-js';
+
 import { ensureSession, supabase } from '@/lib/supabase';
 
 export {
@@ -20,8 +22,9 @@ const claudeTimeoutMs = 120_000;
 
 // LM Studio chạy trên máy tính ở nhà, dùng khi không chấm được bằng Claude.
 // Ví dụ: http://192.168.1.13:1234 (địa chỉ máy tính trong mạng Wi-Fi nhà).
-const lmStudioUrl = process.env.EXPO_PUBLIC_LMSTUDIO_URL?.replace(/\/+$/, '');
-const lmStudioModel = process.env.EXPO_PUBLIC_LMSTUDIO_MODEL;
+// Chỉ dùng khi phát triển (__DEV__); bản phát hành luôn chấm bằng Claude.
+const lmStudioUrl = __DEV__ ? process.env.EXPO_PUBLIC_LMSTUDIO_URL?.replace(/\/+$/, '') : undefined;
+const lmStudioModel = __DEV__ ? process.env.EXPO_PUBLIC_LMSTUDIO_MODEL : undefined;
 const lmStudioTimeoutMs = 240_000;
 
 type GradeParams = {
@@ -36,15 +39,33 @@ type GradeParams = {
 /** "claude": chấm qua máy chủ Supabase; "local": chấm bằng AI trên máy tính ở nhà (LM Studio). */
 export type GradingEngine = 'claude' | 'local';
 
-/** Chấm bằng Claude; nếu không được (chưa mua gói, hết lượt, mất mạng…) thì chuyển sang LM Studio ở nhà. */
+/** Lỗi chấm bài có lời nhắn thân thiện cho bé; code "het-luot" khi đã chấm đủ số bài hôm nay. */
+export class GradingError extends Error {
+  constructor(
+    message: string,
+    readonly code?: 'het-luot',
+    /** Lúc hết lượt: tài khoản có gói Plus không (theo máy chủ). */
+    readonly plus?: boolean,
+  ) {
+    super(message);
+    this.name = 'GradingError';
+  }
+}
+
+/**
+ * Chấm bằng Claude. Khi phát triển, nếu không được (mất mạng, máy chủ lỗi…) thì chuyển sang
+ * LM Studio ở nhà; hết lượt hôm nay thì báo ngay, không chuyển.
+ */
 export async function gradeHomework(
   params: GradeParams,
 ): Promise<{ result: GradingResult; engine: GradingEngine }> {
   try {
     return { result: normalizeResult(await gradeWithClaude(params)), engine: 'claude' };
   } catch (claudeError) {
+    if (!lmStudioUrl || (claudeError instanceof GradingError && claudeError.code === 'het-luot')) {
+      throw claudeError;
+    }
     console.warn('Không chấm được bằng Claude, chuyển sang LM Studio:', claudeError);
-    if (!lmStudioUrl) throw claudeError;
     try {
       return { result: normalizeResult(await gradeWithLmStudio(params)), engine: 'local' };
     } catch (lmStudioError) {
@@ -82,15 +103,34 @@ function normalizeResult(result: GradingResult): GradingResult {
 
 async function gradeWithClaude(params: GradeParams): Promise<GradingResult> {
   if (!supabase) throw new Error('Chưa cấu hình Supabase trong .env.local.');
-  if (!(await ensureSession())) throw new Error('Chưa đăng nhập được Supabase.');
+  if (!(await ensureSession())) throw new GradingError(offlineMessage);
 
   const { data, error } = await supabase.functions.invoke<GradingResult>('cham-bai', {
     body: params,
     timeout: claudeTimeoutMs,
   });
-  if (error) throw error;
-  if (!data) throw new Error('Máy chủ không trả về kết quả chấm.');
+  if (error) throw await friendlyError(error);
+  if (!data) throw new GradingError('Máy chủ không trả về kết quả chấm. Con thử lại nhé.');
   return data;
+}
+
+const offlineMessage = 'Hình như mất mạng rồi. Ba mẹ kiểm tra Wi-Fi hoặc 4G rồi con thử lại nhé.';
+
+// Máy chủ trả lời lỗi kèm lời nhắn tiếng Việt ({ error, code }); lấy ra để báo cho bé.
+async function friendlyError(error: unknown): Promise<GradingError> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = await (error.context as Response).json();
+      if (typeof body?.error === 'string') {
+        return new GradingError(body.error, body.code === 'het-luot' ? 'het-luot' : undefined, body.plus === true);
+      }
+    } catch {
+      // Không đọc được lời nhắn thì dùng câu chung bên dưới.
+    }
+    return new GradingError('Máy chủ chưa chấm được bài. Con đợi một chút rồi thử lại nhé.');
+  }
+  if (error instanceof FunctionsFetchError) return new GradingError(offlineMessage);
+  return new GradingError('Chưa chấm được bài. Con thử lại sau một chút nhé.');
 }
 
 // LM Studio có API giống OpenAI: /v1/chat/completions, ảnh gửi dạng data URL.
