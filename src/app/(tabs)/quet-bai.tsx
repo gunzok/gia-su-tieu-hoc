@@ -73,6 +73,9 @@ export default function ScanScreen() {
         </View>
       </View>
 
+      {/* Đặt ngay dưới khung ảnh để không bị thanh tab che sau khi chọn ảnh. */}
+      {photo && <BigButton label="Cô chấm bài nhé!" icon="auto-fix-high" onPress={handleGrade} loading={grading} />}
+
       <View style={styles.controls}>
         <SideControl icon="photo-library" label="Từ Album" onPress={() => pickPhoto('library')} />
         <View style={styles.shutterColumn}>
@@ -90,7 +93,6 @@ export default function ScanScreen() {
         <View style={styles.sideControl} />
       </View>
 
-      {photo && <BigButton label="Cô chấm bài nhé!" icon="auto-fix-high" onPress={handleGrade} loading={grading} />}
       <View style={styles.teacherRow}>
         <Mascot size={64} />
         <View style={styles.bubble}>

@@ -29,14 +29,20 @@ type GradeParams = {
   grade: number;
 };
 
-/** Chấm bằng Claude; nếu không được thì tự chuyển sang LM Studio ở nhà, không báo cho bé. */
-export async function gradeHomework(params: GradeParams): Promise<GradingResult> {
+/** "claude": chấm qua máy chủ Supabase; "local": chấm bằng AI trên máy tính ở nhà (LM Studio). */
+export type GradingEngine = 'claude' | 'local';
+
+/** Chấm bằng Claude; nếu không được (chưa mua gói, hết lượt, mất mạng…) thì chuyển sang LM Studio ở nhà. */
+export async function gradeHomework(
+  params: GradeParams,
+): Promise<{ result: GradingResult; engine: GradingEngine }> {
   try {
-    return normalizeResult(await gradeWithClaude(params));
+    return { result: normalizeResult(await gradeWithClaude(params)), engine: 'claude' };
   } catch (claudeError) {
+    console.warn('Không chấm được bằng Claude, chuyển sang LM Studio:', claudeError);
     if (!lmStudioUrl) throw claudeError;
     try {
-      return normalizeResult(await gradeWithLmStudio(params));
+      return { result: normalizeResult(await gradeWithLmStudio(params)), engine: 'local' };
     } catch (lmStudioError) {
       console.warn('Claude lỗi:', claudeError, '— LM Studio lỗi:', lmStudioError);
       throw new Error(

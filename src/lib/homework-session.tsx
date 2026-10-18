@@ -2,8 +2,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { Alert } from 'react-native';
 
-import { gradeHomework, type GradingResult, type Subject } from '@/lib/grading';
+import { gradeHomework, type Subject } from '@/lib/grading';
 import { addHistoryEntry, type HistoryEntry } from '@/lib/history';
+import { getPremiumStatus } from '@/lib/payments';
 import { preparePhotoForGrading } from '@/lib/prepare-photo';
 import { speakVietnamese, stopSpeaking } from '@/lib/speech';
 
@@ -28,6 +29,25 @@ type HomeworkSession = {
 };
 
 const HomeworkSessionContext = createContext<HomeworkSession | null>(null);
+
+// Báo cho ba mẹ khi bài được chấm bằng AI trên máy tính ở nhà thay vì Claude.
+// Chỉ báo một lần mỗi lần mở app, để không làm phiền bé mỗi bài.
+let localGradingWarned = false;
+
+async function warnLocalGrading() {
+  if (localGradingWarned) return;
+  localGradingWarned = true;
+  const { isPremium } = await getPremiumStatus();
+  Alert.alert(
+    isPremium ? 'Máy chủ đang bận' : 'Bạn chưa mua gói Cô Giáo Nhí Plus',
+    (isPremium
+      ? 'Cô chưa kết nối được máy chủ chấm bài, '
+      : 'Vì chưa có gói trả phí, ') +
+      'hệ thống đã chấm bài bằng AI trên máy tính ở nhà (LM Studio). Kết quả có thể kém chính xác hơn, ' +
+      'ba mẹ nên xem lại phần chấm nhé.',
+    [{ text: 'Đã hiểu' }],
+  );
+}
 
 export function HomeworkSessionProvider({
   children,
@@ -85,7 +105,7 @@ export function HomeworkSessionProvider({
     setGrading(true);
     try {
       const imageBase64 = await preparePhotoForGrading(photo);
-      const graded: GradingResult = await gradeHomework({ imageBase64, subject, grade });
+      const { result: graded, engine } = await gradeHomework({ imageBase64, subject, grade });
       const entry: HistoryEntry = {
         ...graded,
         id: String(Date.now()),
@@ -96,6 +116,7 @@ export function HomeworkSessionProvider({
       setLatest(entry);
       setPhoto(null);
       speak(graded.spokenFeedback);
+      if (engine === 'local') warnLocalGrading();
       await addHistoryEntry(entry);
       return true;
     } catch (error) {
