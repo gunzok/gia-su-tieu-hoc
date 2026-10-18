@@ -26,27 +26,24 @@ type HomeworkSession = {
   speaking: boolean;
   speak: (text: string) => void;
   stopSpeech: () => void;
+  notice: Notice | null;
+  dismissNotice: () => void;
 };
 
 const HomeworkSessionContext = createContext<HomeworkSession | null>(null);
 
-// Báo cho ba mẹ khi bài được chấm bằng AI trên máy tính ở nhà thay vì Claude.
-// Chỉ báo một lần mỗi lần mở app, để không làm phiền bé mỗi bài.
-let localGradingWarned = false;
+/** Thông báo nhỏ tự ẩn ở đầu màn hình (xem components/notice-toast.tsx). */
+export type Notice = { id: number; title: string; message: string };
 
-async function warnLocalGrading() {
-  if (localGradingWarned) return;
-  localGradingWarned = true;
+// Lời báo khi bài được chấm bằng AI trên máy tính ở nhà thay vì Claude.
+async function localGradingNotice(): Promise<Notice> {
   const { isPremium } = await getPremiumStatus();
-  Alert.alert(
-    isPremium ? 'Máy chủ đang bận' : 'Bạn chưa mua gói Cô Giáo Nhí Plus',
-    (isPremium
-      ? 'Cô chưa kết nối được máy chủ chấm bài, '
-      : 'Vì chưa có gói trả phí, ') +
-      'hệ thống đã chấm bài bằng AI trên máy tính ở nhà (LM Studio). Kết quả có thể kém chính xác hơn, ' +
-      'ba mẹ nên xem lại phần chấm nhé.',
-    [{ text: 'Đã hiểu' }],
-  );
+  return {
+    id: Date.now(),
+    title: isPremium ? 'Máy chủ đang bận' : 'Bạn chưa mua gói Cô Giáo Nhí Plus',
+    message:
+      'Bài này được chấm bằng AI trên máy tính ở nhà (LM Studio), kết quả có thể kém chính xác hơn.',
+  };
 }
 
 export function HomeworkSessionProvider({
@@ -63,6 +60,8 @@ export function HomeworkSessionProvider({
   const [grading, setGrading] = useState(false);
   const [latest, setLatest] = useState<HistoryEntry | null>(null);
   const [speaking, setSpeaking] = useState(false);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const dismissNotice = useCallback(() => setNotice(null), []);
 
   function speak(text: string) {
     setSpeaking(true);
@@ -116,7 +115,8 @@ export function HomeworkSessionProvider({
       setLatest(entry);
       setPhoto(null);
       speak(graded.spokenFeedback);
-      if (engine === 'local') warnLocalGrading();
+      // Báo mỗi lần chấm bằng LM Studio, bằng thông báo nhỏ tự ẩn để không làm phiền bé.
+      if (engine === 'local') localGradingNotice().then(setNotice);
       await addHistoryEntry(entry);
       return true;
     } catch (error) {
@@ -145,6 +145,8 @@ export function HomeworkSessionProvider({
         pickPhoto,
         submitForGrading,
         startOver,
+        notice,
+        dismissNotice,
         speaking,
         speak,
         stopSpeech,

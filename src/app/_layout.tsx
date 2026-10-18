@@ -13,6 +13,7 @@ import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { NoticeToast } from '@/components/notice-toast';
 import { Palette } from '@/constants/theme';
 import { AuthProvider } from '@/lib/auth';
 import { HomeworkSessionProvider } from '@/lib/homework-session';
@@ -70,6 +71,7 @@ function RootNavigator() {
         {/* Đăng nhập mở được cả lúc mới cài app lẫn từ tab Tiến độ. */}
         <Stack.Screen name="dang-nhap" />
       </Stack>
+      <NoticeToast />
     </HomeworkSessionProvider>
   );
 }
