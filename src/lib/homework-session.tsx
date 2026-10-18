@@ -4,6 +4,7 @@ import { Alert } from 'react-native';
 
 import { gradeHomework, type GradingResult, type Subject } from '@/lib/grading';
 import { addHistoryEntry, type HistoryEntry } from '@/lib/history';
+import { preparePhotoForGrading } from '@/lib/prepare-photo';
 import { speakVietnamese, stopSpeaking } from '@/lib/speech';
 
 // Trạng thái bài đang làm, dùng chung giữa các tab Trang chủ / Quét bài / Chữa bài.
@@ -59,8 +60,8 @@ export function HomeworkSessionProvider({ children }: { children: ReactNode }) {
 
     const options: ImagePicker.ImagePickerOptions = {
       mediaTypes: ['images'],
-      quality: 0.5,
-      base64: true,
+      // Lấy ảnh gốc chất lượng cao; lúc chấm mới thu nhỏ và nén (xem prepare-photo.ts).
+      quality: 1,
     };
     const picked =
       source === 'camera'
@@ -73,10 +74,11 @@ export function HomeworkSessionProvider({ children }: { children: ReactNode }) {
   }
 
   async function submitForGrading() {
-    if (!photo?.base64) return false;
+    if (!photo) return false;
     setGrading(true);
     try {
-      const graded: GradingResult = await gradeHomework({ imageBase64: photo.base64, subject, grade });
+      const imageBase64 = await preparePhotoForGrading(photo);
+      const graded: GradingResult = await gradeHomework({ imageBase64, subject, grade });
       const entry: HistoryEntry = {
         ...graded,
         id: String(Date.now()),

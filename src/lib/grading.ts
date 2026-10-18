@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 
+import { teacherKnowledge } from '@/lib/kien-thuc';
+
 export type Subject = 'toan' | 'tieng-viet';
 
 export const SubjectNames: Record<Subject, string> = {
@@ -10,6 +12,8 @@ export const SubjectNames: Record<Subject, string> = {
 export type GradedItem = {
   question: string;
   childAnswer: string;
+  /** Đáp án đúng do AI tự giải; bài chấm trước khi có trường này thì không có. */
+  correctAnswer?: string;
   correct: boolean;
   explanation: string;
 };
@@ -42,26 +46,32 @@ const lmStudioTimeoutMs = 240_000;
 const resultSchema = {
   type: 'object',
   additionalProperties: false,
-  required: ['score', 'spokenFeedback', 'items', 'parentNote'],
+  // Chấm từng câu trước, rồi mới cho điểm và viết nhận xét dựa trên đúng các câu đó.
+  required: ['items', 'score', 'spokenFeedback', 'parentNote'],
   properties: {
-    score: { type: 'number', description: 'Điểm trên thang 10, làm tròn 0.5' },
-    spokenFeedback: {
-      type: 'string',
-      description: 'Lời nhận xét nói trực tiếp với bé, sẽ được đọc thành tiếng',
-    },
     items: {
       type: 'array',
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['question', 'childAnswer', 'correct', 'explanation'],
+        // Thứ tự có chủ ý: AI tự giải ra correctAnswer trước rồi mới so với bài của bé.
+        required: ['question', 'childAnswer', 'correctAnswer', 'correct', 'explanation'],
         properties: {
           question: { type: 'string' },
-          childAnswer: { type: 'string' },
-          correct: { type: 'boolean' },
+          childAnswer: { type: 'string', description: 'Đúng nguyên văn bé đã viết' },
+          correctAnswer: {
+            type: 'string',
+            description: 'Đáp án đúng do cô tự giải lại, không nhìn bài của bé',
+          },
+          correct: { type: 'boolean', description: 'true khi childAnswer khớp correctAnswer' },
           explanation: { type: 'string' },
         },
       },
+    },
+    score: { type: 'number', description: 'Điểm trên thang 10, làm tròn 0.5' },
+    spokenFeedback: {
+      type: 'string',
+      description: 'Lời nhận xét nói trực tiếp với bé, sẽ được đọc thành tiếng',
     },
     parentNote: {
       type: 'string',
@@ -71,14 +81,16 @@ const resultSchema = {
 };
 
 function systemPrompt(subject: Subject, grade: number) {
-  return `Bạn là cô giáo tiểu học người Việt, hiền và kiên nhẫn, đang chấm bài tập về nhà môn ${SubjectNames[subject]} lớp ${grade} theo chương trình giáo dục phổ thông Việt Nam.
+  return `Bạn là cô giáo tiểu học người Việt, hiền và kiên nhẫn, đang chấm bài tập về nhà môn ${SubjectNames[subject]} lớp ${grade} theo chương trình giáo dục phổ thông 2018 của Việt Nam.
+
+${teacherKnowledge(subject, grade)}
 
 Ảnh là bài làm của bé (có thể viết tay, chụp nghiêng hoặc mờ). Hãy:
 1. Đọc từng câu hỏi và câu trả lời của bé. Chỗ nào không đọc rõ thì ghi "không đọc rõ" thay vì đoán.
-2. Chấm đúng/sai từng câu và giải thích ngắn gọn, dễ hiểu với trẻ lớp ${grade}.
-3. Cho điểm trên thang 10.
-4. Viết spokenFeedback để đọc thành tiếng cho bé nghe: xưng "cô", gọi bé là "con", 3–5 câu ngắn, khen điều bé làm tốt trước, chỉ ra tối đa 2 lỗi quan trọng nhất và cách sửa, kết thúc bằng một câu động viên. Không dùng ký hiệu, emoji hay định dạng vì câu này sẽ được đọc lên.
-5. Viết parentNote cho phụ huynh: lỗi bé hay mắc và gợi ý cách luyện thêm ở nhà.
+2. Với từng câu: chép nguyên văn câu trả lời của bé vào childAnswer, tự giải lại cẩn thận và ghi kết quả vào correctAnswer, rồi mới so hai kết quả để chấm đúng/sai. Với câu sai, explanation chỉ ra bé sai ở bước nào và cách làm đúng, ngắn gọn, dễ hiểu với trẻ lớp ${grade}.
+3. Cho điểm trên thang 10, làm tròn 0.5, tương ứng với số câu đúng.
+4. Viết spokenFeedback để đọc thành tiếng cho bé nghe: xưng "cô", gọi bé là "con", 3–5 câu ngắn, khen điều bé làm tốt trước, chỉ ra tối đa 2 lỗi quan trọng nhất và cách sửa, kết thúc bằng một câu động viên. Lỗi nhắc tới phải đúng với các câu được chấm sai ở mục items, không thêm lỗi khác. Không dùng ký hiệu, emoji hay định dạng vì câu này sẽ được đọc lên; viết phép tính bằng chữ (ví dụ "bốn mươi bảy nhân ba").
+5. Viết parentNote cho phụ huynh: lỗi bé mắc trong bài này (đúng như items) và gợi ý cách luyện thêm ở nhà phù hợp với lớp ${grade}.
 
 Nếu ảnh không phải bài tập, trả về score 0, items rỗng và nhẹ nhàng nhờ bé chụp lại bài làm.`;
 }
@@ -92,11 +104,11 @@ type GradeParams = {
 /** Chấm bằng Claude; nếu không được thì tự chuyển sang LM Studio ở nhà, không báo cho bé. */
 export async function gradeHomework(params: GradeParams): Promise<GradingResult> {
   try {
-    return await gradeWithClaude(params);
+    return normalizeResult(await gradeWithClaude(params));
   } catch (claudeError) {
     if (!lmStudioUrl) throw claudeError;
     try {
-      return await gradeWithLmStudio(params);
+      return normalizeResult(await gradeWithLmStudio(params));
     } catch (lmStudioError) {
       console.warn('Claude lỗi:', claudeError, '— LM Studio lỗi:', lmStudioError);
       throw new Error(
@@ -104,6 +116,30 @@ export async function gradeHomework(params: GradeParams): Promise<GradingResult>
       );
     }
   }
+}
+
+// Ký hiệu phép tính đổi sang chữ để giọng đọc tiếng Việt đọc đúng.
+const spokenSymbols: [RegExp, string][] = [
+  [/(\d)\s*[×x]\s*(?=\d)/g, '$1 nhân '],
+  [/(\d)\s*÷\s*(?=\d)/g, '$1 chia '],
+  [/(\d)\s+:\s+(?=\d)/g, '$1 chia '],
+  [/(\d)\s*\+\s*(?=\d)/g, '$1 cộng '],
+  [/(\d)\s*−\s*(?=\d)/g, '$1 trừ '],
+  [/(\d)\s+-\s+(?=\d)/g, '$1 trừ '],
+  [/\s*=\s*/g, ' bằng '],
+];
+
+function speakable(text: string) {
+  return spokenSymbols.reduce((out, [pattern, word]) => out.replace(pattern, word), text);
+}
+
+// Điểm tính từ số câu đúng (làm tròn 0.5) để luôn khớp với phần chấm từng câu;
+// model nhỏ chạy trên máy hay cộng điểm sai.
+function normalizeResult(result: GradingResult): GradingResult {
+  const spokenFeedback = speakable(result.spokenFeedback);
+  if (result.items.length === 0) return { ...result, spokenFeedback };
+  const correct = result.items.filter((item) => item.correct).length;
+  return { ...result, spokenFeedback, score: Math.round((correct / result.items.length) * 20) / 2 };
 }
 
 async function gradeWithClaude(params: GradeParams): Promise<GradingResult> {

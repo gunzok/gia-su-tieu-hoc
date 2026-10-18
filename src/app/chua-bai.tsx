@@ -218,6 +218,11 @@ function WrongCard({ item, number }: { item: GradedItem; number: number }) {
         <AppText variant="labelMd" color={Palette.mintDark}>
           ✅ Cô giảng:
         </AppText>
+        {item.correctAnswer && (
+          <AppText variant="headlineSm" color={Palette.mintDark}>
+            {item.correctAnswer}
+          </AppText>
+        )}
         <AppText variant="bodyLg">{item.explanation}</AppText>
       </View>
     </Card>
