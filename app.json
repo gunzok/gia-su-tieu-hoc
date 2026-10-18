@@ -9,7 +9,16 @@
     "userInterfaceStyle": "light",
     "ios": {
       "icon": "./assets/images/icon.png",
-      "bundleIdentifier": "vn.giasutieuhoc.app"
+      "bundleIdentifier": "vn.giasutieuhoc.app",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        },
+        "NSLocalNetworkUsageDescription": "Gia sư Tiểu học cần kết nối máy tính trong mạng Wi-Fi nhà để chấm bài bằng AI chạy trên máy (LM Studio)."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -31,8 +40,8 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "App cần dùng camera để bé chụp bài tập cho cô giáo AI chấm.",
-          "photosPermission": "App cần xem ảnh để bé chọn ảnh bài tập đã chụp sẵn."
+          "cameraPermission": "Gia sư Tiểu học cần dùng camera để bé chụp bài tập cho gia sư AI chấm.",
+          "photosPermission": "Gia sư Tiểu học cần xem ảnh để bé chọn các trang bài tập đã chụp sẵn."
         }
       ],
       [
@@ -43,7 +52,15 @@
           "imageWidth": 200
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
