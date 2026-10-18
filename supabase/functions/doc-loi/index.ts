@@ -12,6 +12,10 @@ const BUCKET = 'giong-doc';
 const maxChars = 1500;
 // Link phát âm thanh hết hạn sau 1 giờ.
 const urlSeconds = 60 * 60;
+// Google miễn phí 1 triệu ký tự Chirp 3 HD mỗi tháng. Dừng sớm hơn một chút (900 nghìn) vì cách
+// Google đếm có thể lệch ít so với mình; hết lượt thì app tự đọc bằng giọng trên máy.
+// Muốn đổi: npx supabase secrets set GOOGLE_TTS_MONTHLY_CHARS=...
+const monthlyLimit = Number(Deno.env.get('GOOGLE_TTS_MONTHLY_CHARS')) || 900_000;
 
 // Giọng Google Chirp 3 HD cho từng gia sư. Đổi tên giọng ở đây rồi triển khai lại là xong;
 // danh sách giọng: https://docs.cloud.google.com/text-to-speech/docs/chirp3-hd
@@ -66,8 +70,24 @@ Deno.serve(async (req) => {
   const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const path = `${voice.name}/${await sha256(`${voice.speakingRate}|${text}`)}.mp3`;
 
+  // Câu đã có sẵn trong kho: không gọi Google, không tính lượt.
   const cached = await admin.storage.from(BUCKET).createSignedUrl(path, urlSeconds);
   if (cached.data?.signedUrl) return json({ url: cached.data.signedUrl, cached: true });
+
+  // Đếm theo tháng (giờ UTC). Đã gần hết phần miễn phí thì báo hết lượt, app đọc bằng giọng máy.
+  const month = new Date().toISOString().slice(0, 7);
+  const { data: usage, error: usageError } = await admin
+    .from('giong_doc_thang')
+    .select('so_ky_tu')
+    .eq('thang', month)
+    .maybeSingle();
+  if (usageError) {
+    console.error('Không đọc được bộ đếm giọng đọc:', usageError);
+    return json({ error: 'Chưa tạo được giọng đọc' }, 502);
+  }
+  if ((usage?.so_ky_tu ?? 0) + text.length > monthlyLimit) {
+    return json({ error: 'Đã hết lượt giọng đọc AI miễn phí tháng này', hetLuot: true }, 429);
+  }
 
   try {
     const response = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize', {
@@ -86,6 +106,10 @@ Deno.serve(async (req) => {
     }
     const { audioContent } = (await response.json()) as { audioContent?: string };
     if (!audioContent) return json({ error: 'Chưa tạo được giọng đọc' }, 502);
+
+    // Google đã tạo xong (đã tính lượt) nên cộng vào bộ đếm tháng ngay, kể cả khi lưu file lỗi.
+    const counted = await admin.rpc('cong_ky_tu_giong_doc', { p_thang: month, p_so_ky_tu: text.length });
+    if (counted.error) console.error('Không cộng được bộ đếm giọng đọc:', counted.error);
 
     const upload = await admin.storage
       .from(BUCKET)

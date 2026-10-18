@@ -8,8 +8,12 @@ import { ensureSession, supabase } from '@/lib/supabase';
 import type { TeacherId } from '@/lib/teacher';
 
 // Cô/thầy đọc lời nhận xét thành tiếng:
-// - Gói Plus: giọng AI tự nhiên của Google (hàm "doc-loi" trên Supabase tạo file âm thanh).
-// - Gói miễn phí, mất mạng hoặc máy chủ lỗi: giọng tiếng Việt có sẵn trên máy (expo-speech).
+// - Giọng AI tự nhiên của Google (hàm "doc-loi" trên Supabase tạo file âm thanh).
+// - Mất mạng, máy chủ lỗi hoặc hết phần miễn phí tháng này: giọng tiếng Việt có sẵn trên máy (expo-speech).
+
+// Tạm thời mọi người đều nghe giọng Google (máy chủ tự dừng khi gần hết 1 triệu ký tự miễn phí/tháng).
+// Khi RevenueCat có khoá thật, đổi thành false để chỉ gói Plus được nghe giọng Google.
+const CLOUD_VOICE_FOR_ALL = true;
 
 // ---------- Giọng có sẵn trên máy ----------
 // - Chọn giọng chất lượng cao (Enhanced) nếu máy có. iPhone: Cài đặt > Trợ năng > Nội dung được đọc
@@ -70,6 +74,8 @@ const cloudTimeoutMs = 12_000;
 // Link âm thanh máy chủ trả về còn hạn 1 giờ; giữ 50 phút để nghe lại không phải hỏi máy chủ.
 const urlLifetimeMs = 50 * 60 * 1000;
 const cloudUrls = new Map<string, { url: string; at: number }>();
+// Máy chủ báo hết lượt miễn phí tháng này: dùng giọng máy cho tới khi mở lại app.
+let cloudQuotaReached = false;
 
 async function cloudVoiceUrl(text: string, teacher: TeacherId) {
   const key = `${teacher}|${text}`;
@@ -82,7 +88,12 @@ async function cloudVoiceUrl(text: string, teacher: TeacherId) {
     body: { text, teacher },
     timeout: cloudTimeoutMs,
   });
-  if (error) throw error;
+  if (error) {
+    // Lỗi HTTP từ hàm có kèm Response gốc; 429 nghĩa là hết lượt miễn phí tháng này.
+    const status = (error as { context?: { status?: number } }).context?.status;
+    if (status === 429) cloudQuotaReached = true;
+    throw error;
+  }
   if (!data?.url) throw new Error('Máy chủ không trả về giọng đọc.');
   cloudUrls.set(key, { url: data.url, at: Date.now() });
   return data.url;
@@ -131,7 +142,7 @@ export async function speakVietnamese(
     return;
   }
 
-  if ((await getPremiumStatus()).isPremium) {
+  if (!cloudQuotaReached && (CLOUD_VOICE_FOR_ALL || (await getPremiumStatus()).isPremium)) {
     try {
       const url = await cloudVoiceUrl(spoken, teacher);
       if (myTurn !== turn) return;

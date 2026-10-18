@@ -1,7 +1,14 @@
 # Giọng đọc AI Google (Chirp 3 HD)
 
-Gói Plus nghe cô/thầy đọc bằng giọng AI của Google. Gói miễn phí, mất mạng hoặc máy chủ lỗi
+Cô/thầy đọc bằng giọng AI của Google. Mất mạng, máy chủ lỗi hoặc hết phần miễn phí tháng này
 thì app tự đọc bằng giọng có sẵn trên điện thoại.
+
+- Tạm thời mọi người dùng đều nghe giọng Google (`CLOUD_VOICE_FOR_ALL` trong `src/lib/speech.ts`).
+  Khi RevenueCat có khoá thật, đổi thành `false` để chỉ gói Plus được nghe.
+- Tự dừng khi gần hết phần miễn phí: hàm đếm ký tự đã gửi Google mỗi tháng (bảng `giong_doc_thang`),
+  quá 900 nghìn thì ngừng gọi Google cho tới tháng sau (giờ UTC). Câu đã có sẵn trong kho không tính.
+  Đổi mức: `npx supabase secrets set GOOGLE_TTS_MONTHLY_CHARS=...`
+- Vẫn nên đặt cảnh báo ngân sách trên Google Cloud để chắc chắn (bước 5 bên dưới).
 
 - Hàm máy chủ: `supabase/functions/doc-loi` (khoá Google chỉ nằm ở Supabase secret).
 - Âm thanh được lưu ở kho `giong-doc`: câu nào đã đọc rồi thì nghe lại không tốn phí.
