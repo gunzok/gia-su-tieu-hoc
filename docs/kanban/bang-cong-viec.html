@@ -1,0 +1,429 @@
+<title>Bảng việc Gia sư Tiểu học</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Nunito+Sans:wght@400;600;700&display=swap">
+<style>
+/* Bố cục: thanh tiêu đề + 8 cột Kanban cuộn ngang; bấm thẻ mở ngăn chi tiết bên phải. Màu theo app Gia sư Tiểu học. */
+:root {
+  --bg: #F6F8FB;
+  --surface: #FFFFFF;
+  --surface-2: #EEF3F8;
+  --line: #DCE4EE;
+  --ink: #111C2D;
+  --ink-soft: #5B6573;
+  --accent: #006B58;
+  --accent-soft: #D6F5EA;
+  --amber: #8A6D00;
+  --amber-soft: #FFF3C4;
+  --danger: #B42318;
+  --danger-soft: #FDE4E1;
+  --ok: #157347;
+  --ok-soft: #DDF4E6;
+  --shadow: 0 1px 2px rgba(17, 28, 45, .06), 0 2px 8px rgba(17, 28, 45, .05);
+  --font-display: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Nunito Sans", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1720; --surface: #17212C; --surface-2: #1E2A37; --line: #2A3847;
+    --ink: #E8EEF5; --ink-soft: #9AA8B8; --accent: #5FD0B4; --accent-soft: #123A32;
+    --amber: #F2CF5B; --amber-soft: #3A3115; --danger: #FF8A7A; --danger-soft: #3D1A17;
+    --ok: #6FD39A; --ok-soft: #15331F; --shadow: 0 1px 2px rgba(0,0,0,.3);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1720; --surface: #17212C; --surface-2: #1E2A37; --line: #2A3847;
+  --ink: #E8EEF5; --ink-soft: #9AA8B8; --accent: #5FD0B4; --accent-soft: #123A32;
+  --amber: #F2CF5B; --amber-soft: #3A3115; --danger: #FF8A7A; --danger-soft: #3D1A17;
+  --ok: #6FD39A; --ok-soft: #15331F; --shadow: 0 1px 2px rgba(0,0,0,.3);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px;
+  display: flex; flex-direction: column;
+}
+.top {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+  padding-block: 16px 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line); background: var(--surface);
+}
+.top h1 { font-family: var(--font-display); font-size: 20px; font-weight: 800; margin: 0; text-wrap: balance; }
+.top .sub { color: var(--ink-soft); font-size: 13px; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+  background: var(--surface-2); color: var(--ink-soft); font-size: 12px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.pill.block { background: var(--danger-soft); color: var(--danger); }
+.pill.done { background: var(--ok-soft); color: var(--ok); }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+.filters select, .filters input {
+  font: inherit; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 10px; min-height: 34px;
+}
+.filters input { flex: 1 1 200px; min-width: 0; }
+.status { color: var(--ink-soft); font-size: 12px; }
+.board-wrap { flex: 1; overflow-x: auto; overflow-y: hidden; }
+.board {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(260px, 1fr); gap: 12px;
+  height: 100%; min-height: 420px;
+  padding-block: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.col {
+  display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  background: var(--surface-2); border-radius: 12px; border: 1px solid transparent;
+}
+.col.over { border-color: var(--accent); background: var(--accent-soft); }
+.col.full.over { border-color: var(--danger); background: var(--danger-soft); }
+.col-head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 8px; }
+.col-head h2 { font-family: var(--font-display); font-size: 13px; font-weight: 700; margin: 0; letter-spacing: .02em; }
+.col-head .key { color: var(--ink-soft); font-size: 11px; }
+.count {
+  margin-left: auto; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  background: var(--surface); color: var(--ink-soft); font-variant-numeric: tabular-nums;
+}
+.count.limit { background: var(--amber-soft); color: var(--amber); }
+.count.over-limit { background: var(--danger-soft); color: var(--danger); }
+.cards { display: flex; flex-direction: column; gap: 8px; padding: 0 10px 12px; overflow-y: auto; min-height: 60px; flex: 1; }
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+  box-shadow: var(--shadow); cursor: grab; display: flex; flex-direction: column; gap: 6px;
+  text-align: left; font: inherit; color: inherit; width: 100%;
+}
+.card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.card.dragging { opacity: .45; }
+.card.blocked { border-color: var(--danger); box-shadow: inset 3px 0 0 var(--danger), var(--shadow); }
+.card-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tid { font-family: var(--font-display); font-weight: 700; font-size: 11px; color: var(--ink-soft); letter-spacing: .04em; }
+.card-title { font-weight: 700; font-size: 13.5px; line-height: 1.35; }
+.tag { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 6px; background: var(--surface-2); color: var(--ink-soft); }
+.tag.Epic { background: var(--amber-soft); color: var(--amber); }
+.tag.Bug { background: var(--danger-soft); color: var(--danger); }
+.tag.Story { background: var(--accent-soft); color: var(--accent); }
+.role { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--accent); }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11.5px; color: var(--ink-soft); }
+.warn { color: var(--danger); font-weight: 700; }
+.empty { color: var(--ink-soft); font-size: 12px; padding: 8px 4px; text-align: center; }
+/* Ngăn chi tiết */
+.drawer-bg { position: fixed; inset: 0; background: rgba(10, 16, 24, .35); }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 100%);
+  background: var(--surface); border-left: 1px solid var(--line); overflow-y: auto;
+  padding-top: max(18px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  padding-left: 20px;
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 14px;
+}
+.drawer h3 { font-family: var(--font-display); font-size: 18px; margin: 0; text-wrap: balance; }
+.drawer .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+.drawer p, .drawer li { line-height: 1.5; }
+.drawer ul { margin: 4px 0 0; padding-left: 18px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field select, .field textarea, .field input {
+  font: inherit; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 8px; padding: 8px 10px;
+}
+.field textarea { min-height: 70px; resize: vertical; }
+.btn {
+  font: inherit; font-weight: 700; border-radius: 8px; padding: 8px 14px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.btn.danger { background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.blockbox { border: 1px solid var(--danger); background: var(--danger-soft); color: var(--danger); border-radius: 10px; padding: 10px 12px; }
+.notes { display: flex; flex-direction: column; gap: 8px; }
+.note { background: var(--surface-2); border-radius: 8px; padding: 8px 10px; }
+.note .who { font-size: 11px; color: var(--ink-soft); font-weight: 700; }
+.dep { display: inline-flex; gap: 4px; font-size: 12px; padding: 2px 8px; border-radius: 6px; background: var(--surface-2); }
+.dep.open { background: var(--amber-soft); color: var(--amber); }
+.dep.ok { background: var(--ok-soft); color: var(--ok); }
+/* Toast */
+.toasts {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; gap: 8px; width: min(520px, calc(100% - 32px)); z-index: 20;
+}
+.toast {
+  background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent);
+  border-radius: 10px; padding: 10px 14px; box-shadow: var(--shadow); font-weight: 700;
+}
+.toast.alert { border-left-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
+.toast.done { border-left-color: var(--ok); color: var(--ok); background: var(--ok-soft); }
+@media (prefers-reduced-motion: no-preference) {
+  .toast { animation: rise .25s ease-out; }
+  @keyframes rise { from { transform: translateY(8px); opacity: 0 } to { transform: none; opacity: 1 } }
+}
+</style>
+
+<header class="top">
+  <div>
+    <h1>Bảng việc Gia sư Tiểu học</h1>
+    <div class="sub">Kéo thẻ giữa các cột để đổi trạng thái. Bấm vào thẻ để xem chi tiết, chặn/bỏ chặn và ghi chú.</div>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="filters">
+    <input id="q" type="search" placeholder="Tìm theo mã hoặc tên ticket" aria-label="Tìm ticket">
+    <select id="fRole" aria-label="Lọc theo role">
+      <option value="">Mọi role</option>
+      <option>PO</option><option>BA</option><option>Developer</option><option>TechLead</option><option>DevOps</option><option>QA</option>
+    </select>
+    <select id="fType" aria-label="Lọc theo loại">
+      <option value="">Mọi loại</option><option>Epic</option><option>Story</option><option>Bug</option>
+    </select>
+    <select id="fBlock" aria-label="Lọc ticket bị chặn">
+      <option value="">Tất cả</option><option value="blocked">Chỉ ticket bị chặn</option>
+    </select>
+    <span class="status" id="conn">Đang tải dữ liệu…</span>
+  </div>
+</header>
+<main class="board-wrap"><div class="board" id="board"></div></main>
+<div id="drawerRoot"></div>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+<script>
+const COLUMNS = [
+  { key: 'idea', name: 'Ý tưởng' },
+  { key: 'analysis', name: 'Phân tích' },
+  { key: 'ready_for_dev', name: 'Sẵn sàng làm' },
+  { key: 'coding', name: 'Đang code', wip: 2 },
+  { key: 'review', name: 'Duyệt code' },
+  { key: 'ready_for_qa', name: 'Chờ kiểm thử' },
+  { key: 'testing', name: 'Đang kiểm thử', wip: 2 },
+  { key: 'done', name: 'Xong' },
+];
+const COL_INDEX = Object.fromEntries(COLUMNS.map((c, i) => [c.key, i]));
+// Role tự gán khi thẻ vào cột (các cột khác giữ nguyên role).
+const AUTO_ROLE = { analysis: 'BA', review: 'TechLead', testing: 'QA' };
+const DEV_COLUMNS = new Set(['ready_for_dev', 'coding']);
+
+let db = null;
+let tickets = new Map();
+let firstSnapshot = true;
+let draggingId = null;
+let openId = null;
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nowIso = () => new Date().toISOString();
+
+function toast(text, kind = '') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.textContent = text;
+  $('#toasts').appendChild(el);
+  setTimeout(() => el.remove(), kind === 'alert' ? 7000 : 4500);
+}
+
+function visible(t) {
+  const q = $('#q').value.trim().toLowerCase();
+  if (q && !(t.id.toLowerCase().includes(q) || (t.title || '').toLowerCase().includes(q))) return false;
+  if ($('#fRole').value && t.role !== $('#fRole').value) return false;
+  if ($('#fType').value && t.type !== $('#fType').value) return false;
+  if ($('#fBlock').value === 'blocked' && !t.isBlocked) return false;
+  return true;
+}
+
+function openDeps(t) {
+  return (t.dependsOn || []).filter((d) => tickets.get(d)?.status !== 'done');
+}
+
+function render() {
+  const all = [...tickets.values()].sort((a, b) => a.id.localeCompare(b.id));
+  const blocked = all.filter((t) => t.isBlocked).length;
+  const done = all.filter((t) => t.status === 'done').length;
+  $('#stats').innerHTML =
+    `<span class="pill">${all.length} ticket</span>` +
+    `<span class="pill block">${blocked} bị chặn</span>` +
+    `<span class="pill done">${done} xong</span>`;
+
+  const board = $('#board');
+  board.innerHTML = '';
+  for (const col of COLUMNS) {
+    const items = all.filter((t) => t.status === col.key);
+    const shown = items.filter(visible);
+    const el = document.createElement('section');
+    el.className = 'col' + (col.wip && items.length >= col.wip ? ' full' : '');
+    el.dataset.col = col.key;
+    const countCls = col.wip ? (items.length > col.wip ? 'over-limit' : items.length === col.wip ? 'limit' : '') : '';
+    el.innerHTML = `
+      <div class="col-head">
+        <div><h2>${esc(col.name)}</h2><div class="key">${col.key}${col.wip ? ` · WIP ${col.wip}` : ''}</div></div>
+        <span class="count ${countCls}">${items.length}${col.wip ? '/' + col.wip : ''}</span>
+      </div>
+      <div class="cards"></div>`;
+    const list = el.querySelector('.cards');
+    if (!shown.length) list.innerHTML = `<div class="empty">${items.length ? 'Không có thẻ khớp bộ lọc' : 'Kéo thẻ vào đây'}</div>`;
+    for (const t of shown) list.appendChild(cardEl(t));
+    el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('over'); });
+    el.addEventListener('dragleave', (e) => { if (!el.contains(e.relatedTarget)) el.classList.remove('over'); });
+    el.addEventListener('drop', (e) => {
+      e.preventDefault();
+      el.classList.remove('over');
+      const id = e.dataTransfer.getData('text/plain') || draggingId;
+      if (id) moveTicket(id, col.key);
+    });
+    board.appendChild(el);
+  }
+  if (openId) renderDrawer();
+}
+
+function cardEl(t) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'card' + (t.isBlocked ? ' blocked' : '');
+  b.draggable = true;
+  b.id = 'card-' + t.id;
+  const deps = openDeps(t);
+  b.innerHTML = `
+    <div class="card-top"><span class="tid">${esc(t.id)}</span><span class="tag ${esc(t.type)}">${esc(t.type)}</span><span class="role">${esc(t.role)}</span></div>
+    <div class="card-title">${esc(t.title)}</div>
+    <div class="meta">
+      ${t.isBlocked ? `<span class="warn">⛔ ${esc(t.blockReason || 'Bị chặn')}</span>` : ''}
+      ${deps.length ? `<span>Chờ: ${deps.map(esc).join(', ')}</span>` : ''}
+      ${(t.notes || []).length ? `<span>${t.notes.length} ghi chú</span>` : ''}
+    </div>`;
+  b.addEventListener('dragstart', (e) => {
+    draggingId = t.id;
+    e.dataTransfer.setData('text/plain', t.id);
+    e.dataTransfer.effectAllowed = 'move';
+    b.classList.add('dragging');
+  });
+  b.addEventListener('dragend', () => { draggingId = null; b.classList.remove('dragging'); });
+  b.addEventListener('click', () => { openId = t.id; renderDrawer(); });
+  return b;
+}
+
+// Quy tắc chuyển cột: gán role theo cột, nhớ Developer cũ để khi testing -> coding trả lại đúng người.
+function transition(t, to) {
+  const patch = { status: to, updatedAt: nowIso() };
+  const devRole = t.devRole || t.ownerRole || 'Developer';
+  if (AUTO_ROLE[to]) patch.role = AUTO_ROLE[to];
+  else if (DEV_COLUMNS.has(to)) patch.role = devRole;
+  if (to === 'coding') patch.devRole = devRole;
+  return patch;
+}
+
+async function moveTicket(id, to) {
+  const t = tickets.get(id);
+  if (!t || t.status === to) return;
+  const col = COLUMNS[COL_INDEX[to]];
+  if (col.wip) {
+    const n = [...tickets.values()].filter((x) => x.status === to).length;
+    if (n >= col.wip) { toast(`Cột ${col.key} đã đủ ${col.wip} thẻ (giới hạn WIP). Xong bớt một thẻ trước nhé.`, 'alert'); return; }
+  }
+  if (!db) { toast('Chưa kết nối được dữ liệu, chưa lưu được thay đổi.', 'alert'); return; }
+  const patch = transition(t, to);
+  patch.notes = [...(t.notes || []), { at: nowIso(), by: 'Bảng việc', text: `Chuyển ${t.status} → ${to}${patch.role && patch.role !== t.role ? `, role ${patch.role}` : ''}` }];
+  try { await db.doc('tickets/' + id).update(patch); }
+  catch (e) { toast('Chưa lưu được: ' + (e?.message || e?.code || 'lỗi không rõ'), 'alert'); }
+}
+
+async function patchTicket(id, patch, note) {
+  const t = tickets.get(id);
+  if (!t || !db) return;
+  const body = { ...patch, updatedAt: nowIso() };
+  if (note) body.notes = [...(t.notes || []), { at: nowIso(), by: 'Bảng việc', text: note }];
+  try { await db.doc('tickets/' + id).update(body); }
+  catch (e) { toast('Chưa lưu được: ' + (e?.message || e?.code || 'lỗi không rõ'), 'alert'); }
+}
+
+function renderDrawer() {
+  const root = $('#drawerRoot');
+  const t = tickets.get(openId);
+  if (!t) { root.innerHTML = ''; return; }
+  const deps = (t.dependsOn || []).map((d) => {
+    const s = tickets.get(d)?.status;
+    return `<span class="dep ${s === 'done' ? 'ok' : 'open'}">${esc(d)} · ${esc(s || '?')}</span>`;
+  }).join(' ');
+  const keepReason = root.querySelector('#blockReason')?.value;
+  const keepNote = root.querySelector('#noteText')?.value;
+  root.innerHTML = `
+    <div class="drawer-bg" id="drawerBg"></div>
+    <aside class="drawer" role="dialog" aria-label="Chi tiết ${esc(t.id)}">
+      <div class="row"><span class="tid">${esc(t.id)}</span><span class="tag ${esc(t.type)}">${esc(t.type)}</span><span class="role">${esc(t.role)}</span>
+        <button class="btn" id="closeDrawer" style="margin-left:auto">Đóng</button></div>
+      <h3>${esc(t.title)}</h3>
+      ${t.isBlocked ? `<div class="blockbox"><strong>Bị chặn:</strong> ${esc(t.blockReason || '')}</div>` : ''}
+      <div><div class="lbl">Mô tả</div><p>${esc(t.description)}</p></div>
+      <div><div class="lbl">Tiêu chí nghiệm thu</div><ul>${(t.acceptanceCriteria || []).map((a) => `<li>${esc(a)}</li>`).join('')}</ul></div>
+      <div><div class="lbl">Phụ thuộc</div><div class="row">${deps || '<span class="status">Không có</span>'}</div></div>
+      <div class="field"><label class="lbl" for="moveTo">Chuyển cột</label>
+        <select id="moveTo">${COLUMNS.map((c) => `<option value="${c.key}" ${c.key === t.status ? 'selected' : ''}>${c.name} (${c.key})</option>`).join('')}</select></div>
+      <div class="field"><label class="lbl" for="blockReason">Lý do bị chặn</label>
+        <input id="blockReason" value="${esc(keepReason ?? t.blockReason ?? '')}" placeholder="Ví dụ: chờ nạp tiền Claude">
+        <div class="row">${t.isBlocked
+          ? '<button class="btn" id="unblock">Bỏ chặn</button><button class="btn" id="saveReason">Lưu lý do</button>'
+          : '<button class="btn danger" id="block">Đánh dấu bị chặn</button>'}</div></div>
+      <div class="field"><div class="lbl">Ghi chú</div>
+        <div class="notes">${(t.notes || []).slice().reverse().map((n) => `<div class="note"><div class="who">${esc(n.by || '')} · ${esc(new Date(n.at).toLocaleString('vi-VN'))}</div>${esc(n.text)}</div>`).join('') || '<span class="status">Chưa có ghi chú</span>'}</div>
+        <label class="lbl" for="noteText">Thêm ghi chú</label>
+        <textarea id="noteText" placeholder="Ghi chú cho ticket">${esc(keepNote ?? '')}</textarea>
+        <div class="row"><button class="btn primary" id="addNote">Thêm ghi chú</button></div></div>
+      <div class="status">Role gốc: ${esc(t.ownerRole || '')}${t.devRole ? ` · Developer phụ trách: ${esc(t.devRole)}` : ''} · Cập nhật: ${t.updatedAt ? esc(new Date(t.updatedAt).toLocaleString('vi-VN')) : '—'}</div>
+    </aside>`;
+  const close = () => { openId = null; root.innerHTML = ''; };
+  root.querySelector('#drawerBg').onclick = close;
+  root.querySelector('#closeDrawer').onclick = close;
+  root.querySelector('#moveTo').onchange = (e) => moveTicket(t.id, e.target.value);
+  root.querySelector('#block')?.addEventListener('click', () => {
+    const reason = root.querySelector('#blockReason').value.trim() || 'Chưa ghi lý do';
+    patchTicket(t.id, { isBlocked: true, blockReason: reason }, `Đánh dấu bị chặn: ${reason}`);
+  });
+  root.querySelector('#unblock')?.addEventListener('click', () => patchTicket(t.id, { isBlocked: false, blockReason: '' }, 'Bỏ chặn'));
+  root.querySelector('#saveReason')?.addEventListener('click', () => {
+    const reason = root.querySelector('#blockReason').value.trim();
+    patchTicket(t.id, { blockReason: reason }, `Đổi lý do chặn: ${reason}`);
+  });
+  root.querySelector('#addNote').onclick = () => {
+    const box = root.querySelector('#noteText');
+    const text = box.value.trim();
+    if (!text) return;
+    box.value = '';
+    patchTicket(t.id, {}, text);
+  };
+}
+
+// Toast theo thay đổi thật trong kho (do bạn kéo thả hay do Claude cập nhật đều báo).
+function announce(changes) {
+  for (const ch of changes) {
+    if (ch.type === 'removed') continue;
+    const t = ch.doc.data();
+    const before = tickets.get(ch.doc.id);
+    if (t.status === 'done' && before?.status !== 'done') toast(`Ticket ${ch.doc.id} is ready for release!`, 'done');
+    if (t.isBlocked && (!before || !before.isBlocked)) toast(`Alert: Ticket ${ch.doc.id} is blocked and requires immediate attention!`, 'alert');
+  }
+}
+
+['#q', '#fRole', '#fType', '#fBlock'].forEach((s) => $(s).addEventListener('input', render));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openId) { openId = null; $('#drawerRoot').innerHTML = ''; } });
+render();
+
+(async () => {
+  db = await window.claude?.use?.('db') ?? null;
+  if (!db) { $('#conn').textContent = 'Chưa kết nối được kho dữ liệu: hãy mở bảng khi đã đăng nhập claude.ai.'; return; }
+  db.collection('tickets').onSnapshot((snap) => {
+    const changes = snap.docChanges();
+    if (!firstSnapshot) announce(changes);
+    else {
+      const blocked = snap.docs.filter((d) => d.data().isBlocked).map((d) => d.id);
+      if (blocked.length) toast(`Alert: ${blocked.length} ticket đang bị chặn (${blocked.join(', ')}).`, 'alert');
+    }
+    firstSnapshot = false;
+    tickets = new Map(snap.docs.map((d) => [d.id, { id: d.id, ...d.data() }]));
+    $('#conn').textContent = snap.empty
+      ? 'Chưa có ticket nào. Claude sẽ nạp danh sách ticket vào đây.'
+      : `Đã đồng bộ · ${new Date().toLocaleTimeString('vi-VN')}`;
+    render();
+  }, (e) => { $('#conn').textContent = 'Mất kết nối dữ liệu (' + e.code + '). Tải lại trang để thử lại.'; });
+})();
+</script>
