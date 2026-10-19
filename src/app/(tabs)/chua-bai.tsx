@@ -10,9 +10,10 @@ import { BigButton } from '@/components/big-button';
 import { Card } from '@/components/card';
 import { ItemSpeakButton } from '@/components/item-speak-button';
 import { Mascot } from '@/components/mascot';
+import { RetryQuestion } from '@/components/retry-question';
 import { Screen } from '@/components/screen';
 import { FontFamily, Palette, Radius, Spacing } from '@/constants/theme';
-import { SubjectNames, type GradedItem } from '@/lib/grading';
+import { SubjectNames, type GradedItem, type Subject } from '@/lib/grading';
 import { loadHistory, type HistoryEntry } from '@/lib/history';
 import { useHomeworkSession } from '@/lib/homework-session';
 import { openAskTeacher } from '@/lib/hoi-co';
@@ -28,8 +29,8 @@ export default function ReviewScreen() {
   const { latest, startOver, speaking, speak, stopSpeech } = useHomeworkSession();
   const T = useTeacher();
   const [saved, setSaved] = useState<HistoryEntry | null>(null);
-  // Câu đang được giảng lại (null = lời nhận xét chung).
-  const [activeItem, setActiveItem] = useState<number | null>(null);
+  // Câu đang được giảng lại (null = lời nhận xét chung, "retry-<số>" = lời cô ở phần làm lại câu đó).
+  const [activeItem, setActiveItem] = useState<number | `retry-${number}` | null>(null);
   const feedbackSpeaking = speaking && activeItem === null;
 
   useFocusEffect(
@@ -175,10 +176,23 @@ export default function ReviewScreen() {
                 openAskTeacher({ item, number: index + 1, subject: entry.subject, grade: entry.grade });
               },
             };
-            return item.correct ? (
-              <CorrectRow key={index} item={item} number={index + 1} {...speakProps} />
-            ) : (
-              <WrongRow key={index} item={item} number={index + 1} {...speakProps} />
+            if (item.correct) return <CorrectRow key={index} item={item} number={index + 1} {...speakProps} />;
+            const retryKey = `retry-${index}` as const;
+            return (
+              <WrongRow
+                key={index}
+                item={item}
+                number={index + 1}
+                subject={entry.subject}
+                grade={entry.grade}
+                retrySpeaking={speaking && activeItem === retryKey}
+                onRetrySpeak={(text) => {
+                  setActiveItem(retryKey);
+                  speak(text);
+                }}
+                stopSpeech={stopSpeech}
+                {...speakProps}
+              />
             );
           })}
         </Card>
@@ -254,8 +268,30 @@ function CorrectRow({ item, number, speakingNow, onSpeak, onAsk }: RowProps) {
   );
 }
 
-function WrongRow({ item, number, speakingNow, onSpeak, onAsk }: RowProps) {
+type WrongRowProps = RowProps & {
+  subject: Subject;
+  grade: number;
+  /** Lời cô ở phần "Thử lại câu này" đang được đọc. */
+  retrySpeaking: boolean;
+  onRetrySpeak: (text: string) => void;
+  stopSpeech: () => void;
+};
+
+function WrongRow({
+  item,
+  number,
+  speakingNow,
+  onSpeak,
+  onAsk,
+  subject,
+  grade,
+  retrySpeaking,
+  onRetrySpeak,
+  stopSpeech,
+}: WrongRowProps) {
   const T = useTeacher();
+  // Bé đang làm lại thì che đáp án đúng, để bé tự nghĩ.
+  const [hideAnswer, setHideAnswer] = useState(false);
   return (
     <View style={[styles.row, { backgroundColor: Palette.coralSoft }]}>
       <View style={styles.rowHeader}>
@@ -264,7 +300,7 @@ function WrongRow({ item, number, speakingNow, onSpeak, onAsk }: RowProps) {
           <AppText variant="labelLg">{item.question}</AppText>
           <AppText variant="labelMd" color={Palette.coralDark}>
             Con viết: <AppText style={styles.strike}>{item.childAnswer}</AppText>
-            {item.correctAnswer ? (
+            {item.correctAnswer && !hideAnswer ? (
               <AppText variant="labelMd" color={Palette.blue}>
                 {'  •  '}Đúng là: {item.correctAnswer}
               </AppText>
@@ -282,9 +318,21 @@ function WrongRow({ item, number, speakingNow, onSpeak, onAsk }: RowProps) {
         </View>
         <AskTeacherButton onPress={onAsk} />
       </View>
-      <View style={styles.explainBox}>
-        <AppText variant="bodyMd">{item.explanation}</AppText>
-      </View>
+      {!hideAnswer && (
+        <View style={styles.explainBox}>
+          <AppText variant="bodyMd">{item.explanation}</AppText>
+        </View>
+      )}
+      <RetryQuestion
+        item={item}
+        number={number}
+        subject={subject}
+        grade={grade}
+        speakingNow={retrySpeaking}
+        speak={onRetrySpeak}
+        stopSpeech={stopSpeech}
+        onHideAnswer={setHideAnswer}
+      />
     </View>
   );
 }

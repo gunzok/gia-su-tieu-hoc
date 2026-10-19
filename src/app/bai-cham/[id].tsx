@@ -8,6 +8,7 @@ import { AppText } from '@/components/app-text';
 import { AskTeacherButton } from '@/components/ask-teacher-button';
 import { Card } from '@/components/card';
 import { ItemSpeakButton } from '@/components/item-speak-button';
+import { RetryQuestion } from '@/components/retry-question';
 import { Screen } from '@/components/screen';
 import { SoundWave } from '@/components/sound-wave';
 import { Palette, Radius, Spacing } from '@/constants/theme';
@@ -31,23 +32,32 @@ function formatDate(iso: string) {
   });
 }
 
+type SpeakKey = 'feedback' | number | `retry-${number}`;
+
 // Xem lại một lần chấm (từ lịch sử ở tab Tiến độ): ảnh các trang, điểm, từng câu, lời nhận xét.
 export default function GradingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [entry, setEntry] = useState<HistoryEntry | null | undefined>(undefined);
   const [remoteUris, setRemoteUris] = useState<string[]>([]);
   const T = useTeacher();
-  // Đang đọc gì: 'feedback' (lời nhận xét chung), số thứ tự câu, hoặc null.
-  const [speakingKey, setSpeakingKey] = useState<'feedback' | number | null>(null);
+  // Đang đọc gì: 'feedback' (lời nhận xét chung), số thứ tự câu, "retry-<số>" (lời cô ở phần làm lại), hoặc null.
+  const [speakingKey, setSpeakingKey] = useState<SpeakKey | null>(null);
+  // Câu bé đang làm lại thì che đáp án đúng.
+  const [hiddenAnswers, setHiddenAnswers] = useState<Record<number, boolean>>({});
 
-  function toggleSpeak(key: 'feedback' | number, text: string) {
-    if (speakingKey === key) {
-      stopSpeaking();
-      setSpeakingKey(null);
-      return;
-    }
+  function startSpeak(key: SpeakKey, text: string) {
     setSpeakingKey(key);
     speakVietnamese(text, { onDone: () => setSpeakingKey((current) => (current === key ? null : current)) }, T.id);
+  }
+
+  function stopSpeak() {
+    stopSpeaking();
+    setSpeakingKey(null);
+  }
+
+  function toggleSpeak(key: SpeakKey, text: string) {
+    if (speakingKey === key) stopSpeak();
+    else startSpeak(key, text);
   }
   const { width } = useWindowDimensions();
 
@@ -165,38 +175,54 @@ export default function GradingDetailScreen() {
             {entry.items.map((item, index) => (
               <View
                 key={index}
-                style={[styles.item, { backgroundColor: item.correct ? Palette.mintSoft : Palette.coralSoft }]}>
-                <MaterialIcons
-                  name={item.correct ? 'check-circle-outline' : 'highlight-off'}
-                  size={22}
-                  color={item.correct ? Palette.blueDark : Palette.coralDark}
-                />
-                <View style={styles.flex}>
-                  <AppText variant="labelLg">{item.question}</AppText>
-                  <AppText variant="bodySm">
-                    Bé làm: {item.childAnswer}
-                    {!item.correct && item.correctAnswer ? ` · Đúng là: ${item.correctAnswer}` : ''}
-                  </AppText>
-                  {!item.correct && (
-                    <AppText variant="bodySm" color={Palette.inkSoft}>
-                      {item.explanation}
+                style={[styles.itemWrap, { backgroundColor: item.correct ? Palette.mintSoft : Palette.coralSoft }]}>
+                <View style={styles.item}>
+                  <MaterialIcons
+                    name={item.correct ? 'check-circle-outline' : 'highlight-off'}
+                    size={22}
+                    color={item.correct ? Palette.blueDark : Palette.coralDark}
+                  />
+                  <View style={styles.flex}>
+                    <AppText variant="labelLg">{item.question}</AppText>
+                    <AppText variant="bodySm">
+                      Bé làm: {item.childAnswer}
+                      {!item.correct && item.correctAnswer && !hiddenAnswers[index]
+                        ? ` · Đúng là: ${item.correctAnswer}`
+                        : ''}
                     </AppText>
-                  )}
-                  <View style={styles.askRow}>
-                    <AskTeacherButton
-                      onPress={() => {
-                        stopSpeaking();
-                        setSpeakingKey(null);
-                        openAskTeacher({ item, number: index + 1, subject: entry.subject, grade: entry.grade });
-                      }}
-                    />
+                    {!item.correct && !hiddenAnswers[index] && (
+                      <AppText variant="bodySm" color={Palette.inkSoft}>
+                        {item.explanation}
+                      </AppText>
+                    )}
+                    <View style={styles.askRow}>
+                      <AskTeacherButton
+                        onPress={() => {
+                          stopSpeaking();
+                          setSpeakingKey(null);
+                          openAskTeacher({ item, number: index + 1, subject: entry.subject, grade: entry.grade });
+                        }}
+                      />
+                    </View>
                   </View>
+                  <ItemSpeakButton
+                    number={index + 1}
+                    speakingNow={speakingKey === index}
+                    onSpeak={() => toggleSpeak(index, itemSpeech(item, index + 1, T))}
+                  />
                 </View>
-                <ItemSpeakButton
-                  number={index + 1}
-                  speakingNow={speakingKey === index}
-                  onSpeak={() => toggleSpeak(index, itemSpeech(item, index + 1, T))}
-                />
+                {!item.correct && (
+                  <RetryQuestion
+                    item={item}
+                    number={index + 1}
+                    subject={entry.subject}
+                    grade={entry.grade}
+                    speakingNow={speakingKey === `retry-${index}`}
+                    speak={(text) => startSpeak(`retry-${index}`, text)}
+                    stopSpeech={stopSpeak}
+                    onHideAnswer={(hide) => setHiddenAnswers((current) => ({ ...current, [index]: hide }))}
+                  />
+                )}
               </View>
             ))}
           </Card>
@@ -272,10 +298,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginTop: Spacing.one,
   },
+  itemWrap: {
+    gap: Spacing.three,
+    borderRadius: Radius.md,
+    padding: Spacing.three,
+  },
   item: {
     flexDirection: 'row',
     gap: Spacing.two + 2,
-    borderRadius: Radius.md,
-    padding: Spacing.three,
   },
 });
