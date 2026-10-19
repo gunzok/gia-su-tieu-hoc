@@ -122,7 +122,7 @@ export function RetryQuestion({ item, number, subject, grade, speakingNow, speak
           <TextInput
             value={draft}
             onChangeText={setDraft}
-            placeholder="Con ghi đáp án vào đây"
+            placeholder="Đáp án của con"
             placeholderTextColor={Palette.inkSoft}
             keyboardType={numeric ? 'decimal-pad' : 'default'}
             autoCorrect={false}

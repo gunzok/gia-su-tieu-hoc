@@ -35,22 +35,28 @@ function parseNumber(text: string): ParsedNumber | null {
   return Number.isFinite(value) ? { value, unit: match[2] } : null;
 }
 
+/** Số trong đáp án; đáp án dạng phép tính "2 x 7 = 14" thì lấy kết quả sau dấu "=". */
+function answerNumber(text: string): ParsedNumber | null {
+  return parseNumber(text) ?? (text.includes('=') ? parseNumber(text.slice(text.lastIndexOf('=') + 1)) : null);
+}
+
 /** Đáp án đúng là số thì mở bàn phím số cho bé. */
 export function isNumericAnswer(answer: string | undefined) {
-  return !!answer && parseNumber(answer) !== null;
+  return !!answer && answerNumber(answer) !== null;
 }
 
 export function checkRetry(answer: string, correctAnswer: string | undefined): RetryVerdict {
   if (!correctAnswer?.trim()) return 'ask';
-  const expected = parseNumber(correctAnswer);
+  const expected = answerNumber(correctAnswer);
   if (expected) {
-    const given = parseNumber(answer);
+    const given = answerNumber(answer);
     if (!given) return 'wrong';
     // Bé quên ghi đơn vị vẫn tính đúng; ghi sai đơn vị thì chưa đúng.
     const unitOk = !given.unit || given.unit === expected.unit;
     return given.value === expected.value && unitOk ? 'correct' : 'wrong';
   }
-  return normalizeText(answer) === normalizeText(correctAnswer) ? 'correct' : 'ask';
+  const compact = (text: string) => normalizeText(text).replace(/\s+/g, '');
+  return compact(answer) === compact(correctAnswer) ? 'correct' : 'ask';
 }
 
 const praises = [
@@ -69,11 +75,11 @@ export function retryPraise(attempt: number) {
  */
 export function retryHint(item: GradedItem, answer: string, attempt: number, teacher: Teacher) {
   if (attempt <= 1) {
-    const expected = item.correctAnswer ? parseNumber(item.correctAnswer) : null;
-    const given = parseNumber(answer);
+    const expected = item.correctAnswer ? answerNumber(item.correctAnswer) : null;
+    const given = answerNumber(answer);
     if (expected && given && expected.value !== given.value) {
       const direction = expected.value > given.value ? 'lớn hơn' : 'nhỏ hơn';
-      return `Chưa đúng rồi con. Kết quả đúng ${direction} ${answer.trim()} đấy. Con tính lại thật chậm nhé, ${teacher.word} tin con làm được!`;
+      return `Chưa đúng rồi con. Kết quả đúng ${direction} ${String(given.value).replace('.', ',')} đấy. Con tính lại thật chậm nhé, ${teacher.word} tin con làm được!`;
     }
     return `Chưa đúng rồi con. Con đọc lại đề thật chậm, rồi làm lại nhé, ${teacher.word} tin con làm được!`;
   }
