@@ -1,0 +1,42 @@
+---
+name: eas-release
+description: Phát hành app Gia sư Tiểu học - đổi version, build EAS (Android preview, iOS máy giả lập), gửi cập nhật OTA, deploy migration và Edge Function Supabase. Dùng khi DevOps cần đưa thay đổi lên điện thoại hoặc máy chủ.
+argument-hint: "<việc cần phát hành: update | build | deploy <hàm> | version <x.y.z>>"
+---
+
+# /eas-release
+
+Quy trình phát hành riêng của dự án (chỉ làm local, KHÔNG push GitHub). Đọc trước:
+`scripts/ban-build.js`, `eas.json`, `app.json`, `docs/supabase.md`, `docs/giong-doc-google.md`.
+
+## 1. Chọn đúng cách đưa lên điện thoại
+
+| Thay đổi | Cách làm | Lệnh |
+|---|---|---|
+| Chỉ mã JS/TS, ảnh, chữ | Cập nhật OTA, không build lại | `npm run update:preview` |
+| Thêm/bỏ thư viện có mã gốc (vd `expo-audio`), đổi plugin, quyền, `app.json` phần native | Nâng version rồi build lại | `npm run version:set -- x.y.z` rồi build |
+| Android bản cài thử | Build EAS | `npm run build:preview` |
+| iOS (chưa có Apple Developer) | Build cho máy giả lập | `npm run build:ios-sim` rồi `npx eas-cli@latest build:run --platform ios --latest` |
+
+- `runtimeVersion` theo version app: bản cài 0.2.0 chỉ nhận cập nhật của 0.2.0. Đổi version thì phải build và cài lại.
+- Khi build xong, câu hỏi "Install and run on an emulator?" chọn **no** (máy không có Android Studio).
+- Biến `EXPO_PUBLIC_*` cho EAS: `npm run env:eas`. KHÔNG bao giờ đưa `ANTHROPIC_API_KEY`, khoá Google, khoá service role lên EAS hay vào code.
+
+## 2. Máy chủ Supabase
+
+- Migration: `npx supabase db push` (đọc tên migration sắp đẩy, chọn Yes).
+- Hàm: `npx supabase functions deploy <ten-ham>` (`cham-bai`, `hoi-co`, `doc-loi`, `xoa-tai-khoan`).
+- Khoá bí mật: `npx supabase secrets set TEN=...` - chủ dự án tự gõ, Claude không nhập khoá thay.
+- **Cảnh báo `cham-bai`**: nhánh Giai đoạn 2 có giới hạn lượt chấm trong `cham-bai/index.ts`. Chỉ deploy `cham-bai` từ nhánh đã gộp Giai đoạn 2 (ticket GSTH-004/005), nếu không sẽ xoá mất giới hạn lượt.
+
+## 3. Kiểm tra trước khi phát hành (bắt buộc)
+
+1. `npx tsc --noEmit` và `npx expo lint` sạch (trừ lỗi cũ đã có ticket).
+2. Đã commit; ghi commit vào ghi chú ticket trên bảng Kanban.
+3. Hàm vừa deploy: gọi thử bằng phiên ẩn danh tạm (`/auth/v1/signup` với publishable key), không in khoá ra màn hình.
+4. Cập nhật OTA xong: mở lại app 2 lần trên máy giả lập (`xcrun simctl terminate/launch booted vn.giasutieuhoc.app`) và kiểm tra tính năng mới.
+
+## 4. Sau khi phát hành
+
+- Ghi vào ticket: lệnh đã chạy, Update group ID / build ID, kết quả kiểm tra.
+- Nhắc chủ dự án: tắt hẳn app rồi mở lại 1-2 lần trên điện thoại để nhận bản mới.

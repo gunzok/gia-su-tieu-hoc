@@ -16,12 +16,12 @@ Khi chủ dự án nói "làm GSTH-xxx":
    mức độ hợp với app nằm ở collection `roles` trên bảng, nút "Role & skill"):
    - PO: write-spec, roadmap-update, product-brainstorming · BA: write-spec
    - Developer: debug, verification-before-completion; frontend-design chỉ lấy nguyên tắc thẩm mỹ (app là
-     React Native, theo `src/constants/theme.ts`); test-driven-development khi dự án đã có `npm test`,
+     React Native, theo `src/constants/theme.ts`); test-driven-development khi đã có `npm test` (GSTH-033),
      chưa có thì kiểm bằng tsc + lint + chạy thử trên máy giả lập
    - TechLead: architecture, `/code-review`, `/security-review`
-   - DevOps: deploy-checklist; ci-cd-and-automation chỉ tham khảo (không dùng GitHub Actions, build bằng EAS)
+   - DevOps: eas-release (quy trình phát hành riêng của dự án), deploy-checklist; ci-cd-and-automation chỉ tham khảo
    - QA: testing-strategy, accessibility-review (áp cho React Native: cỡ chữ, tương phản, vùng bấm 44pt,
-     accessibilityLabel); KHÔNG dùng webapp-testing cho app iOS/Android, kiểm thử trên máy giả lập iOS
+     accessibilityLabel); kiểm thử app bằng công cụ máy giả lập iOS của Claude; webapp-testing chỉ cho bản web
    Skill đánh dấu "không hợp" trên bảng thì dùng phương án thay thế ghi ở đó.
 3. Việc có sửa code: tạo nhánh local `ticket/<id>` (ví dụ `ticket/GSTH-018`) từ nhánh chính đang dùng (`setup/khung-du-an`), commit nhỏ, chạy `npx tsc --noEmit` và `npx expo lint`.
 4. Cập nhật bảng trong lúc làm: chuyển `coding` khi bắt đầu, ghi chú tiến độ; làm xong chuyển sang `review` kèm ghi chú tóm tắt (nhánh, commit, cách thử).
