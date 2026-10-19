@@ -24,6 +24,8 @@ Khi chủ dự án nói "làm GSTH-xxx":
    - QA: testing-strategy, accessibility-review (áp cho React Native: cỡ chữ, tương phản, vùng bấm 44pt,
      accessibilityLabel); kiểm thử app bằng công cụ máy giả lập iOS của Claude; webapp-testing chỉ cho bản web
    Skill đánh dấu "không hợp" trên bảng thì dùng phương án thay thế ghi ở đó.
+   Chỉ gọi skill có thư mục trong `.claude/skills/`. Các skill khác trên bảng (thêm 19/10: react-native-architecture,
+   expo-deployment, senior-qa…) chưa cài file, chỉ để tham khảo; không tự tải hay cài khi chưa được chủ dự án cho phép.
 3. Việc có sửa code: tạo nhánh local `ticket/<id>` (ví dụ `ticket/GSTH-018`) từ nhánh chính đang dùng (`setup/khung-du-an`), commit nhỏ, chạy `npx tsc --noEmit` và `npx expo lint`.
 4. Cập nhật bảng trong lúc làm: chuyển `coding` khi bắt đầu, ghi chú tiến độ; làm xong chuyển sang `review` kèm ghi chú tóm tắt (nhánh, commit, cách thử).
 5. KHÔNG tự merge, KHÔNG push GitHub. Chỉ merge `ticket/<id>` vào nhánh chính local khi chủ dự án đã duyệt trên bảng (chuyển ticket khỏi `review`) hoặc nói rõ là duyệt.
