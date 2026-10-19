@@ -27,3 +27,19 @@ Khi chủ dự án nói "làm GSTH-xxx":
 4. Cập nhật bảng trong lúc làm: chuyển `coding` khi bắt đầu, ghi chú tiến độ; làm xong chuyển sang `review` kèm ghi chú tóm tắt (nhánh, commit, cách thử).
 5. KHÔNG tự merge, KHÔNG push GitHub. Chỉ merge `ticket/<id>` vào nhánh chính local khi chủ dự án đã duyệt trên bảng (chuyển ticket khỏi `review`) hoặc nói rõ là duyệt.
 6. Gặp việc bị chặn (chờ tiền, chờ tài khoản, chờ quyết định): đặt `isBlocked: true` và `blockReason`, báo chủ dự án.
+
+### Lệnh "chạy": mỗi ticket một phiên song song
+
+Chủ dự án kéo ticket vào cột `coding` trên bảng rồi nhắn "chạy". Phiên nhận lệnh (phiên điều phối) làm:
+1. Đọc collection `tickets`, lấy các ticket `status: coding` chưa có `runningSession`.
+   Bỏ qua (và báo lại) ticket `isBlocked` hoặc còn `dependsOn` chưa `done`.
+2. Mỗi ticket còn lại: mở một phiên song song bằng `start_session` (initiation `user_asked`, context `fresh`,
+   `use_worktree: true`, tên `GSTH-xxx: <tiêu đề>`), rồi ghi `runningSession` (tên/id phiên) và một ghi chú
+   "Đang chạy ở phiên …" vào ticket (đọc trước, ghi kèm `if_version`).
+3. Brief cho mỗi phiên gồm: url bảng, mã ticket, role, skill của role, tiêu chí nghiệm thu, và quy tắc:
+   - Đọc ticket bằng `ArtifactData` trước khi làm; làm trong nhánh local `ticket/<id>`; commit nhỏ; tsc + lint.
+   - Không merge, không push GitHub, không deploy lên máy chủ hay gửi cập nhật OTA trừ khi ticket là việc
+     DevOps đã được chủ dự án cho phép trong ticket.
+   - Xong: cập nhật ticket `status: review`, `role: TechLead`, xoá `runningSession`, thêm ghi chú tóm tắt
+     (nhánh, commit, cách thử, việc còn lại). Bị chặn giữa chừng: `isBlocked: true` + `blockReason`, xoá `runningSession`.
+4. Khi phiên con báo xong: phiên điều phối kiểm tra nhánh/commit thật, rồi báo chủ dự án một dòng cho mỗi ticket.
