@@ -60,7 +60,7 @@ function RootNavigator() {
   if (!ready) return null;
 
   return (
-    <HomeworkSessionProvider key={profile?.grade ?? 0} initialGrade={profile?.grade}>
+    <HomeworkSessionProvider initialGrade={profile?.grade}>
       <AnimatedSplashOverlay />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Palette.background } }}>
         <Stack.Protected guard={!profile} redirectTo="/">

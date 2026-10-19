@@ -19,6 +19,12 @@ export type GradedItem = {
 };
 
 export type GradingResult = {
+  /** Ảnh có phải bài tập tiểu học không (bài chấm cũ không có trường này). */
+  isHomework?: boolean;
+  /** Lớp (1–5) mà kiến thức trong bài giống nhất; 0 nếu không xác định được. */
+  detectedGrade?: number;
+  /** Bài có hợp với lớp đang chấm không (ôn lại kiến thức lớp ngay dưới vẫn tính là hợp). */
+  fitsGrade?: boolean;
   score: number;
   spokenFeedback: string;
   items: GradedItem[];
@@ -96,9 +102,15 @@ export function teacherKnowledge(subject: Subject, grade: number) {
 export const resultSchema = {
   type: 'object',
   additionalProperties: false,
-  // Chấm từng câu trước, rồi mới cho điểm và viết nhận xét dựa trên đúng các câu đó.
-  required: ['items', 'score', 'spokenFeedback', 'parentNote'],
+  // Nhận biết bài (có phải bài tập, lớp mấy) trước; rồi chấm từng câu, sau cùng mới cho điểm và nhận xét.
+  required: ['isHomework', 'detectedGrade', 'fitsGrade', 'items', 'score', 'spokenFeedback', 'parentNote'],
   properties: {
+    isHomework: { type: 'boolean', description: 'true nếu ảnh là bài tập/bài làm của học sinh tiểu học' },
+    detectedGrade: {
+      type: 'integer',
+      description: 'Lớp 1 đến 5 có kiến thức giống bài trong ảnh nhất; 0 nếu không phải bài tập hoặc không xác định',
+    },
+    fitsGrade: { type: 'boolean', description: 'true nếu bài hợp với lớp đang chấm' },
     items: {
       type: 'array',
       items: {
@@ -146,6 +158,15 @@ Giọng nói của ${x} (dùng cho mọi lời nói với bé):
 - Câu ngắn, mỗi câu một ý, có dấu phẩy ở chỗ cần ngắt hơi. Nối ý bằng "rồi", "sau đó", "vậy là", "thế là". Không liệt kê máy móc, không mở đầu nhiều câu giống nhau.
 - Khen cụ thể, đúng việc bé làm. Tránh câu sáo rỗng như "hoàn hảo", "xuất sắc vượt trội", "cô thấy con làm rất tốt bài toán có lời văn và phép trừ".
 
+Bước đầu tiên, nhận biết bài (làm trước khi chấm):
+- isHomework: ảnh có phải bài tập, bài làm hay phiếu bài tập của học sinh tiểu học không.
+- detectedGrade: TỰ xác định bài này thuộc kiến thức lớp mấy chỉ bằng cách nhìn nội dung trong ảnh, KHÔNG dựa vào lớp ${grade} mà phụ huynh khai báo (phụ huynh có thể khai sai). Gợi ý theo chương trình 2018:
+  Toán lớp 1: số đến 100, cộng trừ không nhớ. Lớp 2: cộng trừ có nhớ trong phạm vi 100 và 1000, bảng nhân chia 2 và 5, m, dm, cm, kg, lít. Lớp 3: bảng nhân chia 2 đến 9, số đến 100 000, chu vi diện tích hình chữ nhật. Lớp 4: số lớp triệu, phân số, nhân chia số có hai chữ số. Lớp 5: số thập phân, tỉ số phần trăm, thể tích, vận tốc.
+  Tiếng Việt lớp 1: âm, vần, ghép tiếng. Lớp 2: chính tả l/n, s/x, hỏi/ngã, từ chỉ sự vật hoạt động đặc điểm, câu Ai là gì, Ai làm gì. Lớp 3: so sánh, câu kể, câu hỏi, câu cảm. Lớp 4: danh từ, động từ, tính từ, chủ ngữ vị ngữ, nhân hoá. Lớp 5: đại từ, kết từ, từ đồng nghĩa, câu ghép.
+  Không xác định được thì ghi 0.
+- fitsGrade: true nếu detectedGrade bằng ${grade}${grade > 1 ? ` hoặc ${grade - 1} (ôn bài lớp dưới)` : ''}; ngược lại false.
+Dù bài có hợp lớp hay không, vẫn chấm bình thường các bước bên dưới.
+
 Ảnh là bài làm của bé, có thể gồm nhiều trang theo đúng thứ tự (có thể viết tay, chụp nghiêng hoặc mờ). Chấm gộp tất cả các trang thành một bài; câu hỏi ghi kèm số trang nếu có nhiều trang (ví dụ "Trang 2 – Bài 3"). Hãy:
 1. Đọc từng câu hỏi và câu trả lời của bé. Chỗ nào không đọc rõ thì ghi "không đọc rõ" thay vì đoán.
 2. Với từng câu: chép nguyên văn câu trả lời của bé vào childAnswer, tự giải lại cẩn thận và ghi kết quả vào correctAnswer, rồi mới so hai kết quả để chấm đúng/sai. Với câu sai, explanation là lời ${x} nói với bé: chỉ ra bé sai ở bước nào và cách làm đúng, ngắn gọn, dễ hiểu với trẻ lớp ${grade}. Với câu đúng, explanation là một câu khen ngắn, cụ thể.
@@ -153,6 +174,26 @@ Giọng nói của ${x} (dùng cho mọi lời nói với bé):
 4. Viết spokenFeedback để đọc thành tiếng cho bé nghe, theo đúng giọng nói ở trên: xưng "${x}", gọi bé là "con", 3–5 câu ngắn, khen điều bé làm tốt trước, chỉ ra tối đa 2 lỗi quan trọng nhất và cách sửa, kết thúc bằng một câu động viên. Lỗi nhắc tới phải đúng với các câu được chấm sai ở mục items, không thêm lỗi khác. Không dùng ký hiệu, emoji hay định dạng vì câu này sẽ được đọc lên; viết phép tính bằng chữ (ví dụ "bốn mươi bảy nhân ba").
 5. Viết parentNote cho phụ huynh: lỗi bé mắc trong bài này (đúng như items) và gợi ý cách luyện thêm ở nhà phù hợp với lớp ${grade}.
 
-Nếu ảnh không phải bài tập, trả về score 0, items rỗng và nhẹ nhàng nhờ bé chụp lại bài làm.`;
+Nếu ảnh không phải bài tập, trả về isHomework false, detectedGrade 0, score 0, items rỗng và nhẹ nhàng nhờ bé chụp lại bài làm.`;
 }
 
+
+/**
+ * Hỏi riêng "bài này lớp mấy?" mà không cho biết lớp phụ huynh khai báo, để AI không bị lớp đó dẫn dắt.
+ * Dùng khi chấm bằng AI nhỏ trên máy (LM Studio); Claude tự nhận biết ngay trong lần chấm.
+ */
+export const levelSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['isHomework', 'detectedGrade'],
+  properties: {
+    isHomework: { type: 'boolean' },
+    detectedGrade: { type: 'integer' },
+  },
+};
+
+export const levelPrompt = `Bạn là giáo viên tiểu học Việt Nam. Nhìn ảnh và cho biết:
+- isHomework: ảnh có phải bài tập/bài làm của học sinh tiểu học không.
+- detectedGrade: bài thuộc kiến thức lớp mấy (1 đến 5) theo chương trình 2018; không xác định hoặc không phải bài tập thì 0.
+Gợi ý: Toán lớp 1 số đến 100, cộng trừ không nhớ. Lớp 2 cộng trừ có nhớ phạm vi 100 và 1000, bảng nhân chia 2 và 5, m dm cm kg lít, xem giờ. Lớp 3 bảng nhân chia 2 đến 9, số đến 100 000, chu vi diện tích hình chữ nhật. Lớp 4 số lớp triệu, phân số. Lớp 5 số thập phân, phần trăm, thể tích, vận tốc.
+Tiếng Việt lớp 1 âm vần ghép tiếng. Lớp 2 chính tả l/n s/x hỏi/ngã, từ chỉ sự vật hoạt động đặc điểm, câu Ai là gì Ai làm gì, viết đoạn 4-5 câu. Lớp 3 so sánh, câu kể câu hỏi câu cảm. Lớp 4 danh từ động từ tính từ, chủ ngữ vị ngữ, nhân hoá. Lớp 5 đại từ, kết từ, từ đồng nghĩa, câu ghép.`;

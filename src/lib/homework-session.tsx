@@ -4,10 +4,11 @@ import { Alert } from 'react-native';
 
 import { gradeHomework, type Subject } from '@/lib/grading';
 import { addHistoryEntry, type HistoryEntry } from '@/lib/history';
+import { askAboutLevel, checkLevel, detectLevelLocally } from '@/lib/level-check';
 import { savePagesLocally } from '@/lib/page-images';
 import { getPremiumStatus } from '@/lib/payments';
 import { preparePhotoForGrading } from '@/lib/prepare-photo';
-import { useTeacher } from '@/lib/profile';
+import { useProfile, useTeacher } from '@/lib/profile';
 import { speakVietnamese, stopSpeaking } from '@/lib/speech';
 
 /** Số trang tối đa mỗi lần chấm (khớp maxPages trong supabase/functions/cham-bai). */
@@ -63,6 +64,13 @@ export function HomeworkSessionProvider({
   initialGrade?: number;
 }) {
   const [grade, setGrade] = useState(initialGrade);
+  // Hồ sơ đổi lớp (màn Sửa hồ sơ, hoặc bố mẹ chọn "Đổi hồ sơ sang lớp …"): lớp đang chấm đổi theo.
+  const [profileGrade, setProfileGrade] = useState(initialGrade);
+  if (profileGrade !== initialGrade) {
+    setProfileGrade(initialGrade);
+    setGrade(initialGrade);
+  }
+  const { profile, saveProfile } = useProfile();
   const [subject, setSubject] = useState<Subject>('toan');
   const [photos, setPhotos] = useState<ImagePicker.ImagePickerAsset[]>([]);
   const [grading, setGrading] = useState(false);
@@ -122,12 +130,33 @@ export function HomeworkSessionProvider({
     setGrading(true);
     try {
       const prepared = await Promise.all(photos.map(preparePhotoForGrading));
-      const { result: graded, engine } = await gradeHomework({
-        images: prepared.map((page) => page.base64),
+      const images = prepared.map((page) => page.base64);
+      const { result: gradedRaw, engine } = await gradeHomework({
+        images,
         subject,
         grade,
         teacher: teacher.id,
       });
+
+      // AI trên máy hay nói theo lớp đã khai báo, nên hỏi riêng lớp của bài.
+      const graded = engine === 'local' ? await detectLevelLocally(images, gradedRaw) : gradedRaw;
+
+      // Ảnh không phải bài tập, hoặc bài không hợp lớp của bé: hỏi bố mẹ trước khi hiện kết quả.
+      let gradedAs = grade;
+      const verdict = checkLevel(graded, grade);
+      if (verdict.kind !== 'ok') {
+        const choice = await askAboutLevel(verdict, grade);
+        if (choice === 'retake') {
+          setPhotos([]);
+          return false;
+        }
+        if (choice === 'change-grade' && verdict.kind === 'wrong-grade' && verdict.detectedGrade) {
+          gradedAs = verdict.detectedGrade;
+          setGrade(gradedAs);
+          if (profile) await saveProfile({ ...profile, grade: gradedAs });
+        }
+      }
+
       const id = String(Date.now());
       // Giữ ảnh các trang để ba mẹ xem lại; lỗi lưu ảnh thì vẫn giữ kết quả chấm.
       const pages = await savePagesLocally(
@@ -142,7 +171,7 @@ export function HomeworkSessionProvider({
         id,
         createdAt: new Date().toISOString(),
         subject,
-        grade,
+        grade: gradedAs,
         pages,
         engine,
       };
