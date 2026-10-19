@@ -10,8 +10,10 @@ permissions for those agents, so a board ticket does not need a separate confirm
 **Allowed**
 - Create branches named `agent/*`, commit to them, and push them to `origin`.
 - Open or update a draft pull request from an `agent/*` branch into `main`.
-- Delete an `agent/*` branch on `origin` after its pull request is merged, or when the ticket
-  explicitly asks for a throwaway branch to be removed.
+
+Branch deletion is not available from cloud sessions (the git proxy rejects it with HTTP 403),
+so agents never delete branches. The owner removes merged `agent/*` branches, or GitHub's
+"Automatically delete head branches" setting does it on merge.
 
 **Not allowed**
 - Push or force-push to `main`, or force-push any branch you did not create for the current ticket.
