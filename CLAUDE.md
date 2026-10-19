@@ -5,9 +5,10 @@
 Bảng việc: https://claude.ai/artifact/D3cZmK11wcXTM8AHEGYipq
 - Mã nguồn bảng: `docs/kanban/bang-cong-viec.html`; ticket nằm trong kho dữ liệu của artifact, collection `tickets`, mỗi ticket một document có id `GSTH-xxx`.
 - Đọc/sửa ticket bằng công cụ `ArtifactData` (url ở trên): luôn `get` trước rồi ghi kèm `if_version`; thêm ghi chú vào mảng `notes` (`{at, by, text}`), cập nhật `updatedAt`.
-- Các trường: `id, title, description, type (Epic/Story/Bug), role, ownerRole, devRole, acceptanceCriteria[], dependsOn[], isBlocked, blockReason, status, notes[]`.
+- Các trường: `id, title, description, type (Epic/Story/Bug), status, assigneeId, originalDeveloperId, role, ownerRole, acceptanceCriteria[], dependsOn[], isBlocked, blockReason, notes[], runningSession`.
+- Người phụ trách: collection `users` (`id, name, initials, role, color`), mô hình đầy đủ ở `docs/kanban/mo-hinh-du-lieu.js`.
 - 8 cột (`status`): `idea, analysis, ready_for_dev, coding (WIP 2), review, ready_for_qa, testing (WIP 2), done`.
-- Gán role tự động khi chuyển cột: `analysis` → BA, `review` → TechLead, `testing` → QA; `ready_for_dev`/`coding` → Developer phụ trách (`devRole`, mặc định `ownerRole`), nên `testing` → `coding` trả về đúng Developer cũ. Khi Claude tự đổi `status`, làm đúng các quy tắc này và không vượt giới hạn WIP.
+- Tự gán người khi chuyển cột: `analysis` → người role BA, `review` → TechLead, `testing` → QA; `ready_for_dev`/`coding` → `originalDeveloperId` (lần đầu vào `coding` thì ghi nhớ người đó), nên `testing` → `coding` trả bug về đúng Developer đã code. Luôn cập nhật cả `assigneeId` và `role`. Khi Claude tự đổi `status`, làm đúng các quy tắc này và không vượt giới hạn WIP.
 
 Khi chủ dự án nói "làm GSTH-xxx":
 1. Đọc ticket trên bảng. Nếu `isBlocked` hoặc ticket trong `dependsOn` chưa `done`: dừng, báo lý do và hỏi bằng câu hỏi có lựa chọn.

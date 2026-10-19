@@ -100,7 +100,12 @@ body {
 }
 .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .card.dragging { opacity: .45; }
-.card.blocked { border-color: var(--danger); box-shadow: inset 3px 0 0 var(--danger), var(--shadow); }
+.card.blocked { border-color: var(--danger); background: var(--danger-soft); box-shadow: inset 3px 0 0 var(--danger), var(--shadow); }
+.avatar { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-size: 10.5px; font-weight: 800; font-family: var(--font-display); flex: none; }
+.avatar.empty { background: var(--surface-2); color: var(--ink-soft); border: 1px dashed var(--line); }
+.dev-who { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-soft); }
+.col.warn-limit h2 { color: var(--amber); }
+.col.over-limit h2 { color: var(--danger); }
 .card-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .tid { font-family: var(--font-display); font-weight: 700; font-size: 11px; color: var(--ink-soft); letter-spacing: .04em; }
 .card-title { font-weight: 700; font-size: 13.5px; line-height: 1.35; }
@@ -203,14 +208,14 @@ body {
 
 <script>
 const COLUMNS = [
-  { key: 'idea', name: 'Ý tưởng' },
-  { key: 'analysis', name: 'Phân tích' },
-  { key: 'ready_for_dev', name: 'Sẵn sàng làm' },
-  { key: 'coding', name: 'Đang code', wip: 2 },
-  { key: 'review', name: 'Duyệt code' },
-  { key: 'ready_for_qa', name: 'Chờ kiểm thử' },
-  { key: 'testing', name: 'Đang kiểm thử', wip: 2 },
-  { key: 'done', name: 'Xong' },
+  { key: 'idea', name: 'Business Backlog', owner: 'PO' },
+  { key: 'analysis', name: 'Analysis / Story Writing', owner: 'BA' },
+  { key: 'ready_for_dev', name: 'Ready for Dev' },
+  { key: 'coding', name: 'In Progress / Coding', owner: 'Developer', wip: 2 },
+  { key: 'review', name: 'Code Review / PR', owner: 'TechLead' },
+  { key: 'ready_for_qa', name: 'Ready for QA' },
+  { key: 'testing', name: 'Testing', owner: 'QA', wip: 2 },
+  { key: 'done', name: 'Done' },
 ];
 const COL_INDEX = Object.fromEntries(COLUMNS.map((c, i) => [c.key, i]));
 // Role tự gán khi thẻ vào cột (các cột khác giữ nguyên role).
@@ -224,6 +229,15 @@ let draggingId = null;
 let openId = null;
 let roles = new Map(); // role -> {skills: [{name, fit: ok|partial|unfit, note, replaceWith}], extra}
 let rolesOpen = false;
+let users = new Map(); // id -> {id, name, initials, role, color}
+const AVATAR = { amber: '#B7791F', violet: '#6B4FBB', teal: '#0F766E', blue: '#2563EB', slate: '#475569', coral: '#C2410C', green: '#15803D' };
+const userList = () => [...users.values()];
+const userForRole = (role) => userList().find((u) => u.role === role) ?? null;
+function avatar(id, size = 26) {
+  const u = users.get(id);
+  if (!u) return `<span class="avatar empty" style="width:${size}px;height:${size}px" title="Chưa gán">?</span>`;
+  return `<span class="avatar" style="width:${size}px;height:${size}px;background:${AVATAR[u.color] || '#475569'}" title="${esc(u.name)} · ${esc(u.role)}">${esc(u.initials)}</span>`;
+}
 const ROLE_ORDER = ['PO', 'BA', 'Developer', 'TechLead', 'DevOps', 'QA'];
 
 function skillChips(role) {
@@ -293,12 +307,13 @@ function render() {
     const items = all.filter((t) => t.status === col.key);
     const shown = items.filter(visible);
     const el = document.createElement('section');
-    el.className = 'col' + (col.wip && items.length >= col.wip ? ' full' : '');
+    el.className = 'col' + (col.wip && items.length >= col.wip ? ' full' : '') +
+      (col.wip && items.length > col.wip ? ' over-limit' : col.wip && items.length === col.wip ? ' warn-limit' : '');
     el.dataset.col = col.key;
     const countCls = col.wip ? (items.length > col.wip ? 'over-limit' : items.length === col.wip ? 'limit' : '') : '';
     el.innerHTML = `
       <div class="col-head">
-        <div><h2>${esc(col.name)}</h2><div class="key">${col.key}${col.wip ? ` · WIP ${col.wip}` : ''}</div></div>
+        <div><h2>${esc(col.name)}${col.wip ? ` (${items.length}/${col.wip})` : ''}</h2><div class="key">${col.key}${col.owner ? ` · ${col.owner}` : ''}</div></div>
         <span class="count ${countCls}">${items.length}${col.wip ? '/' + col.wip : ''}</span>
       </div>
       <div class="cards"></div>`;
@@ -327,7 +342,7 @@ function cardEl(t) {
   b.id = 'card-' + t.id;
   const deps = openDeps(t);
   b.innerHTML = `
-    <div class="card-top"><span class="tid">${esc(t.id)}</span><span class="tag ${esc(t.type)}">${esc(t.type)}</span><span class="role">${esc(t.role)}</span></div>
+    <div class="card-top"><span class="tid">${esc(t.id)}</span><span class="tag ${esc(t.type)}">${esc(t.type)}</span><span class="role">${esc(t.role)}</span>${avatar(t.assigneeId)}</div>
     <div class="card-title">${esc(t.title)}</div>
     <div class="meta">
       ${t.runningSession ? `<span class="running">● Đang chạy: ${esc(t.runningSession)}</span>` : ''}
@@ -349,10 +364,18 @@ function cardEl(t) {
 // Quy tắc chuyển cột: gán role theo cột, nhớ Developer cũ để khi testing -> coding trả lại đúng người.
 function transition(t, to) {
   const patch = { status: to, updatedAt: nowIso() };
-  const devRole = t.devRole || t.ownerRole || 'Developer';
-  if (AUTO_ROLE[to]) patch.role = AUTO_ROLE[to];
-  else if (DEV_COLUMNS.has(to)) patch.role = devRole;
-  if (to === 'coding') patch.devRole = devRole;
+  const assign = (u) => { if (u) { patch.assigneeId = u.id; patch.role = u.role; } };
+  if (AUTO_ROLE[to]) {
+    // Quy tắc 1: analysis → BA, review → TechLead, testing → QA.
+    assign(userForRole(AUTO_ROLE[to]));
+  } else if (DEV_COLUMNS.has(to)) {
+    // Quy tắc 2: testing → coding (QA trả bug) và mọi lần quay lại coding: về đúng Developer đã code.
+    const original = users.get(t.originalDeveloperId);
+    const current = users.get(t.assigneeId);
+    const owner = original ?? (current && current.role === (t.ownerRole || 'Developer') ? current : userForRole(t.ownerRole || 'Developer'));
+    assign(owner);
+    if (to === 'coding' && owner && !t.originalDeveloperId) patch.originalDeveloperId = owner.id;
+  }
   return patch;
 }
 
@@ -366,7 +389,7 @@ async function moveTicket(id, to) {
   }
   if (!db) { toast('Chưa kết nối được dữ liệu, chưa lưu được thay đổi.', 'alert'); return; }
   const patch = transition(t, to);
-  patch.notes = [...(t.notes || []), { at: nowIso(), by: 'Bảng việc', text: `Chuyển ${t.status} → ${to}${patch.role && patch.role !== t.role ? `, role ${patch.role}` : ''}` }];
+  patch.notes = [...(t.notes || []), { at: nowIso(), by: 'Bảng việc', text: `Chuyển ${t.status} → ${to}${patch.assigneeId && patch.assigneeId !== t.assigneeId ? `, giao cho ${users.get(patch.assigneeId)?.name || patch.assigneeId} (${patch.role})` : ''}${t.status === 'testing' && to === 'coding' ? ' · QA trả bug về Developer' : ''}` }];
   try { await db.doc('tickets/' + id).update(patch); }
   catch (e) { toast('Chưa lưu được: ' + (e?.message || e?.code || 'lỗi không rõ'), 'alert'); }
 }
@@ -393,7 +416,7 @@ function renderDrawer() {
   root.innerHTML = `
     <div class="drawer-bg" id="drawerBg"></div>
     <aside class="drawer" role="dialog" aria-label="Chi tiết ${esc(t.id)}">
-      <div class="row"><span class="tid">${esc(t.id)}</span><span class="tag ${esc(t.type)}">${esc(t.type)}</span><span class="role">${esc(t.role)}</span>
+      <div class="row"><span class="tid">${esc(t.id)}</span><span class="tag ${esc(t.type)}">${esc(t.type)}</span><span class="role">${esc(t.role)}</span>${avatar(t.assigneeId, 28)}
         <button class="btn" id="closeDrawer" style="margin-left:auto">Đóng</button></div>
       <h3>${esc(t.title)}</h3>
       ${t.isBlocked ? `<div class="blockbox"><strong>Bị chặn:</strong> ${esc(t.blockReason || '')}</div>` : ''}
@@ -401,6 +424,9 @@ function renderDrawer() {
       <div><div class="lbl">Mô tả</div><p>${esc(t.description)}</p></div>
       <div><div class="lbl">Tiêu chí nghiệm thu</div><ul>${(t.acceptanceCriteria || []).map((a) => `<li>${esc(a)}</li>`).join('')}</ul></div>
       <div><div class="lbl">Phụ thuộc</div><div class="row">${deps || '<span class="status">Không có</span>'}</div></div>
+      <div class="field"><label class="lbl" for="assignee">Người phụ trách</label>
+        <select id="assignee"><option value="">Chưa gán</option>${userList().map((u) => `<option value="${esc(u.id)}" ${u.id === t.assigneeId ? 'selected' : ''}>${esc(u.name)} · ${esc(u.role)}</option>`).join('')}</select>
+        <div class="dev-who">Developer đã code: ${t.originalDeveloperId ? `${avatar(t.originalDeveloperId, 20)} ${esc(users.get(t.originalDeveloperId)?.name || t.originalDeveloperId)}` : 'chưa có'}</div></div>
       <div class="field"><label class="lbl" for="moveTo">Chuyển cột</label>
         <select id="moveTo">${COLUMNS.map((c) => `<option value="${c.key}" ${c.key === t.status ? 'selected' : ''}>${c.name} (${c.key})</option>`).join('')}</select></div>
       <div class="field"><label class="lbl" for="blockReason">Lý do bị chặn</label>
@@ -413,12 +439,16 @@ function renderDrawer() {
         <label class="lbl" for="noteText">Thêm ghi chú</label>
         <textarea id="noteText" placeholder="Ghi chú cho ticket">${esc(keepNote ?? '')}</textarea>
         <div class="row"><button class="btn primary" id="addNote">Thêm ghi chú</button></div></div>
-      <div class="status">Role gốc: ${esc(t.ownerRole || '')}${t.devRole ? ` · Developer phụ trách: ${esc(t.devRole)}` : ''} · Cập nhật: ${t.updatedAt ? esc(new Date(t.updatedAt).toLocaleString('vi-VN')) : '—'}</div>
+      <div class="status">Role gốc: ${esc(t.ownerRole || '')} · Cập nhật: ${t.updatedAt ? esc(new Date(t.updatedAt).toLocaleString('vi-VN')) : '—'}</div>
     </aside>`;
   const close = () => { openId = null; root.innerHTML = ''; };
   root.querySelector('#drawerBg').onclick = close;
   root.querySelector('#closeDrawer').onclick = close;
   root.querySelector('#moveTo').onchange = (e) => moveTicket(t.id, e.target.value);
+  root.querySelector('#assignee').onchange = (e) => {
+    const u = users.get(e.target.value);
+    patchTicket(t.id, { assigneeId: u?.id || '', ...(u ? { role: u.role } : {}) }, `Giao cho ${u ? `${u.name} (${u.role})` : 'chưa ai'}`);
+  };
   root.querySelector('#block')?.addEventListener('click', () => {
     const reason = root.querySelector('#blockReason').value.trim() || 'Chưa ghi lý do';
     patchTicket(t.id, { isBlocked: true, blockReason: reason }, `Đánh dấu bị chặn: ${reason}`);
@@ -472,6 +502,10 @@ render();
       : `Đã đồng bộ · ${new Date().toLocaleTimeString('vi-VN')}`;
     render();
   }, (e) => { $('#conn').textContent = 'Mất kết nối dữ liệu (' + e.code + '). Tải lại trang để thử lại.'; });
+  db.collection('users').onSnapshot((snap) => {
+    users = new Map(snap.docs.map((d) => [d.id, { id: d.id, ...d.data() }]));
+    render();
+  }, () => {});
   db.collection('roles').onSnapshot((snap) => {
     roles = new Map(snap.docs.map((d) => [d.id, d.data()]));
     render();
