@@ -18,7 +18,7 @@ so agents never delete branches. The owner removes merged `agent/*` branches, or
 **Not allowed**
 - Push or force-push to `main`, or force-push any branch you did not create for the current ticket.
 - Merge pull requests. The owner reviews and merges.
-- Delete any branch outside `agent/*`.
+- Delete any branch.
 - Change files under `.claude/` (skills and agent setup) unless the ticket is about them.
 
 If a ticket needs anything outside this list, stop, explain what is needed, and end with
