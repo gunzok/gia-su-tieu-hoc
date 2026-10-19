@@ -12,9 +12,9 @@ export {
 } from '../../supabase/functions/_shared/hoi-co';
 
 // Bé hỏi thêm cô về một câu: gọi hàm "hoi-co" trên Supabase (Claude).
-// Khi phát triển, nếu Claude lỗi thì thử LM Studio ở nhà (cùng địa chỉ dùng để chấm bài).
+// Claude lỗi (hết tiền, mất mạng…) thì hỏi LM Studio ở nhà, giống như khi chấm bài.
 const askTimeoutMs = 45_000;
-const lmStudioUrl = __DEV__ ? process.env.EXPO_PUBLIC_LMSTUDIO_URL?.replace(/\/+$/, '') : undefined;
+const lmStudioUrl = process.env.EXPO_PUBLIC_LMSTUDIO_URL?.replace(/\/+$/, '');
 const lmStudioModel = process.env.EXPO_PUBLIC_LMSTUDIO_MODEL;
 
 /** Lời cô trả lời, đã đổi ký hiệu phép tính sang chữ để đọc thành tiếng. */

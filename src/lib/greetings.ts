@@ -60,5 +60,7 @@ export function useGreeting(name: string, T: Teacher): Greeting {
     });
   }, []);
   const make = index === null || index >= greetings.length ? null : greetings[index];
-  return make ? make(name, T) : (timeGreeting(name, T) ?? greetings[0](name, T));
+  const greeting = make ? make(name, T) : (timeGreeting(name, T) ?? greetings[0](name, T));
+  // Tên có thể là "con yêu" (bé chưa nhập tên): viết hoa chữ đầu câu.
+  return { ...greeting, title: greeting.title.charAt(0).toUpperCase() + greeting.title.slice(1) };
 }

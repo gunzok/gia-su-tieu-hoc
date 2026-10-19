@@ -24,10 +24,17 @@ const voices = {
   thay: { name: 'vi-VN-Chirp3-HD-Charon', speakingRate: 0.95 },
 } as const;
 
+// Cho phép bản web của app (chạy trên trình duyệt) gọi hàm này.
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...cors, 'Content-Type': 'application/json' },
   });
 }
 
@@ -44,6 +51,7 @@ function base64ToBytes(base64: string) {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json({ error: 'Chỉ nhận POST' }, 405);
 
   const url = Deno.env.get('SUPABASE_URL')!;

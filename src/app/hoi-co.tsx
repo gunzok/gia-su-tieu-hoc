@@ -210,11 +210,11 @@ export default function AskTeacherScreen() {
                   placeholder={`Con gõ câu hỏi cho ${T.word}…`}
                   placeholderTextColor={Palette.inkSoft}
                   maxLength={ASK_LIMITS.maxChars}
-                  multiline
                   editable={!thinking}
                   style={styles.input}
                   returnKeyType="send"
-                  submitBehavior="submit"
+                  // Một dòng: phím "Gửi"/Enter gửi câu hỏi luôn, không xuống dòng.
+                  submitBehavior="blurAndSubmit"
                   onSubmitEditing={() => ask(draft)}
                 />
                 <Pressable
@@ -363,14 +363,12 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     minHeight: 52,
-    maxHeight: 120,
     backgroundColor: Palette.surface,
     borderWidth: 2,
     borderColor: Palette.mint,
     borderRadius: Radius.md + 4,
     paddingHorizontal: Spacing.three,
-    paddingTop: 14,
-    paddingBottom: 14,
+    paddingVertical: 12,
     fontFamily: FontFamily.body,
     fontSize: 18,
     color: Palette.ink,
