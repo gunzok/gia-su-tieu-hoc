@@ -28,3 +28,21 @@ Lines such as `~~project tracker` in the knowledge-work skills refer to optional
 - ci-cd-and-automation: chỉ tham khảo; dự án không dùng GitHub Actions. Dùng `eas-release`.
 - webapp-testing: không dùng cho app iOS/Android; QA kiểm thử bằng công cụ máy giả lập iOS của Claude.
 - accessibility-review: áp dụng cho React Native (cỡ chữ, tương phản, vùng bấm 44pt, accessibilityLabel).
+
+## Bổ sung 19/10/2026 từ davila7/claude-code-templates (MIT, qua phandonggiang.com/ai-templates)
+
+Tải từ https://github.com/davila7/claude-code-templates (nhánh main, `cli-tool/components/skills/...`).
+Giấy phép: `.claude/licenses/davila7-claude-code-templates-MIT.txt` (security-best-practices có LICENSE.txt riêng).
+Đã kiểm tra an toàn trước khi cài (không gọi mạng, không đọc khoá, không có lệnh chèn). Sửa duy nhất: bỏ dòng
+`allowed-tools` ở mobile-design, clean-code, database-design, i18n-localization để vẫn hỏi quyền như bình thường.
+
+| Role | Skill |
+|---|---|
+| PO | game-changing-features, writing-plans, changelog-generator |
+| BA | requirements-clarity, feature-design-assistant, screenshot-feature-extractor |
+| Developer | react-native-architecture, mobile-design, typescript-expert, react-useeffect, systematic-debugging, supabase-postgres-best-practices, i18n-localization, senior-prompt-engineer (claude-api có sẵn trong Claude Code) |
+| TechLead | senior-architect, architecture-decision-records, database-design, security-best-practices, clean-code |
+| DevOps | expo-deployment, secrets-management |
+| QA | senior-qa, testing-patterns, find-bugs, accessibility-auditor |
+
+Script đi kèm (Python/shell trong `scripts/`) chỉ chạy khi chủ dự án đồng ý; testing-patterns cần jest-expo (GSTH-033).
