@@ -148,6 +148,15 @@ body {
 .dep { display: inline-flex; gap: 4px; font-size: 12px; padding: 2px 8px; border-radius: 6px; background: var(--surface-2); }
 .dep.open { background: var(--amber-soft); color: var(--amber); }
 .dep.ok { background: var(--ok-soft); color: var(--ok); }
+/* Role & skill */
+.skills { display: flex; flex-wrap: wrap; gap: 6px; }
+.skill { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.skill.partial { background: var(--amber-soft); color: var(--amber); }
+.skill.unfit { background: var(--danger-soft); color: var(--danger); text-decoration: line-through; }
+.skill-note { font-size: 12px; color: var(--ink-soft); line-height: 1.45; }
+.role-block { display: flex; flex-direction: column; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.role-block:last-child { border-bottom: 0; }
+.role-name { font-family: var(--font-display); font-weight: 700; }
 /* Toast */
 .toasts {
   position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
@@ -183,6 +192,7 @@ body {
     <select id="fBlock" aria-label="Lọc ticket bị chặn">
       <option value="">Tất cả</option><option value="blocked">Chỉ ticket bị chặn</option>
     </select>
+    <button class="btn" id="openRoles" type="button">Role &amp; skill</button>
     <span class="status" id="conn">Đang tải dữ liệu…</span>
   </div>
 </header>
@@ -211,6 +221,36 @@ let tickets = new Map();
 let firstSnapshot = true;
 let draggingId = null;
 let openId = null;
+let roles = new Map(); // role -> {skills: [{name, fit: ok|partial|unfit, note, replaceWith}], extra}
+let rolesOpen = false;
+const ROLE_ORDER = ['PO', 'BA', 'Developer', 'TechLead', 'DevOps', 'QA'];
+
+function skillChips(role) {
+  const r = roles.get(role);
+  if (!r) return '<span class="status">Chưa có danh sách skill</span>';
+  return (r.skills || []).map((k) => `<span class="skill ${esc(k.fit || 'ok')}" title="${esc(k.note || '')}">${esc(k.name)}</span>`).join('') +
+    (r.extra || []).map((x) => `<span class="skill">${esc(x)}</span>`).join('');
+}
+
+function skillNotes(role) {
+  const r = roles.get(role);
+  return (r?.skills || []).filter((k) => k.fit && k.fit !== 'ok').map((k) =>
+    `<div class="skill-note"><strong>${esc(k.name)}:</strong> ${esc(k.note || '')}${k.replaceWith ? ` Đề xuất: ${esc(k.replaceWith)}.` : ''}</div>`).join('');
+}
+
+function renderRoles() {
+  const root = $('#drawerRoot');
+  root.innerHTML = `
+    <div class="drawer-bg" id="drawerBg"></div>
+    <aside class="drawer" role="dialog" aria-label="Role và skill">
+      <div class="row"><h3>Role &amp; skill</h3><button class="btn" id="closeDrawer" style="margin-left:auto">Đóng</button></div>
+      <p class="skill-note">Khi làm một ticket, Claude dùng skill của role đang phụ trách ticket. Xanh: hợp với app. Vàng: dùng được một phần. Gạch đỏ: không hợp, xem đề xuất thay thế.</p>
+      ${ROLE_ORDER.map((r) => `<div class="role-block"><div class="role-name">${r}</div><div class="skills">${skillChips(r)}</div>${skillNotes(r)}</div>`).join('')}
+    </aside>`;
+  const close = () => { rolesOpen = false; root.innerHTML = ''; };
+  root.querySelector('#drawerBg').onclick = close;
+  root.querySelector('#closeDrawer').onclick = close;
+}
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -275,6 +315,7 @@ function render() {
     board.appendChild(el);
   }
   if (openId) renderDrawer();
+  else if (rolesOpen) renderRoles();
 }
 
 function cardEl(t) {
@@ -299,7 +340,7 @@ function cardEl(t) {
     b.classList.add('dragging');
   });
   b.addEventListener('dragend', () => { draggingId = null; b.classList.remove('dragging'); });
-  b.addEventListener('click', () => { openId = t.id; renderDrawer(); });
+  b.addEventListener('click', () => { rolesOpen = false; openId = t.id; renderDrawer(); });
   return b;
 }
 
@@ -354,6 +395,7 @@ function renderDrawer() {
         <button class="btn" id="closeDrawer" style="margin-left:auto">Đóng</button></div>
       <h3>${esc(t.title)}</h3>
       ${t.isBlocked ? `<div class="blockbox"><strong>Bị chặn:</strong> ${esc(t.blockReason || '')}</div>` : ''}
+      <div><div class="lbl">Skill của role ${esc(t.role)}</div><div class="skills">${skillChips(t.role)}</div>${skillNotes(t.role)}</div>
       <div><div class="lbl">Mô tả</div><p>${esc(t.description)}</p></div>
       <div><div class="lbl">Tiêu chí nghiệm thu</div><ul>${(t.acceptanceCriteria || []).map((a) => `<li>${esc(a)}</li>`).join('')}</ul></div>
       <div><div class="lbl">Phụ thuộc</div><div class="row">${deps || '<span class="status">Không có</span>'}</div></div>
@@ -405,7 +447,8 @@ function announce(changes) {
 }
 
 ['#q', '#fRole', '#fType', '#fBlock'].forEach((s) => $(s).addEventListener('input', render));
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openId) { openId = null; $('#drawerRoot').innerHTML = ''; } });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { openId = null; rolesOpen = false; $('#drawerRoot').innerHTML = ''; } });
+$('#openRoles').addEventListener('click', () => { openId = null; rolesOpen = true; renderRoles(); });
 render();
 
 (async () => {
@@ -425,5 +468,9 @@ render();
       : `Đã đồng bộ · ${new Date().toLocaleTimeString('vi-VN')}`;
     render();
   }, (e) => { $('#conn').textContent = 'Mất kết nối dữ liệu (' + e.code + '). Tải lại trang để thử lại.'; });
+  db.collection('roles').onSnapshot((snap) => {
+    roles = new Map(snap.docs.map((d) => [d.id, d.data()]));
+    render();
+  }, () => {});
 })();
 </script>

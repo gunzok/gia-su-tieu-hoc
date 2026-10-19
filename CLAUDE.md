@@ -11,7 +11,18 @@ Bảng việc: https://claude.ai/artifact/D3cZmK11wcXTM8AHEGYipq
 
 Khi chủ dự án nói "làm GSTH-xxx":
 1. Đọc ticket trên bảng. Nếu `isBlocked` hoặc ticket trong `dependsOn` chưa `done`: dừng, báo lý do và hỏi bằng câu hỏi có lựa chọn.
-2. Đóng vai đúng `role` của ticket (PO/BA/Developer/TechLead/DevOps/QA) và làm phần việc của role đó.
+2. Đóng vai đúng `role` của ticket (PO/BA/Developer/TechLead/DevOps/QA) và làm phần việc của role đó,
+   dùng đúng skill của role (bảng ở `.claude/SKILLS.md`, skill trong `.claude/skills/`; danh sách và
+   mức độ hợp với app nằm ở collection `roles` trên bảng, nút "Role & skill"):
+   - PO: write-spec, roadmap-update, product-brainstorming · BA: write-spec
+   - Developer: debug, verification-before-completion; frontend-design chỉ lấy nguyên tắc thẩm mỹ (app là
+     React Native, theo `src/constants/theme.ts`); test-driven-development khi dự án đã có `npm test`,
+     chưa có thì kiểm bằng tsc + lint + chạy thử trên máy giả lập
+   - TechLead: architecture, `/code-review`, `/security-review`
+   - DevOps: deploy-checklist; ci-cd-and-automation chỉ tham khảo (không dùng GitHub Actions, build bằng EAS)
+   - QA: testing-strategy, accessibility-review (áp cho React Native: cỡ chữ, tương phản, vùng bấm 44pt,
+     accessibilityLabel); KHÔNG dùng webapp-testing cho app iOS/Android, kiểm thử trên máy giả lập iOS
+   Skill đánh dấu "không hợp" trên bảng thì dùng phương án thay thế ghi ở đó.
 3. Việc có sửa code: tạo nhánh local `ticket/<id>` (ví dụ `ticket/GSTH-018`) từ nhánh chính đang dùng (`setup/khung-du-an`), commit nhỏ, chạy `npx tsc --noEmit` và `npx expo lint`.
 4. Cập nhật bảng trong lúc làm: chuyển `coding` khi bắt đầu, ghi chú tiến độ; làm xong chuyển sang `review` kèm ghi chú tóm tắt (nhánh, commit, cách thử).
 5. KHÔNG tự merge, KHÔNG push GitHub. Chỉ merge `ticket/<id>` vào nhánh chính local khi chủ dự án đã duyệt trên bảng (chuyển ticket khỏi `review`) hoặc nói rõ là duyệt.
