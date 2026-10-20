@@ -17,6 +17,7 @@ const sections: { title: string; body: string[] }[] = [
     body: [
       'Hồ sơ của bé: tên thân mật (không bắt buộc), lớp, hình đại diện và gia sư bé chọn.',
       'Ảnh bài làm bé chụp và kết quả chấm (điểm, lời nhận xét).',
+      'Câu bé hỏi cô (gõ chữ hoặc nói qua micro). App chỉ dùng micro khi bé bấm nút mic.',
       'Email của ba mẹ, nếu ba mẹ đăng nhập để lưu kết quả lên máy chủ.',
       'Thông tin gói Plus đã mua (do App Store / Google Play và RevenueCat xử lý; app không thấy số thẻ).',
     ],
@@ -36,6 +37,7 @@ const sections: { title: string; body: string[] }[] = [
       'Ảnh bài làm được gửi tới Claude (công ty Anthropic) để chấm, chỉ cho việc chấm bài đó.',
       'Khi bé bấm "Hỏi cô", câu bé hỏi và nội dung câu đó trong bài được gửi tới Claude để trả lời.',
       'Lời nhận xét (chỉ phần chữ, không có ảnh) được gửi tới Google Cloud để đọc bằng giọng cô/thầy.',
+      'Khi bé bấm nút mic ở "Hỏi cô", giọng bé được nhận thành chữ bằng tính năng nhận giọng có sẵn của điện thoại, do Apple (iPhone) hoặc Google (Android) xử lý. App không lưu bản ghi âm; chỉ phần chữ bé xem lại và bấm gửi mới được gửi tới Claude.',
       'Dữ liệu được lưu trên máy chủ Supabase, trong kho riêng: chỉ tài khoản của ba mẹ xem được.',
       'RevenueCat nhận mã tài khoản (không có tên bé) để xác nhận gói Plus.',
     ],

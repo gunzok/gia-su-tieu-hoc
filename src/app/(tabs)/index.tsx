@@ -17,6 +17,7 @@ import { loadHistory, type HistoryEntry } from '@/lib/history';
 import { useHomeworkSession } from '@/lib/homework-session';
 import { avatarEmoji, useProfile, useTeacher } from '@/lib/profile';
 import { allSubjects, averageScore } from '@/lib/progress';
+import { currentStreak, streakMessage } from '@/lib/rewards';
 import { speakVietnamese, stopSpeaking } from '@/lib/speech';
 
 
@@ -33,7 +34,9 @@ const subjectStyles: Record<Subject, { tint: string; dot: string; ink: string; i
 
 export default function HomeScreen() {
   const { grade, setSubject } = useHomeworkSession();
-  const { profile } = useProfile();
+  const { profile, rewards } = useProfile();
+  const now = new Date();
+  const streak = currentStreak(rewards, now);
   const T = useTeacher();
   const childName = profile?.name ? `${profile.name} yêu` : 'con yêu';
   const greeting = useGreeting(childName, T);
@@ -73,7 +76,11 @@ export default function HomeScreen() {
         subtitle={`Lớp ${grade}`}
         right={
           <View style={styles.headerRight}>
-            <HeaderPill icon="📚" label={`${history.length} bài`} />
+            <HeaderPill
+              icon="⭐"
+              label={String(rewards.stars)}
+              accessibilityLabel={`Con có ${rewards.stars} ngôi sao`}
+            />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Hồ sơ của bé"
@@ -84,6 +91,23 @@ export default function HomeScreen() {
           </View>
         }
       />
+
+      <View accessible accessibilityLabel={`Chuỗi ${streak} ngày học. ${streakMessage(rewards, now)}`} style={styles.streakRow}>
+        <View style={styles.streakBadge}>
+          <AppText style={styles.streakIcon}>🔥</AppText>
+          <AppText variant="headlineSm" color={Palette.coralInk}>
+            {streak}
+          </AppText>
+        </View>
+        <View style={styles.flex}>
+          <AppText variant="labelLg" color={Palette.coralInk}>
+            Chuỗi {streak} ngày học
+          </AppText>
+          <AppText variant="bodySm" color={Palette.coralInk}>
+            {streakMessage(rewards, now)}
+          </AppText>
+        </View>
+      </View>
 
       <Card style={styles.greetingCard}>
         <View style={styles.greetingRow}>
@@ -231,6 +255,28 @@ const styles = StyleSheet.create({
   avatarEmoji: {
     fontSize: 24,
     lineHeight: 30,
+  },
+  streakRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    backgroundColor: Palette.coralSoft,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.two + 4,
+    paddingHorizontal: Spacing.three,
+  },
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    backgroundColor: Palette.white,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.three,
+    minHeight: 48,
+  },
+  streakIcon: {
+    fontSize: 22,
+    lineHeight: 28,
   },
   greetingCard: {
     gap: Spacing.three,

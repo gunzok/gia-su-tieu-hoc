@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { pullProfile, pushProfile } from '@/lib/cloud';
 import { ensureSession } from '@/lib/supabase';
 import { useIsPremium } from '@/lib/payments';
+import { applyGrading, emptyRewards, parseRewards, type Rewards } from '@/lib/rewards';
 import { teacherOf, type TeacherId } from '@/lib/teacher';
 
 // Hồ sơ của bé, lưu trên máy. Chưa có hồ sơ nghĩa là app mở lần đầu: hiện màn Khởi động.
@@ -30,6 +31,8 @@ export function avatarEmoji(id: string) {
 }
 
 const STORAGE_KEY = 'ho-so-be';
+/** Sao và chuỗi ngày của bé đang dùng hồ sơ trên máy; xoá hồ sơ thì xoá theo. */
+const REWARDS_KEY = 'phan-thuong-be';
 
 type ProfileState = {
   /** Đã đọc xong hồ sơ từ máy chưa. */
@@ -43,6 +46,10 @@ type ProfileState = {
   syncAfterSignIn: () => Promise<ChildProfile | null>;
   /** Xoá hồ sơ trên máy (sau khi xoá tài khoản): app quay về màn Khởi động. */
   clearProfile: () => Promise<void>;
+  /** Sao thưởng và chuỗi ngày học của bé. */
+  rewards: Rewards;
+  /** Gọi sau mỗi bài chấm xong: +15 sao, cập nhật chuỗi ngày. Trả về phần thưởng mới. */
+  recordGrading: () => Promise<Rewards>;
 };
 
 const ProfileContext = createContext<ProfileState | null>(null);
@@ -50,10 +57,14 @@ const ProfileContext = createContext<ProfileState | null>(null);
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [profile, setProfile] = useState<ChildProfile | null>(null);
+  const [rewards, setRewards] = useState<Rewards>(emptyRewards);
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((raw) => setProfile(raw ? (JSON.parse(raw) as ChildProfile) : null))
+    AsyncStorage.multiGet([STORAGE_KEY, REWARDS_KEY])
+      .then(([[, rawProfile], [, rawRewards]]) => {
+        setProfile(rawProfile ? (JSON.parse(rawProfile) as ChildProfile) : null);
+        setRewards(parseRewards(rawRewards));
+      })
       .finally(() => setReady(true));
   }, []);
 
@@ -85,12 +96,21 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }
 
   async function clearProfile() {
-    await AsyncStorage.removeItem(STORAGE_KEY);
+    await AsyncStorage.multiRemove([STORAGE_KEY, REWARDS_KEY]);
     setProfile(null);
+    setRewards(emptyRewards);
+  }
+
+  async function recordGrading() {
+    // Tính từ bản đang lưu trên máy để luôn cộng vào số sao mới nhất.
+    const next = applyGrading(parseRewards(await AsyncStorage.getItem(REWARDS_KEY)), new Date());
+    await AsyncStorage.setItem(REWARDS_KEY, JSON.stringify(next));
+    setRewards(next);
+    return next;
   }
 
   return (
-    <ProfileContext.Provider value={{ ready, profile, saveProfile, syncAfterSignIn, clearProfile }}>
+    <ProfileContext.Provider value={{ ready, profile, saveProfile, syncAfterSignIn, clearProfile, rewards, recordGrading }}>
       {children}
     </ProfileContext.Provider>
   );
