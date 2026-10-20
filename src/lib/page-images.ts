@@ -13,6 +13,35 @@ function entryDirectory(entryId: string) {
   return new Directory(Paths.document, 'bai-lam', entryId);
 }
 
+/**
+ * Đổi đường dẫn ảnh đã lưu sang thư mục Documents hiện tại của app.
+ * iOS đổi mã thư mục app (…/Application/<mã>/Documents/) sau mỗi lần cài bản mới; file vẫn còn
+ * nhưng đường dẫn cũ thì hỏng. Đường dẫn không nằm trong Documents thì giữ nguyên.
+ */
+export function rebaseDocumentUri(uri: string, documentUri: string) {
+  const marker = '/Documents/';
+  const index = uri.indexOf(marker);
+  if (index === -1) return uri;
+  const base = documentUri.endsWith('/') ? documentUri : `${documentUri}/`;
+  return base + uri.slice(index + marker.length);
+}
+
+/** Ảnh các trang còn trên máy này (đã đổi sang thư mục hiện tại); trang nào mất file thì bỏ. */
+export function existingLocalPages(pages: string[] | undefined) {
+  if (!pages?.length) return undefined;
+  const found = pages
+    .map((uri) => rebaseDocumentUri(uri, Paths.document.uri))
+    .filter((uri) => {
+      try {
+        return new File(uri).exists;
+      } catch {
+        return false;
+      }
+    });
+  // Thiếu trang nào thì coi như không có ảnh trên máy, để màn xem bài lấy đủ ảnh từ kho.
+  return found.length === pages.length ? found : undefined;
+}
+
 /** Chép ảnh đã thu nhỏ (file tạm) vào thư mục lâu dài của bài chấm; trả về uri trên máy. */
 export async function savePagesLocally(entryId: string, tempUris: string[]) {
   const dir = entryDirectory(entryId);
