@@ -9,7 +9,12 @@ export function Screen({ children }: { children: ReactNode }) {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          // Ô nhập (ví dụ "Thử lại câu này") không bị bàn phím che; bấm nút lúc bàn phím đang mở vẫn ăn.
+          automaticallyAdjustKeyboardInsets
+          keyboardShouldPersistTaps="handled">
           {children}
         </ScrollView>
       </SafeAreaView>
