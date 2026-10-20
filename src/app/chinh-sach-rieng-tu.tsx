@@ -9,7 +9,7 @@ import { APP_NAME } from '@/lib/teacher';
 
 // Chính sách quyền riêng tư hiển thị ngay trong app (không mở trang web bên ngoài, vì app dành cho
 // trẻ em). Sửa nội dung ở đây thì nhớ cập nhật bản đăng trên App Store / Google Play.
-const updatedAt = '18/10/2026';
+const updatedAt = '20/10/2026';
 
 const sections: { title: string; body: string[] }[] = [
   {
@@ -34,6 +34,8 @@ const sections: { title: string; body: string[] }[] = [
     title: 'Chia sẻ với ai',
     body: [
       'Ảnh bài làm được gửi tới Claude (công ty Anthropic) để chấm, chỉ cho việc chấm bài đó.',
+      'Khi bé bấm "Hỏi cô", câu bé hỏi và nội dung câu đó trong bài được gửi tới Claude để trả lời.',
+      'Lời nhận xét (chỉ phần chữ, không có ảnh) được gửi tới Google Cloud để đọc bằng giọng cô/thầy.',
       'Dữ liệu được lưu trên máy chủ Supabase, trong kho riêng: chỉ tài khoản của ba mẹ xem được.',
       'RevenueCat nhận mã tài khoản (không có tên bé) để xác nhận gói Plus.',
     ],
