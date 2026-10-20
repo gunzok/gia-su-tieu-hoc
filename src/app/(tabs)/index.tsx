@@ -17,6 +17,7 @@ import { loadHistory, type HistoryEntry } from '@/lib/history';
 import { useHomeworkSession } from '@/lib/homework-session';
 import { avatarEmoji, useProfile, useTeacher } from '@/lib/profile';
 import { allSubjects, averageScore } from '@/lib/progress';
+import { currentStreak } from '@/lib/rewards';
 import { speakVietnamese, stopSpeaking } from '@/lib/speech';
 
 
@@ -33,7 +34,8 @@ const subjectStyles: Record<Subject, { tint: string; dot: string; ink: string; i
 
 export default function HomeScreen() {
   const { grade, setSubject } = useHomeworkSession();
-  const { profile } = useProfile();
+  const { profile, rewards } = useProfile();
+  const streak = currentStreak(rewards, new Date());
   const T = useTeacher();
   const childName = profile?.name ? `${profile.name} yêu` : 'con yêu';
   const greeting = useGreeting(childName, T);
@@ -73,7 +75,18 @@ export default function HomeScreen() {
         subtitle={`Lớp ${grade}`}
         right={
           <View style={styles.headerRight}>
-            <HeaderPill icon="📚" label={`${history.length} bài`} />
+            <HeaderPill
+              icon="⭐"
+              label={String(rewards.stars)}
+              accessibilityLabel={`Con có ${rewards.stars} ngôi sao`}
+            />
+            <HeaderPill
+              icon="🔥"
+              label={`${streak} ngày`}
+              tint={Palette.coralSoft}
+              ink={Palette.coralInk}
+              accessibilityLabel={`Con học liên tiếp ${streak} ngày`}
+            />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Hồ sơ của bé"

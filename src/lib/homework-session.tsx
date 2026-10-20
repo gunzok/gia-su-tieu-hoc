@@ -10,6 +10,7 @@ import { savePagesLocally } from '@/lib/page-images';
 import { getPremiumStatus } from '@/lib/payments';
 import { preparePhotoForGrading } from '@/lib/prepare-photo';
 import { useProfile, useTeacher } from '@/lib/profile';
+import type { Rewards } from '@/lib/rewards';
 import { speakVietnamese, stopSpeaking } from '@/lib/speech';
 
 /** Số trang tối đa mỗi lần chấm (khớp maxPages trong supabase/functions/cham-bai). */
@@ -27,6 +28,8 @@ type HomeworkSession = {
   grading: boolean;
   /** Kết quả chấm gần nhất trong lần mở app này. */
   latest: HistoryEntry | null;
+  /** Sao và chuỗi ngày ngay sau bài `latest` (để màn Chữa bài khen "+15 ⭐"). */
+  latestReward: Rewards | null;
   /** Chụp thêm một trang, hoặc chọn nhiều trang từ album (thêm vào sau các trang đã có). */
   pickPhoto: (source: 'camera' | 'library') => Promise<void>;
   /** Trả về true nếu chấm xong. */
@@ -71,11 +74,12 @@ export function HomeworkSessionProvider({
     setProfileGrade(initialGrade);
     setGrade(initialGrade);
   }
-  const { profile, saveProfile } = useProfile();
+  const { profile, saveProfile, recordGrading } = useProfile();
   const [subject, setSubject] = useState<Subject>('toan');
   const [photos, setPhotos] = useState<ImagePicker.ImagePickerAsset[]>([]);
   const [grading, setGrading] = useState(false);
   const [latest, setLatest] = useState<HistoryEntry | null>(null);
+  const [latestReward, setLatestReward] = useState<Rewards | null>(null);
   const [speaking, setSpeaking] = useState(false);
   const teacher = useTeacher();
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -177,11 +181,16 @@ export function HomeworkSessionProvider({
         engine,
       };
       setLatest(entry);
+      setLatestReward(null);
       setPhotos([]);
       speak(graded.spokenFeedback);
       // Báo mỗi lần chấm bằng LM Studio, bằng thông báo nhỏ tự ẩn để không làm phiền bé.
       if (engine === 'local') localGradingNotice().then(setNotice);
       await addHistoryEntry(entry);
+      // Mỗi bài chấm xong được +15 sao; lỗi lưu sao thì vẫn giữ kết quả chấm.
+      await recordGrading()
+        .then(setLatestReward)
+        .catch((error) => console.warn('Chưa lưu được sao thưởng:', error));
       return true;
     } catch (error) {
       if (error instanceof GradingError && error.code === 'het-luot') {
@@ -228,6 +237,7 @@ export function HomeworkSessionProvider({
         removePhoto,
         grading,
         latest,
+        latestReward,
         pickPhoto,
         submitForGrading,
         startOver,
