@@ -165,14 +165,20 @@ Deno.serve(async (req) => {
       ],
     });
 
+    // Các trường hợp chưa chấm được dưới đây cũng trả lại lượt cho bé.
     if (response.stop_reason === 'refusal') {
+      await refundUsage();
       return json({ error: 'AI không chấm được bài này. Con thử chụp lại bài khác nhé.' }, 422);
     }
     if (response.stop_reason === 'max_tokens') {
+      await refundUsage();
       return json({ error: 'Bài làm quá dài, AI chưa chấm xong. Con thử chụp ít câu hơn nhé.' }, 422);
     }
     const text = response.content.find((block) => block.type === 'text');
-    if (!text || text.type !== 'text') return json({ error: 'AI không trả về kết quả chấm.' }, 502);
+    if (!text || text.type !== 'text') {
+      await refundUsage();
+      return json({ error: 'AI không trả về kết quả chấm.' }, 502);
+    }
 
     return json(JSON.parse(text.text));
   } catch (error) {
