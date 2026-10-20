@@ -17,8 +17,8 @@ Khi chủ dự án nói "làm GSTH-xxx":
    mức độ hợp với app nằm ở collection `roles` trên bảng, nút "Role & skill"):
    - PO: write-spec, roadmap-update, product-brainstorming · BA: write-spec
    - Developer: debug, verification-before-completion; frontend-design chỉ lấy nguyên tắc thẩm mỹ (app là
-     React Native, theo `src/constants/theme.ts`); test-driven-development khi đã có `npm test` (GSTH-033),
-     chưa có thì kiểm bằng tsc + lint + chạy thử trên máy giả lập
+     React Native, theo `src/constants/theme.ts`); test-driven-development (chạy `npm test`, có từ GSTH-033)
+     kèm tsc + lint + chạy thử trên máy giả lập
    - TechLead: architecture, `/code-review`, `/security-review`
    - DevOps: eas-release (quy trình phát hành riêng của dự án), deploy-checklist; ci-cd-and-automation chỉ tham khảo
    - QA: testing-strategy, accessibility-review (áp cho React Native: cỡ chữ, tương phản, vùng bấm 44pt,

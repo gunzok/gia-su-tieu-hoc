@@ -19,9 +19,13 @@ npx expo lint               # lint
 npx tsc --noEmit            # typecheck
 npx expo-doctor             # diagnose dependency and config issues
 npx expo install --fix      # fix incompatible package versions
+npm test                    # run unit tests once (Jest + jest-expo)
+npm test -- --watch         # re-run tests on file changes
 ```
 
-Run lint and typecheck before declaring any task done.
+Run lint, typecheck and `npm test` before declaring any task done.
+
+Tests live in `__tests__/` folders next to the code (e.g. `src/lib/__tests__/grading.test.ts`), shared test data in `src/test-utils/`. Mock native modules (`expo-speech`, `expo-audio`) and `@/lib/supabase` with `jest.mock` when the file under test imports them. In a fresh worktree, `npx tsc --noEmit` needs `expo-env.d.ts` (gitignored; created by `npx expo start`, or copy it from the main checkout).
 
 ## Navigation & Routing
 
