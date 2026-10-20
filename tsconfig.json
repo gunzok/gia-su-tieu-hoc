@@ -23,6 +23,7 @@
   "exclude": [
     "supabase/functions/cham-bai",
     "supabase/functions/hoi-co",
-    "supabase/functions/doc-loi"
+    "supabase/functions/doc-loi",
+    "supabase/functions/xoa-tai-khoan"
   ]
 }

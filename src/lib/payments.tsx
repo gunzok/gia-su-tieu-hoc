@@ -28,7 +28,7 @@ export const PRODUCT_IDS = {
 const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY;
 
 export const plusPerks = [
-  'Chấm bài bằng Claude ở mọi nơi',
+  'Chấm tới 50 bài mỗi ngày (gói Miễn phí: 3 bài)',
   'Chọn học cùng Thầy giáo hoặc Cô giáo',
   'Giọng cô, thầy đọc tự nhiên như người thật',
   'Lưu kết quả lên máy chủ, xem trên nhiều máy',

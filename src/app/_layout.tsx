@@ -75,6 +75,7 @@ function RootNavigator() {
         </Stack.Protected>
         {/* Đăng nhập mở được cả lúc mới cài app lẫn từ tab Tiến độ. */}
         <Stack.Screen name="dang-nhap" />
+        <Stack.Screen name="chinh-sach-rieng-tu" />
         <Stack.Screen name="goi-plus" options={{ presentation: 'modal' }} />
       </Stack>
       <NoticeToast />
