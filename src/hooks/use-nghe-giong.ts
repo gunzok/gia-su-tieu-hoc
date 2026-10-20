@@ -1,9 +1,9 @@
 import { requireOptionalNativeModule } from 'expo';
-import type { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
+import type { ExpoSpeechRecognitionErrorCode, ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
-import { micErrorMessage, withTranscript } from '@/lib/nghe-giong';
+import { micErrorMessage, micUnsupported, withTranscript } from '@/lib/nghe-giong';
 
 // Nhận giọng nói tiếng Việt có sẵn trên máy (Apple / Google xử lý).
 // Bản app chưa build lại hoặc bản web không có mã gốc này: native là null và nút mic được ẩn.
@@ -43,7 +43,7 @@ type Options = {
  * Không tự gửi: bé xem, sửa rồi bấm gửi.
  */
 export function useNgheGiong({ onText, maxChars, word }: Options) {
-  const [available] = useState(recognitionAvailable);
+  const [available, setAvailable] = useState(recognitionAvailable);
   const [phase, setPhase] = useState<Phase>('idle');
   const [notice, setNotice] = useState<string | null>(null);
   const phaseRef = useRef<Phase>('idle');
@@ -64,6 +64,11 @@ export function useNgheGiong({ onText, maxChars, word }: Options) {
   const onProblem = useEffectEvent((message: string | null) => {
     if (message) setNotice(message);
   });
+  const onError = useEffectEvent((code: ExpoSpeechRecognitionErrorCode, detail: string) => {
+    if (code !== 'aborted') console.warn('Nhận giọng chưa được:', code, detail);
+    if (micUnsupported(code)) setAvailable(false);
+    onProblem(micErrorMessage(code, word));
+  });
   const onEnd = useEffectEvent(() => {
     changePhase('idle');
     restorePlayback();
@@ -74,7 +79,7 @@ export function useNgheGiong({ onText, maxChars, word }: Options) {
     const subscriptions = [
       native.addListener('result', (event) => onResult(event.results[0]?.transcript ?? '')),
       native.addListener('nomatch', () => onProblem(micErrorMessage('no-speech', word))),
-      native.addListener('error', (event) => onProblem(micErrorMessage(event.error, word))),
+      native.addListener('error', (event) => onError(event.error, event.message)),
       native.addListener('end', () => onEnd()),
     ];
     return () => {

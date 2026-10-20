@@ -1,4 +1,4 @@
-import { micErrorMessage, withTranscript } from '@/lib/nghe-giong';
+import { micErrorMessage, micUnsupported, withTranscript } from '@/lib/nghe-giong';
 
 describe('withTranscript', () => {
   it('ô trống: chữ bé nói thành câu hỏi', () => {
@@ -51,5 +51,19 @@ describe('micErrorMessage', () => {
     expect(micErrorMessage('network', 'cô')).toContain('Internet');
     expect(micErrorMessage('audio-capture', 'cô')).toContain('gõ');
     expect(micErrorMessage('unknown', 'cô')).toContain('gõ');
+  });
+});
+
+describe('micUnsupported', () => {
+  it('máy không nghe được tiếng Việt thì ẩn mic', () => {
+    expect(micUnsupported('language-not-supported')).toBe(true);
+    expect(micUnsupported('service-not-allowed')).toBe(true);
+    expect(micErrorMessage('language-not-supported', 'cô')).toContain('tiếng Việt');
+  });
+
+  it('lỗi tạm thời thì vẫn giữ mic', () => {
+    expect(micUnsupported('no-speech')).toBe(false);
+    expect(micUnsupported('network')).toBe(false);
+    expect(micUnsupported('not-allowed')).toBe(false);
   });
 });

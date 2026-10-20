@@ -23,11 +23,19 @@ export function micErrorMessage(code: ExpoSpeechRecognitionErrorCode, word: stri
     case 'no-speech':
     case 'speech-timeout':
       return `${capitalize(word)} chưa nghe rõ. Con bấm mic rồi nói lại to hơn một chút nhé!`;
+    case 'language-not-supported':
+    case 'service-not-allowed':
+      return `Máy này chưa nghe được tiếng Việt. Con gõ câu hỏi cho ${word} nhé!`;
     case 'network':
       return `Nghe giọng cần Internet. Con nhờ bố mẹ kiểm tra mạng, hoặc gõ câu hỏi cho ${word} nhé.`;
     default:
       return `Micro đang bận một chút. Con gõ câu hỏi cho ${word} nhé!`;
   }
+}
+
+/** Máy không nhận được giọng tiếng Việt: ẩn nút mic cho đỡ rối. */
+export function micUnsupported(code: ExpoSpeechRecognitionErrorCode) {
+  return code === 'language-not-supported' || code === 'service-not-allowed';
 }
 
 function capitalize(word: string) {
