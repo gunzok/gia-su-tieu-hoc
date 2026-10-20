@@ -26,10 +26,7 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "vn.giasutieuhoc.app",
-      "blockedPermissions": [
-        "android.permission.RECORD_AUDIO"
-      ]
+      "package": "vn.giasutieuhoc.app"
     },
     "web": {
       "output": "server",
@@ -70,8 +67,15 @@
       [
         "expo-audio",
         {
-          "microphonePermission": false,
+          "microphonePermission": "Gia sư Tiểu học cần dùng micro để bé nói câu hỏi cho cô thay vì gõ chữ.",
           "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Gia sư Tiểu học cần dùng micro để bé nói câu hỏi cho cô thay vì gõ chữ.",
+          "speechRecognitionPermission": "Gia sư Tiểu học cần nhận giọng nói tiếng Việt để chuyển câu bé nói thành chữ trong ô hỏi cô."
         }
       ]
     ],
