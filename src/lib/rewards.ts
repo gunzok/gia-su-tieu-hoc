@@ -39,6 +39,14 @@ export function currentStreak(rewards: Rewards, now: Date): number {
   return gap === 0 || gap === 1 ? rewards.streak : 0;
 }
 
+/** Lời khích lệ về chuỗi ngày ở Trang chủ. */
+export function streakMessage(rewards: Rewards, now: Date): string {
+  const streak = currentStreak(rewards, now);
+  if (streak === 0) return 'Chấm 1 bài hôm nay để bắt đầu chuỗi ngày học nhé!';
+  if (rewards.lastStudyDay !== dayKey(now)) return `Chấm 1 bài hôm nay để giữ chuỗi ${streak} ngày nhé!`;
+  return streak === 1 ? 'Hôm nay con đã học rồi, mai học tiếp nhé!' : `Con học ${streak} ngày liền rồi, giỏi quá!`;
+}
+
 /** Cộng sao và cập nhật chuỗi ngày sau một bài chấm xong. Nhiều bài trong một ngày chỉ tính 1 ngày. */
 export function applyGrading(rewards: Rewards, now: Date): Rewards {
   const today = dayKey(now);

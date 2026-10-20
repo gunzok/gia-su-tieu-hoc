@@ -5,6 +5,7 @@ import {
   dayKey,
   emptyRewards,
   parseRewards,
+  streakMessage,
   type Rewards,
 } from '@/lib/rewards';
 
@@ -76,6 +77,22 @@ describe('currentStreak', () => {
 
   it('bỏ một ngày thì về 0', () => {
     expect(currentStreak(rewards, at(2026, 10, 22))).toBe(0);
+  });
+});
+
+describe('streakMessage', () => {
+  it('chưa có chuỗi thì rủ bé bắt đầu', () => {
+    expect(streakMessage(emptyRewards, at(2026, 10, 20))).toMatch(/bắt đầu/);
+  });
+
+  it('hôm qua có học, hôm nay chưa thì nhắc giữ chuỗi', () => {
+    const rewards: Rewards = { stars: 75, streak: 5, lastStudyDay: '2026-10-19' };
+    expect(streakMessage(rewards, at(2026, 10, 20))).toBe('Chấm 1 bài hôm nay để giữ chuỗi 5 ngày nhé!');
+  });
+
+  it('hôm nay đã học thì khen', () => {
+    const rewards: Rewards = { stars: 75, streak: 5, lastStudyDay: '2026-10-20' };
+    expect(streakMessage(rewards, at(2026, 10, 20))).toBe('Con học 5 ngày liền rồi, giỏi quá!');
   });
 });
 
