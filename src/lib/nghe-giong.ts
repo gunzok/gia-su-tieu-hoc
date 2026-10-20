@@ -29,7 +29,8 @@ export function micErrorMessage(code: ExpoSpeechRecognitionErrorCode, word: stri
     case 'network':
       return `Nghe giọng cần Internet. Con nhờ bố mẹ kiểm tra mạng, hoặc gõ câu hỏi cho ${word} nhé.`;
     default:
-      return `Micro đang bận một chút. Con gõ câu hỏi cho ${word} nhé!`;
+      // Gồm audio-capture: máy không lấy được tiếng từ micro (hay gặp trên máy giả lập).
+      return `${capitalize(word)} chưa nghe được tiếng từ micro. Con gõ câu hỏi cho ${word} nhé!`;
   }
 }
 

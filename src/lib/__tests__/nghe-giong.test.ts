@@ -49,7 +49,8 @@ describe('micErrorMessage', () => {
 
   it('lỗi mạng và lỗi khác vẫn có lời nhắn khích lệ, mời gõ', () => {
     expect(micErrorMessage('network', 'cô')).toContain('Internet');
-    expect(micErrorMessage('audio-capture', 'cô')).toContain('gõ');
+    expect(micErrorMessage('audio-capture', 'cô')).toBe('Cô chưa nghe được tiếng từ micro. Con gõ câu hỏi cho cô nhé!');
+    expect(micErrorMessage('audio-capture', 'thầy')).toContain('Thầy chưa nghe được tiếng từ micro');
     expect(micErrorMessage('unknown', 'cô')).toContain('gõ');
   });
 });
