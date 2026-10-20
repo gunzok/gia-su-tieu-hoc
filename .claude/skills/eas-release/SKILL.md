@@ -22,6 +22,9 @@ Quy trình phát hành riêng của dự án (chỉ làm local, KHÔNG push GitH
 - Khi build xong, câu hỏi "Install and run on an emulator?" chọn **no** (máy không có Android Studio).
 - Biến `EXPO_PUBLIC_*` cho EAS: `npm run env:eas`. KHÔNG bao giờ đưa `ANTHROPIC_API_KEY`, khoá Google, khoá service role lên EAS hay vào code.
 
+- **Connector/plugin Expo** (chủ dự án thêm 20/10/2026): mỗi lần có bản build hoặc cập nhật OTA mới, dùng công cụ Expo đó (tìm bằng ToolSearch từ khoá `expo`) để xem build/update, lấy link cài, kiểm tra trạng thái. Chỉ quay về `npx eas-cli@latest` khi phiên không có công cụ Expo, và nói rõ điều đó.
+- **Expo Go không chạy được app từ 0.3.0** (có `expo-speech-recognition`, `expo-audio`, `expo-updates`). Mục "Branch: preview" trong Expo Go là bản OTA cũ, đừng hướng dẫn chủ dự án mở app qua Expo Go; đưa link APK preview để cài.
+
 ## 2. Máy chủ Supabase
 
 - Migration: `npx supabase db push` (đọc tên migration sắp đẩy, chọn Yes).
