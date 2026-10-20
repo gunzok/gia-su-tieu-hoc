@@ -31,6 +31,7 @@ Khi chủ dự án nói "làm GSTH-xxx":
      supabase-postgres-best-practices, i18n-localization, senior-prompt-engineer, claude-api
    - TechLead: senior-architect, architecture-decision-records, database-design, security-best-practices, clean-code
    - DevOps: expo-deployment, secrets-management · QA: senior-qa, testing-patterns (sau GSTH-033), find-bugs, accessibility-auditor
+   - Dùng chung cho mọi role (đồng bộ ngữ cảnh giữa Claude Code & Antigravity): các skill ai-memory (`ai-memory-retrieval`, `ai-memory-handoff`, `ai-memory-durable-pages`, `ai-memory-messaging`, `ai-memory-learning-maintenance`). Bắt đầu phiên đọc `memory_briefing`/`memory_handoff_accept`, kết thúc phiên gọi `memory_handoff_begin` và cập nhật trang `status/hien-trang.md`.
    Chỉ gọi skill có thư mục trong `.claude/skills/`; script đi kèm skill chỉ chạy khi chủ dự án đồng ý.
 3. Việc có sửa code: tạo nhánh local `ticket/<id>` (ví dụ `ticket/GSTH-018`) từ nhánh chính đang dùng (`setup/khung-du-an`), commit nhỏ, chạy `npx tsc --noEmit` và `npx expo lint`.
 4. Cập nhật bảng trong lúc làm: chuyển `coding` khi bắt đầu, ghi chú tiến độ; làm xong chuyển sang `review` kèm ghi chú tóm tắt (nhánh, commit, cách thử).

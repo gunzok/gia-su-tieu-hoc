@@ -16,7 +16,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText } from '@/components/app-text';
 import { ItemSpeakButton } from '@/components/item-speak-button';
 import { Mascot } from '@/components/mascot';
+import { PulseRing, SoundWave } from '@/components/sound-wave';
 import { FontFamily, MaxContentWidth, Palette, Radius, Spacing } from '@/constants/theme';
+import { useNgheGiong } from '@/hooks/use-nghe-giong';
 import { type Subject } from '@/lib/grading';
 import { ASK_LIMITS, askTeacher, suggestedQuestions, type AskItem, type AskTurn } from '@/lib/hoi-co';
 import { useTeacher } from '@/lib/profile';
@@ -49,6 +51,7 @@ export default function AskTeacherScreen() {
   // Lượt nào đang được đọc (vị trí trong turns), null nếu không đọc.
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
+  const mic = useNgheGiong({ onText: setDraft, maxChars: ASK_LIMITS.maxChars, word: T.word });
 
   useEffect(() => stopSpeaking, []);
 
@@ -72,6 +75,7 @@ export default function AskTeacherScreen() {
   async function ask(question: string) {
     const text = question.trim().slice(0, ASK_LIMITS.maxChars);
     if (!item || !text || thinking || questionsLeft <= 0) return;
+    mic.cancel();
     stopSpeaking();
     setSpeakingIndex(null);
     setFailed(false);
@@ -94,7 +98,18 @@ export default function AskTeacherScreen() {
     }
   }
 
-  const greeting = `Con muốn hỏi ${T.word} gì về câu ${number}? Con chọn một câu bên dưới hoặc tự gõ nhé!`;
+  // Bấm mic: cô đang đọc thì im để mic không thu lại giọng cô.
+  function toggleMic() {
+    if (!mic.listening) {
+      stopSpeaking();
+      setSpeakingIndex(null);
+    }
+    mic.toggle(draft);
+  }
+
+  const greeting = mic.available
+    ? `Con muốn hỏi ${T.word} gì về câu ${number}? Con chọn một câu bên dưới, bấm mic để nói hoặc tự gõ nhé!`
+    : `Con muốn hỏi ${T.word} gì về câu ${number}? Con chọn một câu bên dưới hoặc tự gõ nhé!`;
   const suggestions = item ? suggestedQuestions(item, T.Title) : [];
 
   return (
@@ -203,14 +218,61 @@ export default function AskTeacherScreen() {
                   ))}
                 </ScrollView>
               )}
+              {mic.listening && (
+                <View style={styles.listening} accessibilityLiveRegion="polite">
+                  <SoundWave
+                    active
+                    heights={[14, 22, 16, 24, 12]}
+                    colors={[Palette.coralDark, Palette.coral]}
+                    barWidth={4}
+                    gap={4}
+                  />
+                  <AppText variant="labelMd" color={Palette.coralInk}>
+                    {T.Title} đang nghe, con nói đi! Nói xong bấm nút đỏ.
+                  </AppText>
+                </View>
+              )}
+              {mic.notice && !mic.listening && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityHint="Bấm để ẩn lời nhắn"
+                  onPress={mic.clearNotice}
+                  style={styles.notice}>
+                  <AppText variant="bodySm" color={Palette.amberInk}>
+                    {mic.notice}
+                  </AppText>
+                </Pressable>
+              )}
               <View style={styles.inputRow}>
+                {mic.available && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={mic.listening ? 'Dừng nghe' : `Nói câu hỏi cho ${T.word}`}
+                    accessibilityHint={mic.listening ? 'Giữ lại chữ đã nghe để con xem rồi gửi' : 'Bấm rồi nói, chữ sẽ hiện trong ô'}
+                    accessibilityState={{ disabled: thinking, busy: mic.busy && !mic.listening }}
+                    disabled={thinking}
+                    onPress={toggleMic}
+                    style={({ pressed }) => [
+                      styles.mic,
+                      mic.listening && styles.micListening,
+                      thinking && styles.sendDisabled,
+                      pressed && styles.pressed,
+                    ]}>
+                    <PulseRing active={mic.listening} size={52} color={Palette.coralDark} />
+                    <MaterialIcons
+                      name={mic.listening ? 'stop' : 'mic'}
+                      size={28}
+                      color={mic.listening ? Palette.white : Palette.blueDark}
+                    />
+                  </Pressable>
+                )}
                 <TextInput
                   value={draft}
                   onChangeText={setDraft}
-                  placeholder={`Con gõ câu hỏi cho ${T.word}…`}
+                  placeholder={mic.listening ? 'Chữ con nói sẽ hiện ở đây…' : `Con gõ câu hỏi cho ${T.word}…`}
                   placeholderTextColor={Palette.inkSoft}
                   maxLength={ASK_LIMITS.maxChars}
-                  editable={!thinking}
+                  editable={!thinking && !mic.listening}
                   style={styles.input}
                   returnKeyType="send"
                   // Một dòng: phím "Gửi"/Enter gửi câu hỏi luôn, không xuống dòng.
@@ -372,6 +434,35 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.body,
     fontSize: 18,
     color: Palette.ink,
+  },
+  listening: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    backgroundColor: Palette.coralSoft,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  notice: {
+    backgroundColor: Palette.amberSoft,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  mic: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: Palette.mintSoft,
+    borderWidth: 2,
+    borderColor: Palette.mint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  micListening: {
+    backgroundColor: Palette.coralDark,
+    borderColor: Palette.coralDark,
   },
   send: {
     width: 52,
