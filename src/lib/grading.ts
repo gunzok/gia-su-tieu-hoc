@@ -73,7 +73,7 @@ export function speakable(text: string) {
 
 // Điểm tính từ số câu đúng (làm tròn 0.5) để luôn khớp với phần chấm từng câu;
 // model nhỏ chạy trên máy hay cộng điểm sai.
-function normalizeResult(result: GradingResult): GradingResult {
+export function normalizeResult(result: GradingResult): GradingResult {
   const spokenFeedback = speakable(result.spokenFeedback);
   if (result.items.length === 0) return { ...result, spokenFeedback };
   const correct = result.items.filter((item) => item.correct).length;
