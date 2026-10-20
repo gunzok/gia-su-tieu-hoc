@@ -3,6 +3,7 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
+import { parseOAuthRedirect } from '@/lib/oauth-redirect';
 import { supabase } from '@/lib/supabase';
 
 // Đăng nhập của ba mẹ bằng Supabase Auth: email + mã 6 số, hoặc Google.
@@ -74,23 +75,17 @@ export async function signInWithGoogle() {
   const result = await WebBrowser.openAuthSessionAsync(data.url, oauthRedirect);
   if (result.type !== 'success') return false;
 
-  // Phiên đăng nhập nằm sau dấu # (luồng implicit) hoặc là ?code= (luồng PKCE).
-  const url = new URL(result.url.replace('#', '?'));
-  const errorDescription = url.searchParams.get('error_description');
-  if (errorDescription) throw new Error(errorDescription);
-
-  const code = url.searchParams.get('code');
-  if (code) {
-    const { error: exchangeError } = await client.auth.exchangeCodeForSession(code);
+  const redirect = parseOAuthRedirect(result.url);
+  if (redirect.kind === 'error') throw new Error(redirect.message);
+  if (redirect.kind === 'code') {
+    const { error: exchangeError } = await client.auth.exchangeCodeForSession(redirect.code);
     if (exchangeError) throw exchangeError;
     return true;
   }
-  const accessToken = url.searchParams.get('access_token');
-  const refreshToken = url.searchParams.get('refresh_token');
-  if (!accessToken || !refreshToken) throw new Error('Google không trả về phiên đăng nhập.');
+  if (redirect.kind === 'empty') throw new Error('Google không trả về phiên đăng nhập.');
   const { error: sessionError } = await client.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken,
+    access_token: redirect.accessToken,
+    refresh_token: redirect.refreshToken,
   });
   if (sessionError) throw sessionError;
   return true;
