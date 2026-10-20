@@ -1,4 +1,4 @@
-import { audioPath, usageKey, voiceProviders } from '../../../supabase/functions/_shared/doc-loi';
+import { audioPath, isQuotaExceeded, usageKey, voiceProviders } from '../../../supabase/functions/_shared/doc-loi';
 
 const envOf = (values: Record<string, string>) => (name: string) => values[name];
 
@@ -40,5 +40,18 @@ describe('usageKey và audioPath', () => {
     expect(usageKey('elevenlabs', '2026-10')).toBe('elevenlabs:2026-10');
     expect(audioPath(google, 'vi-VN-Chirp3-HD-Aoede', 'abc')).toBe('vi-VN-Chirp3-HD-Aoede/abc.mp3');
     expect(audioPath(eleven, 'v1', 'abc')).toBe('elevenlabs/v1/abc.mp3');
+  });
+});
+
+describe('isQuotaExceeded', () => {
+  it('nhận ra ElevenLabs báo hết credit', () => {
+    const body = JSON.stringify({ detail: { status: 'quota_exceeded', message: 'This request exceeds your quota.' } });
+    expect(isQuotaExceeded('elevenlabs', 401, body)).toBe(true);
+  });
+
+  it('lỗi khác (khoá sai, giọng sai) không tính là hết credit', () => {
+    expect(isQuotaExceeded('elevenlabs', 401, '{"detail":{"status":"invalid_api_key"}}')).toBe(false);
+    expect(isQuotaExceeded('elevenlabs', 500, 'quota_exceeded')).toBe(false);
+    expect(isQuotaExceeded('google', 429, 'quota_exceeded')).toBe(false);
   });
 });

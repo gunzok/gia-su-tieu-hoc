@@ -59,3 +59,13 @@ export function usageKey(provider: VoiceProvider, month: string) {
 export function audioPath(config: ProviderConfig, voice: string, hash: string) {
   return config.provider === 'google' ? `${voice}/${hash}.mp3` : `${config.provider}/${voice}/${hash}.mp3`;
 }
+
+/**
+ * ElevenLabs báo tài khoản đã hết credit (vd khi credit dùng cho việc khác ngoài app).
+ * Lỗi dạng: 401 {"detail":{"status":"quota_exceeded",...}}.
+ */
+export function isQuotaExceeded(provider: VoiceProvider, status: number, body: string) {
+  if (provider !== 'elevenlabs') return false;
+  if (status !== 401 && status !== 402 && status !== 429) return false;
+  return /quota_exceeded|insufficient_credits|exceeds your quota/i.test(body);
+}

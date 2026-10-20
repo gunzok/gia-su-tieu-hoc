@@ -8,7 +8,7 @@
 // Đổi mức tháng: GOOGLE_TTS_MONTHLY_CHARS (mặc định 900000), ELEVENLABS_MONTHLY_CHARS (mặc định 10000)
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
-import { audioPath, usageKey, voiceProviders, type ProviderConfig, type TeacherVoice } from '../_shared/doc-loi.ts';
+import { audioPath, isQuotaExceeded, usageKey, voiceProviders, type ProviderConfig, type TeacherVoice } from '../_shared/doc-loi.ts';
 
 const BUCKET = 'giong-doc';
 // Lời dài nhất một lần đọc (khoảng 1 lời nhận xét dài); chặn để tránh lạm dụng.
@@ -42,8 +42,12 @@ function base64ToBytes(base64: string) {
   return bytes;
 }
 
-// Gọi dịch vụ, trả về file MP3; lỗi thì trả null để thử dịch vụ tiếp theo.
-async function synthesize(config: ProviderConfig, voice: string, text: string): Promise<Uint8Array | null> {
+// Gọi dịch vụ, trả về file MP3; lỗi thì trả null, dịch vụ báo hết credit thì trả 'het-credit'.
+async function synthesize(
+  config: ProviderConfig,
+  voice: string,
+  text: string,
+): Promise<Uint8Array | 'het-credit' | null> {
   if (config.provider === 'google') {
     const response = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize', {
       method: 'POST',
@@ -78,8 +82,9 @@ async function synthesize(config: ProviderConfig, voice: string, text: string): 
     },
   );
   if (!response.ok) {
-    console.error('ElevenLabs lỗi', response.status, await response.text());
-    return null;
+    const detail = await response.text();
+    console.error('ElevenLabs lỗi', response.status, detail);
+    return isQuotaExceeded(config.provider, response.status, detail) ? 'het-credit' : null;
   }
   const bytes = new Uint8Array(await response.arrayBuffer());
   return bytes.length > 0 ? bytes : null;
@@ -150,6 +155,15 @@ Deno.serve(async (req) => {
 
     try {
       const audio = await synthesize(config, voice, text);
+      if (audio === 'het-credit') {
+        // Tài khoản đã hết credit: đẩy bộ đếm lên đủ mức tháng để các câu sau bỏ qua dịch vụ này ngay.
+        const filled = await admin.rpc('cong_ky_tu_giong_doc', {
+          p_thang: key,
+          p_so_ky_tu: Math.max(1, config.monthlyLimit - (usage?.so_ky_tu ?? 0)),
+        });
+        if (filled.error) console.error('Không cập nhật được bộ đếm giọng đọc:', filled.error);
+        continue;
+      }
       if (!audio) {
         anyFailed = true;
         continue;
