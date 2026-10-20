@@ -27,11 +27,23 @@ export function AppHeader({ subtitle, right }: Props) {
   );
 }
 
-export function HeaderPill({ icon, label, tint = Palette.amber }: { icon: string; label: string; tint?: string }) {
+type PillProps = {
+  icon: string;
+  label: string;
+  tint?: string;
+  ink?: string;
+  /** Câu đọc cho trình đọc màn hình, ví dụ "Con có 45 ngôi sao". */
+  accessibilityLabel?: string;
+};
+
+export function HeaderPill({ icon, label, tint = Palette.amber, ink = Palette.amberInk, accessibilityLabel }: PillProps) {
   return (
-    <View style={[styles.pill, { backgroundColor: tint }]}>
+    <View
+      accessible
+      accessibilityLabel={accessibilityLabel ?? label}
+      style={[styles.pill, { backgroundColor: tint }]}>
       <AppText style={styles.pillIcon}>{icon}</AppText>
-      <AppText variant="labelMd" color={Palette.amberInk}>
+      <AppText variant="labelMd" color={ink}>
         {label}
       </AppText>
     </View>

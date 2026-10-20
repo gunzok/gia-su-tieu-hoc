@@ -20,13 +20,14 @@ import { openAskTeacher } from '@/lib/hoi-co';
 import { itemSpeech } from '@/lib/item-speech';
 import { useTeacher } from '@/lib/profile';
 import { praiseForScore } from '@/lib/progress';
+import { STARS_PER_GRADING } from '@/lib/rewards';
 import { SoundWave } from '@/components/sound-wave';
 
 const waveHeights = [14, 24, 18, 32, 22, 36, 26, 18, 30, 16, 24, 12, 20, 28];
 const waveColors = [Palette.blue, Palette.amber, Palette.white, Palette.coral];
 
 export default function ReviewScreen() {
-  const { latest, startOver, speaking, speak, stopSpeech } = useHomeworkSession();
+  const { latest, latestReward, startOver, speaking, speak, stopSpeech } = useHomeworkSession();
   const T = useTeacher();
   const [saved, setSaved] = useState<HistoryEntry | null>(null);
   // Câu đang được giảng lại (null = lời nhận xét chung, "retry-<số>" = lời cô ở phần làm lại câu đó).
@@ -117,6 +118,27 @@ export default function ReviewScreen() {
           <MaterialIcons name="military-tech" size={34} color={Palette.amberInk} />
         </View>
       </View>
+
+      {/* Chỉ khen sao ngay sau bài vừa chấm, không hiện lại khi xem bài cũ. */}
+      {latestReward && entry === latest && (
+        <View
+          accessible
+          accessibilityLabel={`Con được thêm ${STARS_PER_GRADING} ngôi sao. Học liên tiếp ${latestReward.streak} ngày`}
+          style={styles.rewardRow}>
+          <View style={[styles.rewardChip, { backgroundColor: Palette.amberSoft }]}>
+            <AppText style={styles.rewardIcon}>⭐</AppText>
+            <AppText variant="labelLg" color={Palette.amberInk}>
+              +{STARS_PER_GRADING} sao
+            </AppText>
+          </View>
+          <View style={[styles.rewardChip, { backgroundColor: Palette.coralSoft }]}>
+            <AppText style={styles.rewardIcon}>🔥</AppText>
+            <AppText variant="labelLg" color={Palette.coralInk}>
+              {latestReward.streak > 1 ? `${latestReward.streak} ngày liền!` : 'Ngày 1, cố lên!'}
+            </AppText>
+          </View>
+        </View>
+      )}
 
       <View style={styles.voiceCard}>
         <View style={styles.voiceHeader}>
@@ -338,6 +360,24 @@ function WrongRow({
 }
 
 const styles = StyleSheet.create({
+  rewardRow: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+  },
+  rewardChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    minHeight: 52,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.three,
+  },
+  rewardIcon: {
+    fontSize: 22,
+    lineHeight: 28,
+  },
   flex: {
     flex: 1,
   },
