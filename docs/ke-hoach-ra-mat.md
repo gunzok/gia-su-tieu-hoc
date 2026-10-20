@@ -14,6 +14,9 @@ Mỗi giai đoạn làm trên nhánh Git riêng, commit nhỏ; trước mỗi qu
 - **Chủ dự án cần làm**: mở dashboard Supabase/Google Cloud khi Claude hướng dẫn (công cụ AI không nhập mật khẩu/key thay).
 
 ## Giai đoạn 2 — An toàn và chi phí (bắt buộc trước khi lên store)
+> Đã làm trên nhánh `claude/compassionate-engelbart-c80862` (19/10/2026): giới hạn 3 bài/ngày (Miễn phí) và 50 bài/ngày (Plus) qua bảng `grading_usage`; vá RLS; cổng phụ huynh; trang Chính sách quyền riêng tư + nút Xoá tài khoản (hàm `xoa-tai-khoan`).
+> Đã gộp vào `ticket/GSTH-004` (20/10/2026), giữ LM Studio bật theo GSTH-003.
+> Còn lại: `npx supabase db push`, `npx supabase functions deploy cham-bai xoa-tai-khoan`, đặt secret `REVENUECAT_SECRET_KEY`; đăng chính sách lên một trang web công khai (store bắt buộc có URL) và ghi email hỗ trợ.
 - Giới hạn lượt chấm: free vs Plus, kiểm tra ở `cham-bai` (đếm theo user/ngày trong bảng `gradings`), không chỉ ở app.
 - Rà RLS các bảng `children`, `gradings`, storage ảnh: mỗi phụ huynh chỉ thấy dữ liệu của mình.
 - Quyết định LM Studio (chốt 19/10/2026, GSTH-003): **tạm bật làm dự phòng cả ở bản phát hành** (chấm bài `src/lib/grading.ts` và Hỏi cô `src/lib/hoi-co.ts`) cho tới khi tài khoản Claude được nạp tiền. Khi đã nạp: tạo ticket chuyển LM Studio về chỉ dùng khi lập trình (`__DEV__`), ẩn ở bản production.

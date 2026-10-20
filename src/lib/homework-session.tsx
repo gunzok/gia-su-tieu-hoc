@@ -1,8 +1,9 @@
 import * as ImagePicker from 'expo-image-picker';
+import { router } from 'expo-router';
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { Alert } from 'react-native';
 
-import { gradeHomework, type Subject } from '@/lib/grading';
+import { GradingError, gradeHomework, type Subject } from '@/lib/grading';
 import { addHistoryEntry, type HistoryEntry } from '@/lib/history';
 import { askAboutLevel, checkLevel, detectLevelLocally } from '@/lib/level-check';
 import { savePagesLocally } from '@/lib/page-images';
@@ -183,6 +184,17 @@ export function HomeworkSessionProvider({
       await addHistoryEntry(entry);
       return true;
     } catch (error) {
+      if (error instanceof GradingError && error.code === 'het-luot') {
+        // Hết lượt hôm nay: gói Miễn phí thì mời ba mẹ xem gói Plus (qua cổng phụ huynh).
+        Alert.alert(
+          'Hôm nay con giỏi lắm! 🌟',
+          error.message,
+          error.plus
+            ? [{ text: 'Vâng ạ' }]
+            : [{ text: 'Mai con chấm tiếp', style: 'cancel' }, { text: 'Ba mẹ xem gói Plus', onPress: () => router.push('/goi-plus') }],
+        );
+        return false;
+      }
       // Lý do cụ thể chỉ ghi vào log; ba mẹ và bé thấy một lời nhắn chung, dễ hiểu.
       console.warn('Chưa chấm được bài:', error);
       Alert.alert(

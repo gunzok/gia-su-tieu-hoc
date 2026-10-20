@@ -41,6 +41,8 @@ type ProfileState = {
    * nếu chưa có thì đẩy hồ sơ trên máy lên. Trả về hồ sơ đang dùng.
    */
   syncAfterSignIn: () => Promise<ChildProfile | null>;
+  /** Xoá hồ sơ trên máy (sau khi xoá tài khoản): app quay về màn Khởi động. */
+  clearProfile: () => Promise<void>;
 };
 
 const ProfileContext = createContext<ProfileState | null>(null);
@@ -82,8 +84,13 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     return profile;
   }
 
+  async function clearProfile() {
+    await AsyncStorage.removeItem(STORAGE_KEY);
+    setProfile(null);
+  }
+
   return (
-    <ProfileContext.Provider value={{ ready, profile, saveProfile, syncAfterSignIn }}>
+    <ProfileContext.Provider value={{ ready, profile, saveProfile, syncAfterSignIn, clearProfile }}>
       {children}
     </ProfileContext.Provider>
   );
