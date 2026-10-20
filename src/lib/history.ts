@@ -2,7 +2,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { deleteAllGradings, pullGradings, pushGradings, setGradingImages } from '@/lib/cloud';
 import type { GradingEngine, GradingResult, Subject } from '@/lib/grading';
-import { deleteAllLocalPages, deleteLocalPages, deleteRemotePages, uploadPages } from '@/lib/page-images';
+import {
+  deleteAllLocalPages,
+  deleteLocalPages,
+  deleteRemotePages,
+  existingLocalPages,
+  uploadPages,
+} from '@/lib/page-images';
 
 export type HistoryEntry = GradingResult & {
   id: string;
@@ -22,7 +28,10 @@ const MAX_ENTRIES = 200;
 
 async function loadLocal(): Promise<HistoryEntry[]> {
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
-  return raw ? (JSON.parse(raw) as HistoryEntry[]) : [];
+  const entries = raw ? (JSON.parse(raw) as HistoryEntry[]) : [];
+  // Đường dẫn ảnh cũ có thể hỏng sau khi cài bản mới: đổi sang thư mục hiện tại, mất file thì bỏ
+  // (màn xem bài sẽ lấy ảnh từ kho Supabase).
+  return entries.map((entry) => ({ ...entry, pages: existingLocalPages(entry.pages) }));
 }
 
 async function saveLocal(entries: HistoryEntry[]) {
