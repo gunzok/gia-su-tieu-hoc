@@ -33,3 +33,24 @@ thì app tự đọc bằng giọng có sẵn trên điện thoại.
    ```
 
 7. App dùng `expo-audio` (có mã gốc) nên cần build lại bản 0.2.0: `npm run build:preview`.
+
+## Dự phòng ElevenLabs (GSTH-034)
+
+Khi Google lỗi hoặc đã dùng hết mức tháng, hàm `doc-loi` tự đọc bằng ElevenLabs
+(mẫu `eleven_flash_v2_5`, tiếng Việt). ElevenLabs cũng lỗi hoặc hết mức thì app đọc bằng giọng trên máy.
+App không cần cập nhật, chỉ cần triển khai lại hàm.
+
+1. Vào https://elevenlabs.io > Developers > API Keys > tạo khoá (nên giới hạn quyền chỉ Text to Speech
+   và đặt hạn mức credit cho khoá).
+2. Chạy (thay `KHOA_ELEVENLABS` bằng khoá vừa tạo; tự gõ, không dán khoá vào chat):
+
+   ```bash
+   npx supabase secrets set ELEVENLABS_API_KEY=KHOA_ELEVENLABS
+   npx supabase functions deploy doc-loi
+   ```
+
+- Mức tháng mặc định 10 nghìn ký tự (vừa gói miễn phí). Gói trả phí thì nâng:
+  `npx supabase secrets set ELEVENLABS_MONTHLY_CHARS=...`
+- Đổi giọng: `ELEVENLABS_VOICE_CO`, `ELEVENLABS_VOICE_THAY` (mã giọng trong Voice Library).
+  Mặc định là giọng có sẵn Sarah (cô) và George (thầy).
+- Bộ đếm nằm chung bảng `giong_doc_thang`, dòng `elevenlabs:2026-10`.

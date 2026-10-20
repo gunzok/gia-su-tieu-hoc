@@ -1,7 +1,10 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import RevenueCatUI from 'react-native-purchases-ui';
 
+import { ParentalGate } from '@/components/parental-gate';
+import { Screen } from '@/components/screen';
 import { Palette } from '@/constants/theme';
 import { hasPro, purchaseErrorMessage, usePremium } from '@/lib/payments';
 
@@ -12,9 +15,18 @@ function close() {
 
 // Paywall của RevenueCat (thiết kế trên dashboard, offering "current": tháng / năm / trọn đời).
 // Dùng thành phần nhúng thay vì presentPaywall để chạy được cả trong Expo Go (bản xem thử)
-// lẫn bản build thật.
+// lẫn bản build thật. Bé phải qua cổng phụ huynh trước khi thấy màn mua.
 export default function PlusPaywallScreen() {
   const { updateCustomerInfo } = usePremium();
+  const [parentChecked, setParentChecked] = useState(false);
+
+  if (!parentChecked) {
+    return (
+      <Screen>
+        <ParentalGate purpose="xem và mua gói Plus" onPass={() => setParentChecked(true)} onCancel={close} />
+      </Screen>
+    );
+  }
 
   return (
     <View style={styles.container}>

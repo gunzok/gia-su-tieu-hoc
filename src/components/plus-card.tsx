@@ -5,6 +5,7 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/app-text';
 import { BigButton } from '@/components/big-button';
 import { Card } from '@/components/card';
+import { useParentalGate } from '@/components/parental-gate';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 import { plusPerks, purchaseErrorMessage, usePremium } from '@/lib/payments';
 import { APP_NAME } from '@/lib/teacher';
@@ -18,6 +19,7 @@ function showError(error: unknown) {
 export function PlusCard() {
   const { storeReady, isPremium, showPaywall, showCustomerCenter, restore } = usePremium();
   const [busy, setBusy] = useState<'buy' | 'restore' | 'manage' | null>(null);
+  const { gate, requireParent } = useParentalGate();
 
   async function run(kind: NonNullable<typeof busy>, action: () => Promise<void>) {
     setBusy(kind);
@@ -51,9 +53,10 @@ export function PlusCard() {
             variant="ghost"
             compact
             loading={busy === 'manage'}
-            onPress={() => run('manage', showCustomerCenter)}
+            onPress={() => requireParent('quản lý gói Plus', () => run('manage', showCustomerCenter))}
           />
         )}
+        {gate}
       </Card>
     );
   }
