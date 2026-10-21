@@ -9,7 +9,14 @@ export const SubjectNames: Record<Subject, string> = {
   'tieng-viet': 'Tiếng Việt',
 };
 
+/** Dạng bài, để AI biết cách đọc bài làm (nối thì lần đường nối, tô màu thì nhìn màu…). */
+export type ItemKind = 'tinh' | 'dien' | 'khoanh' | 'noi' | 'to-mau' | 'bang' | 've-hinh' | 'viet' | 'khac';
+
+export const itemKinds: ItemKind[] = ['tinh', 'dien', 'khoanh', 'noi', 'to-mau', 'bang', 've-hinh', 'viet', 'khac'];
+
 export type GradedItem = {
+  /** Dạng bài; bài chấm trước GSTH-038 không có trường này. */
+  kind?: ItemKind;
   question: string;
   childAnswer: string;
   /** Đáp án đúng do AI tự giải; bài chấm trước khi có trường này thì không có. */
@@ -99,6 +106,29 @@ export function teacherKnowledge(subject: Subject, grade: number) {
     .join('\n\n');
 }
 
+/** Cách đọc và chấm từng dạng bài. Viết rõ từng bước vì AI nhỏ trên máy (LM Studio) hay bỏ sót. */
+export function exerciseGuide(teacher: TeacherVoice = 'co') {
+  const x = teacher === 'thay' ? 'thầy' : 'cô';
+  return `Cách chấm từng dạng bài (đọc kỹ trước khi chấm):
+- Tính, điền số (tinh, dien): đọc từng phép tính, chép đúng số bé viết. Tự tính lại rồi so. Chữ số trẻ viết tay hay lẫn 1 và 7, 3 và 8, 4 và 9, 5 và 6, 0 và 6: nhìn kỹ nét chữ, KHÔNG tự sửa số bé viết cho khớp đáp án.
+- Khoanh đáp án (khoanh): tìm chữ cái A, B, C, D có vòng tròn bao quanh, đó là lựa chọn của bé. Tự giải bài toán, tìm chữ cái đúng, rồi so: chỉ đúng khi chữ bé khoanh trùng chữ đúng.
+- Nối (noi): lần theo từng đường bé vẽ, từ đầu này tới đầu kia, ghi "… nối với …". Tự tính kết quả của từng ô để biết ô nào phải nối với ô nào. Đường nào mờ hoặc chồng nhau không lần được thì dựa vào số bé ghi cạnh ô (nếu có) và nói rõ là ${x} nhìn chưa rõ đường nối.
+- Tô màu (to-mau): bài tô màu KHÔNG có chữ, phải nhìn màu. Ghi bé đã tô hình nào và màu gì (hình nào để trắng thì là chưa tô). Tự tính phép tính trên từng hình, tìm hình phải tô theo đề (ví dụ hình có kết quả lớn nhất), rồi so với hình bé đã tô. Không chấm tô đẹp hay xấu, tô lem ra ngoài không trừ điểm.
+- Hoàn thành bảng (bang): mỗi ô trống là một phép tính, đọc theo từng cột; ghi đủ từng ô bé điền.
+- Vẽ hình (ve-hinh): xem hình bé vẽ có đúng yêu cầu không (đúng loại hình, đủ số cạnh, số ô, độ dài, vị trí). Không chấm nét vẽ đẹp hay xấu.
+- Viết câu, chính tả (viet): đọc chữ viết tay theo ngữ cảnh để hiểu bé định viết gì, nhưng chỉ ra lỗi chính tả, viết hoa, dấu câu thật sự có. Chữ xấu không phải lỗi.
+
+Liệt kê bài (bắt buộc):
+- Đọc lần lượt từng trang, từ trên xuống dưới, cả "Tiết 1", "Tiết 2" nếu có. Mỗi bài được đánh số (1, 2, 3…) là MỘT mục trong items, không gộp hai bài, không bỏ bài nào.
+- Bài tô màu, bài nối, bài vẽ hình không có chữ số bé viết vẫn phải có mục riêng.
+- Bài có nhiều phần nhỏ (a, b, c… hoặc nhiều ô): ghi đủ các phần trong childAnswer và correctAnswer, mỗi phần một dòng. Bài chỉ đúng khi mọi phần đều đúng; sai phần nào thì explanation nói rõ phần đó.
+- Bài bé chưa làm thì childAnswer ghi "chưa làm", correct là false, explanation nhắc bé làm nốt.
+
+Tự kiểm tra trước khi trả lời:
+- correct phải khớp với so sánh: childAnswer khác correctAnswer ở bất kỳ phần nào thì correct là false.
+- explanation không được nói ngược với correct (correct true thì không nói bé sai; correct false thì chỉ đúng chỗ sai).`;
+}
+
 export const resultSchema = {
   type: 'object',
   additionalProperties: false,
@@ -117,8 +147,14 @@ export const resultSchema = {
         type: 'object',
         additionalProperties: false,
         // Thứ tự có chủ ý: AI tự giải ra correctAnswer trước rồi mới so với bài của bé.
-        required: ['question', 'childAnswer', 'correctAnswer', 'correct', 'explanation'],
+        required: ['kind', 'question', 'childAnswer', 'correctAnswer', 'correct', 'explanation'],
         properties: {
+          kind: {
+            type: 'string',
+            enum: itemKinds,
+            description:
+              'Dạng bài: tinh (tính, đặt tính), dien (điền số/chữ vào chỗ trống), khoanh (khoanh đáp án), noi (nối), to-mau (tô màu), bang (hoàn thành bảng), ve-hinh (vẽ hình), viet (viết câu, chính tả), khac',
+          },
           question: { type: 'string' },
           childAnswer: { type: 'string', description: 'Đúng nguyên văn bé đã viết' },
           correctAnswer: {
@@ -167,10 +203,12 @@ Bước đầu tiên, nhận biết bài (làm trước khi chấm):
 - fitsGrade: true nếu detectedGrade bằng ${grade}${grade > 1 ? ` hoặc ${grade - 1} (ôn bài lớp dưới)` : ''}; ngược lại false.
 Dù bài có hợp lớp hay không, vẫn chấm bình thường các bước bên dưới.
 
+${exerciseGuide(teacher)}
+
 Ảnh là bài làm của bé, có thể gồm nhiều trang theo đúng thứ tự (có thể viết tay, chụp nghiêng hoặc mờ). Chấm gộp tất cả các trang thành một bài; câu hỏi ghi kèm số trang nếu có nhiều trang (ví dụ "Trang 2 – Bài 3"). Hãy:
 1. Đọc từng câu hỏi và câu trả lời của bé. Chỗ nào không đọc rõ thì ghi "không đọc rõ" thay vì đoán.
-2. Với từng câu: chép nguyên văn câu trả lời của bé vào childAnswer, tự giải lại cẩn thận và ghi kết quả vào correctAnswer, rồi mới so hai kết quả để chấm đúng/sai. Với câu sai, explanation là lời ${x} nói với bé: chỉ ra bé sai ở bước nào và cách làm đúng, ngắn gọn, dễ hiểu với trẻ lớp ${grade}. Với câu đúng, explanation là một câu khen ngắn, cụ thể.
-3. Cho điểm trên thang 10, làm tròn 0.5, tương ứng với số câu đúng.
+2. Với từng bài: ghi kind (dạng bài), chép nguyên văn câu trả lời của bé vào childAnswer, tự giải lại cẩn thận và ghi kết quả vào correctAnswer, rồi mới so hai kết quả để chấm đúng/sai. Với câu sai, explanation là lời ${x} nói với bé: chỉ ra bé sai ở bước nào và cách làm đúng, ngắn gọn, dễ hiểu với trẻ lớp ${grade}. Với câu đúng, explanation là một câu khen ngắn, cụ thể.
+3. Cho điểm trên thang 10, làm tròn 0.5, tương ứng với số bài đúng.
 4. Viết spokenFeedback để đọc thành tiếng cho bé nghe, theo đúng giọng nói ở trên: xưng "${x}", gọi bé là "con", 3–5 câu ngắn, khen điều bé làm tốt trước, chỉ ra tối đa 2 lỗi quan trọng nhất và cách sửa, kết thúc bằng một câu động viên. Lỗi nhắc tới phải đúng với các câu được chấm sai ở mục items, không thêm lỗi khác. Không dùng ký hiệu, emoji hay định dạng vì câu này sẽ được đọc lên; viết phép tính bằng chữ (ví dụ "bốn mươi bảy nhân ba").
 5. Viết parentNote cho phụ huynh: lỗi bé mắc trong bài này (đúng như items) và gợi ý cách luyện thêm ở nhà phù hợp với lớp ${grade}.
 
@@ -197,3 +235,77 @@ export const levelPrompt = `Bạn là giáo viên tiểu học Việt Nam. Nhìn
 - detectedGrade: bài thuộc kiến thức lớp mấy (1 đến 5) theo chương trình 2018; không xác định hoặc không phải bài tập thì 0.
 Gợi ý: Toán lớp 1 số đến 100, cộng trừ không nhớ. Lớp 2 cộng trừ có nhớ phạm vi 100 và 1000, bảng nhân chia 2 và 5, m dm cm kg lít, xem giờ. Lớp 3 bảng nhân chia 2 đến 9, số đến 100 000, chu vi diện tích hình chữ nhật. Lớp 4 số lớp triệu, phân số. Lớp 5 số thập phân, phần trăm, thể tích, vận tốc.
 Tiếng Việt lớp 1 âm vần ghép tiếng. Lớp 2 chính tả l/n s/x hỏi/ngã, từ chỉ sự vật hoạt động đặc điểm, câu Ai là gì Ai làm gì, viết đoạn 4-5 câu. Lớp 3 so sánh, câu kể câu hỏi câu cảm. Lớp 4 danh từ động từ tính từ, chủ ngữ vị ngữ, nhân hoá. Lớp 5 đại từ, kết từ, từ đồng nghĩa, câu ghép.`;
+
+/**
+ * Chấm 2 bước cho AI nhỏ trên máy (LM Studio): làm một lần vừa đọc ảnh vừa giải toán thì AI 8B
+ * hay bỏ sót bài và tính nhầm. Bước 1 chỉ nhìn ảnh và chép lại; bước 2 chấm từ bản chép (chỉ chữ).
+ * Claude vẫn chấm một lần như cũ.
+ */
+export type Transcript = {
+  exercises: {
+    page: number;
+    number: string;
+    kind: ItemKind;
+    question: string;
+    given: string;
+    childWork: string;
+  }[];
+};
+
+export const transcriptSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['exercises'],
+  properties: {
+    exercises: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['page', 'number', 'kind', 'question', 'given', 'childWork'],
+        properties: {
+          page: { type: 'integer', description: 'Trang thứ mấy (1, 2…)' },
+          number: { type: 'string', description: 'Số bài, kèm tiết nếu có, ví dụ "Tiết 2 – Bài 1"' },
+          kind: { type: 'string', enum: itemKinds },
+          question: { type: 'string', description: 'Đề bài in trong sách, chép nguyên văn' },
+          given: {
+            type: 'string',
+            description:
+              'Mọi số, phép tính, chữ in sẵn trong bài (trên từng hình, từng ô, từng lựa chọn), mỗi thứ một dòng',
+          },
+          childWork: {
+            type: 'string',
+            description:
+              'Bé đã làm gì, mỗi phần một dòng: số/chữ bé viết, chữ cái bé khoanh, đường bé nối, hình bé tô và màu gì; phần bỏ trống ghi "chưa làm"',
+          },
+        },
+      },
+    },
+  },
+};
+
+export function transcribePrompt(subject: Subject, grade: number) {
+  return `Bạn là giáo viên tiểu học Việt Nam. Ảnh là bài làm môn ${SubjectNames[subject]} lớp ${grade} của một bé, có thể gồm nhiều trang. Việc của bạn CHỈ là chép lại thật đầy đủ và chính xác, CHƯA chấm, CHƯA giải.
+
+Cách chép:
+- Đọc lần lượt từng trang, từ trên xuống dưới, cả "Tiết 1", "Tiết 2". Mỗi bài có số thứ tự (1, 2, 3…) là một mục. Không bỏ bài nào, kể cả bài tô màu, bài nối, bài vẽ hình, bảng.
+- given: chép mọi số và phép tính in sẵn. Bài có hình (ngôi nhà, quả táo, con diều, ô vuông…) thì ghi từng hình một dòng, ví dụ "Ngôi nhà 1: 12 – 9". Bảng thì ghi từng cột. Bài khoanh thì ghi từng lựa chọn A, B, C, D.
+- childWork: chỉ ghi điều bé đã làm, mỗi phần một dòng, đúng thứ tự với given:
+  · Số, chữ bé viết tay: chép đúng nét bé viết, KHÔNG sửa cho đúng. Chữ số viết tay hay lẫn 1/7, 3/8, 4/9, 5/6, 0/6: nhìn kỹ.
+  · Tô màu: hình nào được tô và màu gì (đỏ, xanh lá, xanh dương, vàng, hồng…); hình để trắng ghi "không tô".
+  · Nối: lần theo từng đường, ghi "… nối với …".
+  · Khoanh: chữ cái nào có vòng tròn bao quanh.
+  · Vẽ hình: mô tả hình bé vẽ (loại hình, số cạnh, số ô).
+  · Chỗ không nhìn rõ ghi "không nhìn rõ".`;
+}
+
+/** Lời nhắn bước 2: đưa bản chép cho AI chấm (không gửi lại ảnh). */
+export function gradeFromTranscript(transcript: Transcript) {
+  const lines = transcript.exercises.map(
+    (e, i) =>
+      `Bài ${i + 1} (trang ${e.page}, ${e.number}, dạng ${e.kind})\nĐề: ${e.question}\nIn sẵn:\n${e.given}\nBé làm:\n${e.childWork}`,
+  );
+  return `Đây là bản chép đầy đủ bài làm của bé (đã chép từ ảnh, chép đúng nguyên văn những gì bé làm). Hãy chấm ĐÚNG ${transcript.exercises.length} bài này, mỗi bài một mục trong items, theo thứ tự. Với từng bài: tự giải từng phần từ phần "In sẵn" rồi so với phần "Bé làm".
+
+${lines.join('\n\n')}`;
+}
