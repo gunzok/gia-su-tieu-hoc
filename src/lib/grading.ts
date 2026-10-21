@@ -1,7 +1,11 @@
 import {
+  gradeFromTranscript,
   resultSchema,
   systemPrompt,
+  transcribePrompt,
+  transcriptSchema,
   type GradingResult,
+  type Transcript,
   type Subject,
   type TeacherVoice,
 } from '../../supabase/functions/_shared/cham-bai';
@@ -25,7 +29,8 @@ const claudeTimeoutMs = 120_000;
 // Tạm bật cả ở bản phát hành cho tới khi nạp tiền Claude (quyết định GSTH-003).
 const lmStudioUrl = process.env.EXPO_PUBLIC_LMSTUDIO_URL?.replace(/\/+$/, '');
 const lmStudioModel = process.env.EXPO_PUBLIC_LMSTUDIO_MODEL;
-const lmStudioTimeoutMs = 240_000;
+// Chấm 2 bước (chép bài rồi chấm) mất khoảng 3 phút trên máy Mac M-series với AI 8B.
+const lmStudioTimeoutMs = 360_000;
 
 type GradeParams = {
   /** Các trang bài làm (JPEG base64), theo thứ tự. */
@@ -134,48 +139,71 @@ async function friendlyError(error: unknown): Promise<GradingError> {
 }
 
 // LM Studio có API giống OpenAI: /v1/chat/completions, ảnh gửi dạng data URL.
+// AI nhỏ trên máy vừa đọc ảnh vừa giải toán thì hay bỏ sót bài (tô màu, nối, bảng) và chấm nhầm,
+// nên chấm 2 bước: (1) nhìn ảnh, chỉ chép lại đề và bài bé làm; (2) chấm từ bản chép, không gửi ảnh.
+// Đo trên bài thật lớp 2 (GSTH-038): 1 bước tìm được 5/8 bài, 2 bước tìm đủ 8/8, chấm đúng 7/8.
 async function gradeWithLmStudio(params: GradeParams): Promise<GradingResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), lmStudioTimeoutMs);
   try {
     const model = lmStudioModel ?? (await firstLoadedModel(controller.signal));
-    const response = await fetch(`${lmStudioUrl}/v1/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        max_tokens: 4000,
-        response_format: {
-          type: 'json_schema',
-          json_schema: { name: 'ket_qua_cham_bai', strict: true, schema: resultSchema },
-        },
-        messages: [
-          { role: 'system', content: systemPrompt(params.subject, params.grade, params.teacher) },
-          {
-            role: 'user',
-            content: [
-              ...params.images.map((image) => ({
-                type: 'image_url',
-                image_url: { url: `data:image/jpeg;base64,${image}` },
-              })),
-              { type: 'text', text: `${params.teacher === 'thay' ? 'Thầy' : 'Cô'} chấm bài này giúp con nhé.` },
-            ],
-          },
-        ],
-      }),
-    });
-    if (!response.ok) {
-      throw new Error(`LM Studio trả lỗi ${response.status}: ${await response.text()}`);
+    const images = params.images.map((image) => ({
+      type: 'image_url',
+      image_url: { url: `data:image/jpeg;base64,${image}` },
+    }));
+    const grading = systemPrompt(params.subject, params.grade, params.teacher);
+
+    const transcript = await askLmStudio<Transcript>(controller.signal, model, 'ban_chep', transcriptSchema, [
+      { role: 'system', content: transcribePrompt(params.subject, params.grade) },
+      { role: 'user', content: [...images, { type: 'text', text: 'Chép lại đầy đủ các bài trong ảnh.' }] },
+    ]);
+    // Không chép được bài nào (ảnh không phải bài tập, hoặc AI trả lời lạ): chấm 1 bước như cũ, để AI
+    // nhìn ảnh và tự báo "không phải bài tập".
+    if (!transcript.exercises?.length) {
+      return await askLmStudio<GradingResult>(controller.signal, model, 'ket_qua_cham_bai', resultSchema, [
+        { role: 'system', content: grading },
+        { role: 'user', content: [...images, { type: 'text', text: teacherAsk(params.teacher) }] },
+      ]);
     }
-    const data = await response.json();
-    const content: string | undefined = data?.choices?.[0]?.message?.content;
-    if (!content) throw new Error('LM Studio không trả về kết quả chấm.');
-    return parseJsonObject(content);
+    return await askLmStudio<GradingResult>(controller.signal, model, 'ket_qua_cham_bai', resultSchema, [
+      { role: 'system', content: grading },
+      { role: 'user', content: gradeFromTranscript(transcript) },
+    ]);
   } finally {
     clearTimeout(timer);
   }
+}
+
+function teacherAsk(teacher: TeacherVoice) {
+  return `${teacher === 'thay' ? 'Thầy' : 'Cô'} chấm bài này giúp con nhé.`;
+}
+
+async function askLmStudio<T>(
+  signal: AbortSignal,
+  model: string,
+  name: string,
+  schema: object,
+  messages: { role: 'system' | 'user'; content: unknown }[],
+): Promise<T> {
+  const response = await fetch(`${lmStudioUrl}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal,
+    body: JSON.stringify({
+      model,
+      temperature: 0.1,
+      max_tokens: 6000,
+      response_format: { type: 'json_schema', json_schema: { name, strict: true, schema } },
+      messages,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`LM Studio trả lỗi ${response.status}: ${await response.text()}`);
+  }
+  const data = await response.json();
+  const content: string | undefined = data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error('LM Studio không trả về kết quả chấm.');
+  return parseJsonObject(content) as T;
 }
 
 // /api/v0/models của LM Studio cho biết model nào đang được nạp; ưu tiên model biết nhìn ảnh.
@@ -191,9 +219,9 @@ async function firstLoadedModel(signal: AbortSignal): Promise<string> {
 }
 
 // Model chạy trên máy đôi khi viết thêm chữ quanh JSON, nên chỉ lấy phần {...}.
-function parseJsonObject(text: string): GradingResult {
+function parseJsonObject(text: string): unknown {
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');
   if (start === -1 || end <= start) throw new Error('LM Studio trả về kết quả không đúng dạng.');
-  return JSON.parse(text.slice(start, end + 1)) as GradingResult;
+  return JSON.parse(text.slice(start, end + 1));
 }
