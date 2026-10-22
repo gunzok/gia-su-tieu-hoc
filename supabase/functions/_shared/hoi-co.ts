@@ -94,3 +94,15 @@ export function suggestedQuestions(item: AskItem, teacherWord: string) {
         `${teacherWord} cho con một bài tương tự nhé`,
       ];
 }
+
+/**
+ * Cuộc trò chuyện thành một đoạn chữ (cho Gemini: gửi một lần, không cần lưu hội thoại trên máy chủ).
+ * Lượt cuối luôn là câu bé vừa hỏi.
+ */
+export function conversationText(turns: AskTurn[]) {
+  const history = turns
+    .slice(0, -1)
+    .map((turn) => `${turn.role === 'user' ? 'Bé hỏi' : 'Đã trả lời'}: ${turn.content}`);
+  const last = turns[turns.length - 1]?.content ?? '';
+  return [...(history.length ? ['Những gì đã nói trước đó:', ...history, ''] : []), `Bé hỏi: ${last}`, 'Chỉ viết lời trả lời cho bé, không ghi tên người nói ở đầu.'].join('\n');
+}

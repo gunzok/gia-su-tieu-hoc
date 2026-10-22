@@ -56,7 +56,7 @@ describe('gradeHomework khi hết lượt', () => {
     expect(error.message).toBe('Hôm nay con đã chấm đủ 3 bài rồi.');
   });
 
-  it('không chuyển sang LM Studio khi hết lượt, dù đã cấu hình LM Studio', async () => {
+  it('hết lượt thì báo ngay, app không tự gọi AI nào khác (đã bỏ LM Studio, GSTH-039)', async () => {
     const { gradeHomework, httpError } = loadGrading('http://192.168.1.13:1234');
     mockInvoke.mockResolvedValue({
       data: null,
@@ -79,13 +79,46 @@ describe('gradeHomework khi lỗi khác', () => {
     expect(error.message).toMatch(/mất mạng/);
   });
 
-  it('máy chủ lỗi thì vẫn thử LM Studio (dự phòng ở cả bản phát hành, GSTH-003)', async () => {
-    const { gradeHomework, httpError } = loadGrading('http://192.168.1.13:1234');
+  it('máy chủ lỗi thì báo lời nhắn của máy chủ, không gọi LM Studio dù còn cấu hình cũ', async () => {
+    const { gradeHomework, GradingError, httpError } = loadGrading('http://192.168.1.13:1234');
     mockInvoke.mockResolvedValue({ data: null, error: httpError({ error: 'Máy chủ chưa chấm được bài' }) });
-    fetchMock.mockRejectedValue(new Error('LM Studio tắt'));
 
-    await expect(gradeHomework(params)).rejects.toThrow(/LM Studio/);
-    expect(fetchMock).toHaveBeenCalled();
-    expect(String(fetchMock.mock.calls[0][0])).toContain('http://192.168.1.13:1234');
+    const error = await gradeHomework(params).catch((e) => e);
+    expect(error).toBeInstanceOf(GradingError);
+    expect(error.message).toBe('Máy chủ chưa chấm được bài');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('gradeHomework khi chấm được', () => {
+  const graded = {
+    isHomework: true,
+    detectedGrade: 2,
+    fitsGrade: true,
+    items: [
+      { question: 'a', childAnswer: '3', correctAnswer: '6', correct: false, explanation: '' },
+      { question: 'b', childAnswer: '4', correctAnswer: '4', correct: true, explanation: '' },
+    ],
+    score: 9,
+    spokenFeedback: '2 + 2 = 4',
+    parentNote: '',
+  };
+
+  it('ghi đúng AI máy chủ đã dùng (gemini) và tính lại điểm theo số câu đúng', async () => {
+    const { gradeHomework } = loadGrading();
+    mockInvoke.mockResolvedValue({ data: { ...graded, engine: 'gemini' }, error: null });
+
+    const { result, engine } = await gradeHomework(params);
+    expect(engine).toBe('gemini');
+    expect(result.score).toBe(5);
+    expect(result).not.toHaveProperty('engine');
+    expect(result.spokenFeedback).toBe('2 cộng 2 bằng 4');
+  });
+
+  it('máy chủ cũ không trả engine thì coi là claude', async () => {
+    const { gradeHomework } = loadGrading();
+    mockInvoke.mockResolvedValue({ data: graded, error: null });
+
+    expect((await gradeHomework(params)).engine).toBe('claude');
   });
 });
