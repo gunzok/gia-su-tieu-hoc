@@ -1,7 +1,7 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 // Cạnh dài nhất của ảnh gửi đi chấm: đủ rõ để đọc chữ viết tay, nhưng nhẹ để gửi nhanh
-// và để LM Studio trên máy tính xử lý nhanh hơn.
+// và đỡ tốn lượt dùng AI.
 const maxSide = 1600;
 
 /** Thu nhỏ và nén ảnh bài làm: trả về file JPEG tạm (uri) và nội dung base64 để gửi chấm. */

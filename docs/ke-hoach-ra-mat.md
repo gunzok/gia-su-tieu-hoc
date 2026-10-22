@@ -19,7 +19,7 @@ Mỗi giai đoạn làm trên nhánh Git riêng, commit nhỏ; trước mỗi qu
 > Còn lại: `npx supabase db push`, `npx supabase functions deploy cham-bai xoa-tai-khoan`, đặt secret `REVENUECAT_SECRET_KEY`; đăng chính sách lên một trang web công khai (store bắt buộc có URL) và ghi email hỗ trợ.
 - Giới hạn lượt chấm: free vs Plus, kiểm tra ở `cham-bai` (đếm theo user/ngày trong bảng `gradings`), không chỉ ở app.
 - Rà RLS các bảng `children`, `gradings`, storage ảnh: mỗi phụ huynh chỉ thấy dữ liệu của mình.
-- Quyết định LM Studio (chốt 19/10/2026, GSTH-003): **tạm bật làm dự phòng cả ở bản phát hành** (chấm bài `src/lib/grading.ts` và Hỏi cô `src/lib/hoi-co.ts`) cho tới khi tài khoản Claude được nạp tiền. Khi đã nạp: tạo ticket chuyển LM Studio về chỉ dùng khi lập trình (`__DEV__`), ẩn ở bản production.
+- (Đã thay bằng GSTH-039, 22/10/2026: bỏ LM Studio; chấm bài và Hỏi cô dùng Gemini gói miễn phí để thử, Claude dự phòng; thứ tự đổi bằng secret `AI_THU_TU`.) Quyết định cũ về LM Studio (chốt 19/10/2026, GSTH-003): **tạm bật làm dự phòng cả ở bản phát hành** (chấm bài `src/lib/grading.ts` và Hỏi cô `src/lib/hoi-co.ts`) cho tới khi tài khoản Claude được nạp tiền. Khi đã nạp: tạo ticket chuyển LM Studio về chỉ dùng khi lập trình (`__DEV__`), ẩn ở bản production.
 - Xử lý lỗi thân thiện cho bé: mất mạng, ảnh mờ, hết lượt.
 - Trang **Chính sách quyền riêng tư** + nút **Xoá tài khoản & dữ liệu** (Apple/Google bắt buộc; app dành cho trẻ em → cần tuân thủ mục Kids/Families).
 - Cổng phụ huynh (parental gate) trước màn mua gói Plus và link ra ngoài.

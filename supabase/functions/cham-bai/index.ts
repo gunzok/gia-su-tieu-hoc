@@ -1,14 +1,17 @@
-// Supabase Edge Function "cham-bai": nhận ảnh bài làm từ app, gọi Claude để chấm.
-// Claude API key chỉ nằm ở đây (Supabase secret ANTHROPIC_API_KEY), không nằm trong app.
+// Supabase Edge Function "cham-bai": nhận ảnh bài làm từ app, gọi AI để chấm.
+// Thứ tự AI: Gemini (gói miễn phí, để thử) rồi Claude; đổi bằng secret AI_THU_TU (vd "claude,gemini").
+// Khoá AI chỉ nằm ở đây (Supabase secret GEMINI_API_KEY, ANTHROPIC_API_KEY), không nằm trong app.
 //
 // Triển khai:  npx supabase functions deploy cham-bai
 // Đặt key:     npx supabase secrets set ANTHROPIC_API_KEY=...
+//              npx supabase secrets set GEMINI_API_KEY=...
 //              npx supabase secrets set REVENUECAT_SECRET_KEY=...  (để biết ai có gói Plus)
 
 import Anthropic from 'npm:@anthropic-ai/sdk@0.135.0';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-import { resultSchema, systemPrompt, type Subject, type TeacherVoice } from '../_shared/cham-bai.ts';
+import { resultSchema, systemPrompt, type GradingResult, type Subject, type TeacherVoice } from '../_shared/cham-bai.ts';
+import { aiOrder, askGemini, geminiImages } from '../_shared/gemini.ts';
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 
@@ -140,51 +143,77 @@ Deno.serve(async (req) => {
     }
   }
 
-  try {
-    const response = await anthropic.beta.messages.create({
-      model: 'claude-opus-5-5',
-      max_tokens: 16000,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      output_config: {
-        effort: 'medium',
-        format: { type: 'json_schema', schema: resultSchema },
-      },
-      system: systemPrompt(subject as Subject, grade, teacher),
-      messages: [
-        {
-          role: 'user',
-          content: [
-            ...(images as string[]).map((data) => ({
-              type: 'image' as const,
-              source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data },
-            })),
-            { type: 'text', text: `${teacher === 'thay' ? 'Thầy' : 'Cô'} chấm bài này giúp con nhé.` },
-          ],
-        },
-      ],
-    });
+  const system = systemPrompt(subject as Subject, grade, teacher);
+  const ask = `${teacher === 'thay' ? 'Thầy' : 'Cô'} chấm bài này giúp con nhé.`;
+  const geminiKey = Deno.env.get('GEMINI_API_KEY');
+  const order = aiOrder(Deno.env.get('AI_THU_TU'), {
+    gemini: !!geminiKey,
+    claude: !!Deno.env.get('ANTHROPIC_API_KEY'),
+  });
 
-    // Các trường hợp chưa chấm được dưới đây cũng trả lại lượt cho bé.
-    if (response.stop_reason === 'refusal') {
-      await refundUsage();
-      return json({ error: 'AI không chấm được bài này. Con thử chụp lại bài khác nhé.' }, 422);
+  // Thử lần lượt từng AI; AI nào lỗi (hết tiền, hết lượt miễn phí, quá tải…) thì thử AI tiếp theo.
+  let lastFailure: { message: string; status: number } = { message: 'Máy chủ chưa chấm được bài', status: 502 };
+  for (const engine of order) {
+    try {
+      const outcome =
+        engine === 'gemini'
+          ? await gradeWithGemini(geminiKey!, system, ask, images as string[])
+          : await gradeWithClaude(system, ask, images as string[]);
+      if ('result' in outcome) return json({ ...outcome.result, engine });
+      lastFailure = outcome;
+    } catch (error) {
+      console.error(`Lỗi chấm bằng ${engine}:`, error);
     }
-    if (response.stop_reason === 'max_tokens') {
-      await refundUsage();
-      return json({ error: 'Bài làm quá dài, AI chưa chấm xong. Con thử chụp ít câu hơn nhé.' }, 422);
-    }
-    const text = response.content.find((block) => block.type === 'text');
-    if (!text || text.type !== 'text') {
-      await refundUsage();
-      return json({ error: 'AI không trả về kết quả chấm.' }, 502);
-    }
-
-    return json(JSON.parse(text.text));
-  } catch (error) {
-    console.error('Lỗi gọi Claude:', error);
-    // Chưa chấm được thì trả lại lượt cho bé.
-    await refundUsage();
-    return json({ error: 'Máy chủ chưa chấm được bài' }, 502);
   }
+  // Chưa chấm được thì trả lại lượt cho bé.
+  await refundUsage();
+  return json({ error: lastFailure.message }, lastFailure.status);
 });
+
+type Outcome = { result: GradingResult } | { message: string; status: number };
+
+async function gradeWithGemini(apiKey: string, system: string, ask: string, images: string[]): Promise<Outcome> {
+  const text = await askGemini(apiKey, {
+    system,
+    input: [{ type: 'text', text: ask }, ...geminiImages(images)],
+    schema: resultSchema,
+    maxTokens: 16000,
+    thinking: 'medium',
+  });
+  return { result: JSON.parse(text) as GradingResult };
+}
+
+async function gradeWithClaude(system: string, ask: string, images: string[]): Promise<Outcome> {
+  const response = await anthropic.beta.messages.create({
+    model: 'claude-opus-5-5',
+    max_tokens: 16000,
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+    output_config: {
+      effort: 'medium',
+      format: { type: 'json_schema', schema: resultSchema },
+    },
+    system,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          ...images.map((data) => ({
+            type: 'image' as const,
+            source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data },
+          })),
+          { type: 'text', text: ask },
+        ],
+      },
+    ],
+  });
+  if (response.stop_reason === 'refusal') {
+    return { message: 'AI không chấm được bài này. Con thử chụp lại bài khác nhé.', status: 422 };
+  }
+  if (response.stop_reason === 'max_tokens') {
+    return { message: 'Bài làm quá dài, AI chưa chấm xong. Con thử chụp ít câu hơn nhé.', status: 422 };
+  }
+  const text = response.content.find((block) => block.type === 'text');
+  if (!text || text.type !== 'text') return { message: 'AI không trả về kết quả chấm.', status: 502 };
+  return { result: JSON.parse(text.text) as GradingResult };
+}

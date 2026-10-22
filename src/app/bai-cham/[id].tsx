@@ -125,7 +125,7 @@ export default function GradingDetailScreen() {
                 Đúng {entry.items.filter((item) => item.correct).length}/{entry.items.length} câu
               </AppText>
               <AppText variant="bodySm" color={Palette.inkSoft}>
-                {entry.engine === 'local' ? 'Chấm bằng AI trên máy tính ở nhà' : 'Chấm bằng AI trên máy chủ'}
+                {engineLabel(entry.engine)}
               </AppText>
             </View>
           </View>
@@ -308,3 +308,9 @@ const styles = StyleSheet.create({
     gap: Spacing.two + 2,
   },
 });
+
+function engineLabel(engine?: string) {
+  if (engine === 'local') return 'Chấm bằng AI trên máy tính ở nhà';
+  if (engine === 'gemini') return 'Chấm bằng AI Gemini (bản thử)';
+  return 'Chấm bằng AI trên máy chủ';
+}
