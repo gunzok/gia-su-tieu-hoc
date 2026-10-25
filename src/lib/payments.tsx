@@ -67,6 +67,8 @@ function isCancelled(error: unknown) {
   return (error as PurchasesError | undefined)?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR;
 }
 
+export const PAYMENT_UNAVAILABLE_MESSAGE = 'Gói Plus chưa mở được lúc này. Ba mẹ thử lại sau nhé.';
+
 /** Lời báo lỗi dễ hiểu cho ba mẹ; null nếu ba mẹ tự huỷ (không cần báo). */
 export function purchaseErrorMessage(error: unknown): string | null {
   if (isCancelled(error)) return null;
@@ -81,7 +83,10 @@ export function purchaseErrorMessage(error: unknown): string | null {
     case PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR:
       return 'Ba mẹ đã mua gói này rồi. Bấm "Khôi phục giao dịch" để mở lại nhé.';
     default:
-      return error instanceof Error ? error.message : 'Chưa thanh toán được, ba mẹ thử lại sau nhé.';
+      // Không đưa nguyên lời lỗi của thư viện cho ba mẹ; chỉ để lại log.
+      if (error instanceof Error && error.message === PAYMENT_UNAVAILABLE_MESSAGE) return error.message;
+      console.warn('Lỗi thanh toán chưa phân loại:', error);
+      return 'Chưa thanh toán được, ba mẹ thử lại sau nhé.';
   }
 }
 
@@ -139,7 +144,11 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
   }, [storeReady, userId]);
 
   const showPaywall = useCallback(() => {
-    if (!storeReady && !devPlus) throw new Error('Chưa cấu hình thanh toán (thiếu EXPO_PUBLIC_REVENUECAT_API_KEY).');
+    if (!storeReady && !devPlus) {
+      // Chi tiết kỹ thuật chỉ ghi log cho người làm app; bé và ba mẹ chỉ thấy lời nhắn thân thiện.
+      console.warn('Thanh toán chưa sẵn sàng: thiếu EXPO_PUBLIC_REVENUECAT_API_KEY hoặc chưa khởi tạo được RevenueCat.');
+      throw new Error(PAYMENT_UNAVAILABLE_MESSAGE);
+    }
     router.push('/goi-plus');
   }, [storeReady]);
 

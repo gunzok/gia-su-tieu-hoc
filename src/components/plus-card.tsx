@@ -95,21 +95,24 @@ export function PlusCard() {
         accessibilityRole="button"
         disabled={busy !== null}
         onPress={() =>
-          run('restore', async () => {
-            const restored = await restore();
-            Alert.alert(
-              restored ? 'Đã khôi phục gói Plus' : 'Chưa tìm thấy gói đã mua',
-              restored
-                ? 'Các tính năng Plus đã mở lại.'
-                : 'Ba mẹ kiểm tra lại tài khoản App Store / Google Play đã dùng để mua nhé.',
-            );
-          })
+          requireParent('khôi phục gói Plus đã mua', () =>
+            run('restore', async () => {
+              const restored = await restore();
+              Alert.alert(
+                restored ? 'Đã khôi phục gói Plus' : 'Chưa tìm thấy gói đã mua',
+                restored
+                  ? 'Các tính năng Plus đã mở lại.'
+                  : 'Ba mẹ kiểm tra lại tài khoản App Store / Google Play đã dùng để mua nhé.',
+              );
+            }),
+          )
         }
         style={styles.restore}>
         <AppText variant="labelMd" color={Palette.amberInk}>
           {busy === 'restore' ? 'Đang khôi phục…' : 'Khôi phục giao dịch đã mua'}
         </AppText>
       </Pressable>
+      {gate}
     </Card>
   );
 }
