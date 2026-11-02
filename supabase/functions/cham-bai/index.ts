@@ -12,6 +12,7 @@ import Anthropic from 'npm:@anthropic-ai/sdk@0.135.0';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import {
+  duplicatePages,
   labelPageItems,
   mergePages,
   needsRegrade,
@@ -183,7 +184,11 @@ Deno.serve(async (req) => {
   const done = graded as Graded<GradingResult>[];
   if (pages.length === 1) return json({ ...done[0].result, engine: done[0].engine });
 
-  const merged = mergePages(done.map((page) => page.result));
+  // Trang bé chụp trùng (cùng đề, cùng bài làm) chỉ chấm một lần (GIA-50).
+  const results = done.map((page) => page.result);
+  const duplicates = duplicatePages(results);
+  const merged = mergePages(results.filter((_, index) => !duplicates.includes(index + 1)));
+  if (duplicates.length > 0) merged.duplicatePages = duplicates;
   if (merged.isHomework && merged.items.length > 0) {
     // Nhờ AI viết lời nhận xét chung cho cả bài; lỗi thì giữ bản ghép tạm từ các trang.
     const summary = await withFallback(order, (engine) =>
