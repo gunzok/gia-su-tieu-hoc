@@ -43,6 +43,11 @@ type HomeworkSession = {
   dismissNotice: () => void;
 };
 
+/** Ảnh album có assetId; ảnh vừa chụp thì mỗi lần một uri mới. */
+function photoKey(asset: ImagePicker.ImagePickerAsset) {
+  return asset.assetId ?? asset.uri;
+}
+
 /** Hỏi có dùng ảnh chưa đạt không. Trả về true nếu vẫn dùng. */
 function askKeepPhoto(problem: PhotoProblem, source: 'camera' | 'library', page?: number) {
   return new Promise<boolean>((resolve) => {
@@ -130,15 +135,27 @@ export function HomeworkSessionProvider({
         : await ImagePicker.launchImageLibraryAsync(options);
     if (picked.canceled) return;
 
+    // Ảnh trong album đã chọn rồi thì bỏ qua (GIA-50).
+    const chosen = new Set(photos.map(photoKey));
+    const fresh = picked.assets.filter((asset) => {
+      const key = photoKey(asset);
+      if (chosen.has(key)) return false;
+      chosen.add(key);
+      return true;
+    });
+    if (fresh.length < picked.assets.length) {
+      setNotice({ id: Date.now(), title: 'Trang này con chọn rồi', message: 'Cô bỏ bớt trang trùng cho con nhé.' });
+    }
+
     // Ảnh mờ, tối, lóa: nhắc bé chụp lại trước khi chấm (GIA-48). Ba mẹ vẫn chọn dùng ảnh đó được,
     // phòng khi máy đo nhầm. Đo lỗi thì cứ dùng ảnh.
     const kept: ImagePicker.ImagePickerAsset[] = [];
-    for (const [index, asset] of picked.assets.entries()) {
+    for (const [index, asset] of fresh.entries()) {
       const problems = await checkPhotoQuality(asset).catch((error) => {
         console.warn('Chưa đo được chất lượng ảnh:', error);
         return [];
       });
-      const page = picked.assets.length > 1 ? index + 1 : undefined;
+      const page = fresh.length > 1 ? index + 1 : undefined;
       if (problems.length === 0 || (await askKeepPhoto(problems[0], source, page))) kept.push(asset);
     }
     if (kept.length === 0) {
@@ -197,6 +214,14 @@ export function HomeworkSessionProvider({
         pages,
         engine,
       };
+      if (graded.duplicatePages?.length) {
+        const pagesText = graded.duplicatePages.join(', ');
+        setNotice({
+          id: Date.now(),
+          title: 'Có trang chụp trùng',
+          message: `Trang ${pagesText} giống trang trước nên cô chỉ chấm một lần thôi nhé.`,
+        });
+      }
       setLatest(entry);
       setLatestReward(null);
       setPhotos([]);

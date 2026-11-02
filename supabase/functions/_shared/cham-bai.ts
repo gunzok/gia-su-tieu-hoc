@@ -32,6 +32,8 @@ export type GradingResult = {
   detectedGrade?: number;
   /** Bài có hợp với lớp đang chấm không (ôn lại kiến thức lớp ngay dưới vẫn tính là hợp). */
   fitsGrade?: boolean;
+  /** Các trang (từ 1) bé chụp trùng nên chỉ chấm một lần (GIA-50). */
+  duplicatePages?: number[];
   score: number;
   spokenFeedback: string;
   items: GradedItem[];
@@ -281,6 +283,38 @@ export function mergePages(pages: GradingResult[]): GradingResult {
     items,
     parentNote: homework.map((page) => page.parentNote.trim()).filter(Boolean).join('\n'),
   };
+}
+
+/** Khoá so sánh một bài: đề + câu trả lời của bé, bỏ "Trang k –", dấu câu, khoảng trắng, chữ hoa. */
+function itemKey(item: GradedItem) {
+  const clean = (text: string) =>
+    text
+      .replace(/^\s*trang\s*\d+\s*[–-]\s*/i, '')
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}+\-×x:=<>]/gu, '');
+  return `${clean(item.question)}|${clean(item.childAnswer)}`;
+}
+
+/** Hai trang trùng khi ít nhất 80% bài (cả đề lẫn câu bé trả lời) giống nhau. */
+const duplicateOverlap = 0.8;
+
+/**
+ * Số thứ tự (từ 1) các trang trùng với một trang đứng trước (GIA-50): bé chụp một trang hai lần.
+ * So nội dung đã chấm chứ không so ảnh, vì các trang vở cùng mẫu trông rất giống nhau.
+ */
+export function duplicatePages(pages: GradingResult[]) {
+  const keys = pages.map((page) => new Set(page.items.map(itemKey)));
+  const duplicates: number[] = [];
+  keys.forEach((current, index) => {
+    if (current.size === 0) return;
+    const same = keys.slice(0, index).some((earlier, earlierIndex) => {
+      if (earlier.size === 0 || duplicates.includes(earlierIndex + 1)) return false;
+      const shared = [...current].filter((key) => earlier.has(key)).length;
+      return shared / Math.max(current.size, earlier.size) >= duplicateOverlap;
+    });
+    if (same) duplicates.push(index + 1);
+  });
+  return duplicates;
 }
 
 export type GradingSummary = Pick<GradingResult, 'spokenFeedback' | 'parentNote'>;

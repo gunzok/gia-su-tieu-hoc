@@ -1,4 +1,5 @@
 import {
+  duplicatePages,
   labelPageItems,
   mergePages,
   needsRegrade,
@@ -124,5 +125,42 @@ describe('summaryAsk', () => {
     expect(ask).toContain('Trang 1 – Bài 1');
     expect(ask).toContain('Không chấm lại');
     expect(ask).toContain('spokenFeedback');
+  });
+});
+
+describe('duplicatePages', () => {
+  const pageA = () =>
+    makeResult({
+      items: [
+        makeItem({ question: 'Trang 1 – Bài 1: 38 + 46', childAnswer: '74' }),
+        makeItem({ question: 'Trang 1 – Bài 2: 16 - 9', childAnswer: '8' }),
+        makeItem({ question: 'Trang 1 – Bài 3: 47 + 25', childAnswer: '72' }),
+      ],
+    });
+
+  it('trang chụp lại (cùng đề, cùng bài làm) bị coi là trùng, dù AI ghi khác số trang và dấu câu', () => {
+    const again = makeResult({
+      items: [
+        makeItem({ question: 'Trang 3 – Bài 1: 38 + 46.', childAnswer: '74' }),
+        makeItem({ question: 'Trang 3 – bài 2: 16 - 9', childAnswer: ' 8' }),
+        makeItem({ question: 'Trang 3 – Bài 3: 47 + 25', childAnswer: '72' }),
+      ],
+    });
+    expect(duplicatePages([pageA(), makeResult({ items: [makeItem({ question: 'Bài 1: 5 x 4' })] }), again])).toEqual([3]);
+  });
+
+  it('cùng mẫu đề nhưng bé làm khác thì không trùng', () => {
+    const other = makeResult({
+      items: [
+        makeItem({ question: 'Trang 2 – Bài 1: 38 + 46', childAnswer: '84' }),
+        makeItem({ question: 'Trang 2 – Bài 2: 16 - 9', childAnswer: '7' }),
+        makeItem({ question: 'Trang 2 – Bài 3: 47 + 25', childAnswer: '72' }),
+      ],
+    });
+    expect(duplicatePages([pageA(), other])).toEqual([]);
+  });
+
+  it('trang không có bài nào không bị coi là trùng', () => {
+    expect(duplicatePages([makeResult({ items: [] }), makeResult({ items: [] })])).toEqual([]);
   });
 });
