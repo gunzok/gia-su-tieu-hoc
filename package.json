@@ -36,6 +36,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.0",
+    "react-native-document-scanner-plugin": "^2.0.4",
     "react-native-gesture-handler": "~3.3.0",
     "react-native-purchases": "^10.14.0",
     "react-native-purchases-ui": "^10.14.0",

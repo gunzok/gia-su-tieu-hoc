@@ -77,6 +77,12 @@
           "microphonePermission": "Gia sư Tiểu học cần dùng micro để bé nói câu hỏi cho cô thay vì gõ chữ.",
           "speechRecognitionPermission": "Gia sư Tiểu học cần nhận giọng nói tiếng Việt để chuyển câu bé nói thành chữ trong ô hỏi cô."
         }
+      ],
+      [
+        "react-native-document-scanner-plugin",
+        {
+          "cameraPermission": "Gia sư Tiểu học cần dùng camera để bé chụp bài tập cho gia sư AI chấm."
+        }
       ]
     ],
     "experiments": {
