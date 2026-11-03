@@ -25,7 +25,7 @@ Lines such as `~~project tracker` in the knowledge-work skills refer to optional
 
 - frontend-design: chỉ lấy nguyên tắc thẩm mỹ; giao diện theo `src/constants/theme.ts` và thiết kế Stitch.
 - test-driven-development: dùng khi dự án đã có `npm test` (ticket GSTH-033 cài jest-expo).
-- ci-cd-and-automation: chỉ tham khảo; dự án không dùng GitHub Actions. Dùng `eas-release`.
+- ci-cd-and-automation: chỉ tham khảo. GitHub Actions chỉ chạy kiểm tra (`.github/workflows/kiem-tra.yml`: lint + tsc + test); build và phát hành vẫn theo `eas-release`.
 - webapp-testing: không dùng cho app iOS/Android; QA kiểm thử bằng công cụ máy giả lập iOS của Claude.
 - accessibility-review: áp dụng cho React Native (cỡ chữ, tương phản, vùng bấm 44pt, accessibilityLabel).
 
