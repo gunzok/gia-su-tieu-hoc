@@ -1,7 +1,7 @@
 # Agent skills
 
 Skills in `.claude/skills/` are loaded automatically by Claude Code sessions in this repo.
-They are assigned per role on the Agent Squad Board. Anthropic-published skills come first;
+They are assigned per role (see the ticket workflow in `CLAUDE.md`; tickets live in Linear). Anthropic-published skills come first;
 third-party skills only fill gaps Anthropic does not cover.
 
 | Role | Skill | Source | License |
@@ -15,7 +15,7 @@ third-party skills only fill gaps Anthropic does not cover.
 | DevOps | deploy-checklist | anthropics/knowledge-work-plugins (engineering) | Apache-2.0 |
 | DevOps | ci-cd-and-automation | addyosmani/agent-skills@aeac41d | MIT |
 | DevOps | eas-release (viết riêng cho dự án: EAS + Supabase, thay ci-cd-and-automation) | dự án | — |
-| QA | webapp-testing (chỉ bản web / bảng Kanban; app iOS/Android kiểm thử trên máy giả lập) | anthropics/skills | Apache-2.0 (LICENSE.txt in folder) |
+| QA | webapp-testing (chỉ bản web; app iOS/Android kiểm thử trên máy giả lập) | anthropics/skills | Apache-2.0 (LICENSE.txt in folder) |
 | QA | testing-strategy, accessibility-review | anthropics/knowledge-work-plugins (engineering, design) | Apache-2.0 |
 
 Files are copied unmodified. License texts are in `.claude/licenses/`.

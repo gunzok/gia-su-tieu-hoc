@@ -35,7 +35,7 @@ Quy trình phát hành riêng của dự án (chỉ làm local, KHÔNG push GitH
 ## 3. Kiểm tra trước khi phát hành (bắt buộc)
 
 1. `npx tsc --noEmit` và `npx expo lint` sạch (trừ lỗi cũ đã có ticket).
-2. Đã commit; ghi commit vào ghi chú ticket trên bảng Kanban.
+2. Đã commit; ghi commit vào comment của ticket trên Linear.
 3. Hàm vừa deploy: gọi thử bằng phiên ẩn danh tạm (`/auth/v1/signup` với publishable key), không in khoá ra màn hình.
 4. Cập nhật OTA xong: mở lại app 2 lần trên máy giả lập (`xcrun simctl terminate/launch booted vn.giasutieuhoc.app`) và kiểm tra tính năng mới.
 
