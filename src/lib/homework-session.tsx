@@ -11,6 +11,7 @@ import { scanPages } from '@/lib/document-scanner';
 import { problemMessage, type PhotoProblem } from '@/lib/photo-quality';
 import { checkPhotoQuality, preparePhotoForGrading } from '@/lib/prepare-photo';
 import { useProfile, useTeacher } from '@/lib/profile';
+import { readPageLines } from '@/lib/read-page-text';
 import type { Rewards } from '@/lib/rewards';
 import { speakVietnamese, stopSpeaking } from '@/lib/speech';
 
@@ -179,8 +180,12 @@ export function HomeworkSessionProvider({
     try {
       const prepared = await Promise.all(photos.map(preparePhotoForGrading));
       const images = prepared.map((page) => page.base64);
+      // Môn Toán: đọc chữ trên ảnh để máy chủ tự tính đáp án gửi kèm cho AI (GIA-53).
+      const pageLines =
+        subject === 'toan' ? await Promise.all(prepared.map((page) => readPageLines(page.uri))) : undefined;
       const { result: graded, engine } = await gradeHomework({
         images,
+        pageLines,
         subject,
         grade,
         teacher: teacher.id,

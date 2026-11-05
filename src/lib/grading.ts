@@ -17,6 +17,8 @@ const serverTimeoutMs = 150_000;
 type GradeParams = {
   /** Các trang bài làm (JPEG base64), theo thứ tự. */
   images: string[];
+  /** Các dòng chữ đọc được trên từng trang (môn Toán, GIA-53). */
+  pageLines?: string[][];
   subject: Subject;
   grade: number;
   /** Xưng "cô" hay "thầy" trong lời nhận xét. */
