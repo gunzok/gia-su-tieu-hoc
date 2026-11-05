@@ -2,7 +2,8 @@
 
 Máy chủ (`cham-bai`, `hoi-co`) thử AI theo thứ tự trong secret `AI_THU_TU`, mặc định `gemini,claude`:
 Gemini lỗi (hết lượt miễn phí, quá tải…) thì thử Claude; cả hai lỗi thì báo bé thử lại và trả lại lượt chấm.
-App không còn dùng LM Studio trên máy tính ở nhà.
+Máy chủ không chấm được thì app tự chấm bằng LM Studio trên máy tính ở nhà, nếu đã điền
+`EXPO_PUBLIC_LMSTUDIO_URL` (GIA-54; trước đó GSTH-039 đã bỏ phần này).
 
 - Mô hình: `gemini-3.8-flash` (Interactions API), sửa ở `supabase/functions/_shared/gemini.ts`.
 - **Lưu ý quyền riêng tư:** gói miễn phí cho phép Google dùng nội dung gửi lên để cải thiện sản phẩm.

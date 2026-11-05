@@ -12,8 +12,9 @@ Mỗi bản có một tag Git `vX.Y.Z`. Mã ticket: `GSTH-xxx` (bảng cũ) ho�
   bằng secret `AI_THU_TU`. Cần đặt khoá `GEMINI_API_KEY` và deploy lại hàm (GSTH-039 / GIA-19).
 - Lời dặn chấm riêng cho từng dạng bài: nối, tô màu, bảng, khoanh, vẽ hình, chữ viết tay (GSTH-038).
 
-### Bỏ
-- App không còn tự gọi LM Studio ở máy tính trong nhà (GSTH-039).
+### Sửa
+- Máy chủ không chấm được (AI quá chậm, hết tiền, mất mạng) thì app lại tự chấm bằng LM Studio ở máy tính
+  trong nhà như trước, cả bài lẫn Hỏi cô (GIA-54).
 
 ### Nội bộ
 - Việc chuyển từ bảng Kanban sang Linear; `package.json` dùng cùng version với `app.json` (GIA-35).

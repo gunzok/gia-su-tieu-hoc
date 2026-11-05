@@ -56,7 +56,7 @@ describe('gradeHomework khi hết lượt', () => {
     expect(error.message).toBe('Hôm nay con đã chấm đủ 3 bài rồi.');
   });
 
-  it('hết lượt thì báo ngay, app không tự gọi AI nào khác (đã bỏ LM Studio, GSTH-039)', async () => {
+  it('hết lượt thì báo ngay, không chuyển sang LM Studio dù đã cấu hình', async () => {
     const { gradeHomework, httpError } = loadGrading('http://192.168.1.13:1234');
     mockInvoke.mockResolvedValue({
       data: null,
@@ -79,14 +79,51 @@ describe('gradeHomework khi lỗi khác', () => {
     expect(error.message).toMatch(/mất mạng/);
   });
 
-  it('máy chủ lỗi thì báo lời nhắn của máy chủ, không gọi LM Studio dù còn cấu hình cũ', async () => {
-    const { gradeHomework, GradingError, httpError } = loadGrading('http://192.168.1.13:1234');
+  it('máy chủ lỗi và chưa cấu hình LM Studio thì báo lời nhắn của máy chủ', async () => {
+    const { gradeHomework, GradingError, httpError } = loadGrading();
     mockInvoke.mockResolvedValue({ data: null, error: httpError({ error: 'Máy chủ chưa chấm được bài' }) });
 
     const error = await gradeHomework(params).catch((e) => e);
     expect(error).toBeInstanceOf(GradingError);
     expect(error.message).toBe('Máy chủ chưa chấm được bài');
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('máy chủ lỗi thì thử LM Studio ở nhà (dự phòng ở cả bản phát hành, GIA-54)', async () => {
+    const { gradeHomework, httpError } = loadGrading('http://192.168.1.13:1234');
+    mockInvoke.mockResolvedValue({ data: null, error: httpError({ error: 'Máy chủ chưa chấm được bài' }) });
+    fetchMock.mockRejectedValue(new Error('LM Studio tắt'));
+
+    await expect(gradeHomework(params)).rejects.toThrow(/LM Studio/);
+    expect(fetchMock).toHaveBeenCalled();
+    expect(String(fetchMock.mock.calls[0][0])).toContain('http://192.168.1.13:1234');
+  });
+
+  it('máy chủ lỗi, LM Studio chấm được thì ghi engine local', async () => {
+    const { gradeHomework, httpError } = loadGrading('http://192.168.1.13:1234');
+    mockInvoke.mockResolvedValue({ data: null, error: httpError({ error: 'Máy chủ chưa chấm được bài' }) });
+    const graded = {
+      isHomework: true,
+      detectedGrade: 2,
+      fitsGrade: true,
+      items: [{ kind: 'tinh', question: '2 + 2', childAnswer: '4', correctAnswer: '4', correct: true, explanation: '' }],
+      score: 10,
+      spokenFeedback: 'Giỏi lắm',
+      parentNote: '',
+    };
+    const reply = (content: unknown) => ({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: JSON.stringify(content) } }] }),
+    });
+    fetchMock
+      // Model đang nạp, bản chép (bước 1), kết quả chấm (bước 2).
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: [{ id: 'qwen-vl', type: 'vlm', state: 'loaded' }] }) })
+      .mockResolvedValueOnce(reply({ exercises: [] }))
+      .mockResolvedValueOnce(reply(graded));
+
+    const { result, engine } = await gradeHomework(params);
+    expect(engine).toBe('local');
+    expect(result.items).toHaveLength(1);
   });
 });
 

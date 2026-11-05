@@ -37,6 +37,7 @@ const sections: { title: string; body: string[] }[] = [
       'Ảnh bài làm được gửi tới AI để chấm, chỉ cho việc chấm bài đó: Gemini (Google) hoặc Claude (công ty Anthropic).',
       'Trong giai đoạn thử nghiệm, app dùng gói miễn phí của Gemini: theo điều khoản của Google, nội dung gửi lên có thể được Google dùng để cải thiện sản phẩm. Khi mở cho nhiều gia đình dùng, app sẽ chuyển sang gói trả phí không dùng dữ liệu như vậy.',
       'Khi bé bấm "Hỏi cô", câu bé hỏi và nội dung câu đó trong bài được gửi tới AI (Gemini hoặc Claude) để trả lời.',
+      'Nếu bố mẹ cài AI trên máy tính ở nhà (LM Studio) và máy chủ không chấm được, ảnh bài làm và câu hỏi được gửi tới máy tính đó qua mạng Wi-Fi nhà, không đi ra Internet.',
       'Lời nhận xét (chỉ phần chữ, không có ảnh) được gửi tới Google Cloud để đọc bằng giọng cô/thầy.',
       'Khi bé bấm nút mic ở "Hỏi cô", giọng bé được nhận thành chữ bằng tính năng nhận giọng có sẵn của điện thoại, do Apple (iPhone) hoặc Google (Android) xử lý. App không lưu bản ghi âm; chỉ phần chữ bé xem lại và bấm gửi mới được gửi tới AI.',
       'Dữ liệu được lưu trên máy chủ Supabase, trong kho riêng: chỉ tài khoản của ba mẹ xem được.',
