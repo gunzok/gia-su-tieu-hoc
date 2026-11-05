@@ -7,6 +7,7 @@ import { GradingError, gradeHomework, type Subject } from '@/lib/grading';
 import { addHistoryEntry, type HistoryEntry } from '@/lib/history';
 import { askAboutLevel, checkLevel } from '@/lib/level-check';
 import { savePagesLocally } from '@/lib/page-images';
+import { scanPages } from '@/lib/document-scanner';
 import { problemMessage, type PhotoProblem } from '@/lib/photo-quality';
 import { checkPhotoQuality, preparePhotoForGrading } from '@/lib/prepare-photo';
 import { useProfile, useTeacher } from '@/lib/profile';
@@ -129,21 +130,26 @@ export function HomeworkSessionProvider({
       selectionLimit: remaining,
       orderedSelection: true,
     };
-    const picked =
-      source === 'camera'
+    // Chụp: ưu tiên trình quét trang (cắt mép, làm thẳng; GIA-47); máy không quét được thì dùng camera thường.
+    const scanned = source === 'camera' ? await scanPages(remaining) : null;
+    if (scanned && scanned.length === 0) return;
+    const picked: { canceled: boolean; assets: ImagePicker.ImagePickerAsset[] | null } = scanned
+      ? { canceled: false, assets: scanned.map((page) => ({ ...page, type: 'image' as const })) }
+      : source === 'camera'
         ? await ImagePicker.launchCameraAsync(options)
         : await ImagePicker.launchImageLibraryAsync(options);
-    if (picked.canceled) return;
+    if (picked.canceled || !picked.assets) return;
+    const assets = picked.assets;
 
     // Ảnh trong album đã chọn rồi thì bỏ qua (GIA-50).
     const chosen = new Set(photos.map(photoKey));
-    const fresh = picked.assets.filter((asset) => {
+    const fresh = assets.filter((asset) => {
       const key = photoKey(asset);
       if (chosen.has(key)) return false;
       chosen.add(key);
       return true;
     });
-    if (fresh.length < picked.assets.length) {
+    if (fresh.length < assets.length) {
       setNotice({ id: Date.now(), title: 'Trang này con chọn rồi', message: 'Cô bỏ bớt trang trùng cho con nhé.' });
     }
 
