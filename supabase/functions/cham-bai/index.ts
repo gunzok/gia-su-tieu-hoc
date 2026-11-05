@@ -1,5 +1,6 @@
 // Supabase Edge Function "cham-bai": nhận ảnh bài làm từ app, gọi AI để chấm.
 // Thứ tự AI: Gemini (gói miễn phí, để thử) rồi Claude; đổi bằng secret AI_THU_TU (vd "claude,gemini").
+// Bài nhiều trang: mỗi trang một lần gọi AI song song, gộp lại rồi nhờ AI viết lời nhận xét chung.
 // Khoá AI chỉ nằm ở đây (Supabase secret GEMINI_API_KEY, ANTHROPIC_API_KEY), không nằm trong app.
 //
 // Triển khai:  npx supabase functions deploy cham-bai
@@ -10,7 +11,20 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.135.0';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-import { resultSchema, systemPrompt, type GradingResult, type Subject, type TeacherVoice } from '../_shared/cham-bai.ts';
+import {
+  labelPageItems,
+  mergePages,
+  needsRegrade,
+  pageAsk,
+  resultSchema,
+  summaryAsk,
+  summarySchema,
+  systemPrompt,
+  type GradingResult,
+  type GradingSummary,
+  type Subject,
+  type TeacherVoice,
+} from '../_shared/cham-bai.ts';
 import { aiOrder, askGemini, geminiImages } from '../_shared/gemini.ts';
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
@@ -144,65 +158,127 @@ Deno.serve(async (req) => {
   }
 
   const system = systemPrompt(subject as Subject, grade, teacher);
-  const ask = `${teacher === 'thay' ? 'Thầy' : 'Cô'} chấm bài này giúp con nhé.`;
   const geminiKey = Deno.env.get('GEMINI_API_KEY');
   const order = aiOrder(Deno.env.get('AI_THU_TU'), {
     gemini: !!geminiKey,
     claude: !!Deno.env.get('ANTHROPIC_API_KEY'),
   });
+  const ask = (engine: Engine, request: AskRequest) =>
+    engine === 'gemini' ? askWithGemini(geminiKey!, system, request) : askWithClaude(system, request);
 
-  // Thử lần lượt từng AI; AI nào lỗi (hết tiền, hết lượt miễn phí, quá tải…) thì thử AI tiếp theo.
-  let lastFailure: { message: string; status: number } = { message: 'Máy chủ chưa chấm được bài', status: 502 };
-  for (const engine of order) {
-    try {
-      const outcome =
-        engine === 'gemini'
-          ? await gradeWithGemini(geminiKey!, system, ask, images as string[])
-          : await gradeWithClaude(system, ask, images as string[]);
-      if ('result' in outcome) return json({ ...outcome.result, engine });
-      lastFailure = outcome;
-    } catch (error) {
-      console.error(`Lỗi chấm bằng ${engine}:`, error);
-    }
+  // Mỗi trang một lần gọi AI, chạy song song (GIA-49). Trang nào lỗi ở mọi AI thì cả bài lỗi,
+  // để không trả về kết quả thiếu trang.
+  const pages = images as string[];
+  const graded = await Promise.all(
+    pages.map((image, index) =>
+      gradePage(order, ask, image, pageAsk(teacher, index + 1, pages.length), index + 1, pages.length),
+    ),
+  );
+  const failure = graded.find((page): page is Failure => !('result' in page));
+  if (failure) {
+    // Chưa chấm được thì trả lại lượt cho bé.
+    await refundUsage();
+    return json({ error: failure.message }, failure.status);
   }
-  // Chưa chấm được thì trả lại lượt cho bé.
-  await refundUsage();
-  return json({ error: lastFailure.message }, lastFailure.status);
+  const done = graded as Graded<GradingResult>[];
+  if (pages.length === 1) return json({ ...done[0].result, engine: done[0].engine });
+
+  const merged = mergePages(done.map((page) => page.result));
+  if (merged.isHomework && merged.items.length > 0) {
+    // Nhờ AI viết lời nhận xét chung cho cả bài; lỗi thì giữ bản ghép tạm từ các trang.
+    const summary = await withFallback(order, (engine) =>
+      ask(engine, {
+        text: summaryAsk(merged, teacher),
+        images: [],
+        schema: summarySchema,
+        maxTokens: 4000,
+        level: 'low',
+      }) as Promise<Outcome<GradingSummary>>,
+    );
+    if ('result' in summary) Object.assign(merged, summary.result);
+  }
+  return json({ ...merged, engine: done[0].engine });
 });
 
-type Outcome = { result: GradingResult } | { message: string; status: number };
+type Engine = 'gemini' | 'claude';
+type Failure = { message: string; status: number };
+type Outcome<T> = { result: T } | Failure;
+type Graded<T> = { result: T; engine: Engine };
+type AskRequest = {
+  text: string;
+  images: string[];
+  schema: object;
+  maxTokens: number;
+  level: 'low' | 'medium';
+};
+type Ask = (engine: Engine, request: AskRequest) => Promise<Outcome<unknown>>;
 
-async function gradeWithGemini(apiKey: string, system: string, ask: string, images: string[]): Promise<Outcome> {
-  const text = await askGemini(apiKey, {
-    system,
-    input: [{ type: 'text', text: ask }, ...geminiImages(images)],
-    schema: resultSchema,
-    maxTokens: 16000,
-    thinking: 'medium',
-  });
-  return { result: JSON.parse(text) as GradingResult };
+// Thử lần lượt từng AI; AI nào lỗi (hết tiền, hết lượt miễn phí, quá tải…) thì thử AI tiếp theo.
+async function withFallback<T>(order: Engine[], attempt: (engine: Engine) => Promise<Outcome<T>>) {
+  let lastFailure: Failure = { message: 'Máy chủ chưa chấm được bài', status: 502 };
+  for (const engine of order) {
+    try {
+      const outcome = await attempt(engine);
+      if ('result' in outcome) return { result: outcome.result, engine } as Graded<T>;
+      lastFailure = outcome;
+    } catch (error) {
+      console.error(`Lỗi gọi ${engine}:`, error);
+    }
+  }
+  return lastFailure;
 }
 
-async function gradeWithClaude(system: string, ask: string, images: string[]): Promise<Outcome> {
+/** Chấm một trang; trang không có bài nào thì chấm lại một lần (thường là AI bỏ sót). */
+async function gradePage(
+  order: Engine[],
+  ask: Ask,
+  image: string,
+  text: string,
+  page: number,
+  total: number,
+): Promise<Graded<GradingResult> | Failure> {
+  const request: AskRequest = { text, images: [image], schema: resultSchema, maxTokens: 16000, level: 'medium' };
+  const gradeOnce = () => withFallback(order, (engine) => ask(engine, request) as Promise<Outcome<GradingResult>>);
+  let graded = await gradeOnce();
+  if ('result' in graded && needsRegrade(graded.result)) {
+    const again = await gradeOnce();
+    if ('result' in again && !needsRegrade(again.result)) graded = again;
+  }
+  if (!('result' in graded) || total === 1) return graded;
+  return { ...graded, result: labelPageItems(graded.result, page) };
+}
+
+async function askWithGemini(apiKey: string, system: string, request: AskRequest): Promise<Outcome<unknown>> {
+  const text = await askGemini(apiKey, {
+    system,
+    input: [{ type: 'text', text: request.text }, ...geminiImages(request.images)],
+    schema: request.schema,
+    maxTokens: request.maxTokens,
+    thinking: request.level,
+  });
+  return { result: JSON.parse(text) };
+}
+
+async function askWithClaude(system: string, request: AskRequest): Promise<Outcome<unknown>> {
   const response = await anthropic.beta.messages.create({
     model: 'claude-opus-5-5',
-    max_tokens: 16000,
+    max_tokens: request.maxTokens,
     betas: ['server-side-fallback-2026-07-01'],
     fallbacks: 'default',
     output_config: {
-      effort: 'medium',
-      format: { type: 'json_schema', schema: resultSchema },
+      effort: request.level,
+      format: { type: 'json_schema', schema: request.schema },
     },
     system,
     messages: [
       {
         role: 'user',
         content: [
-          ...images.map((data) => ({
+          ...request.images.map((data) => ({
             type: 'image' as const,
             source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data },
           })),
-          { type: 'text', text: ask },
+          { type: 'text', text: request.text },
         ],
       },
     ],
@@ -215,5 +291,5 @@ async function gradeWithClaude(system: string, ask: string, images: string[]): P
   }
   const text = response.content.find((block) => block.type === 'text');
   if (!text || text.type !== 'text') return { message: 'AI không trả về kết quả chấm.', status: 502 };
-  return { result: JSON.parse(text.text) as GradingResult };
+  return { result: JSON.parse(text.text) };
 }

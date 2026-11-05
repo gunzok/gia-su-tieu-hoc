@@ -205,7 +205,7 @@ Dù bài có hợp lớp hay không, vẫn chấm bình thường các bước b
 
 ${exerciseGuide(teacher)}
 
-Ảnh là bài làm của bé, có thể gồm nhiều trang theo đúng thứ tự (có thể viết tay, chụp nghiêng hoặc mờ). Chấm gộp tất cả các trang thành một bài; câu hỏi ghi kèm số trang nếu có nhiều trang (ví dụ "Trang 2 – Bài 3"). Hãy:
+Ảnh là bài làm của bé (có thể viết tay, chụp nghiêng hoặc mờ). Bài nhiều trang được chấm từng trang một; câu hỏi ghi kèm số trang (ví dụ "Trang 2 – Bài 3"). Hãy:
 1. Đọc từng câu hỏi và câu trả lời của bé. Chỗ nào không đọc rõ thì ghi "không đọc rõ" thay vì đoán.
 2. Với từng bài: ghi kind (dạng bài), chép nguyên văn câu trả lời của bé vào childAnswer, tự giải lại cẩn thận và ghi kết quả vào correctAnswer, rồi mới so hai kết quả để chấm đúng/sai. Với câu sai, explanation là lời ${x} nói với bé: chỉ ra bé sai ở bước nào và cách làm đúng, ngắn gọn, dễ hiểu với trẻ lớp ${grade}. Với câu đúng, explanation là một câu khen ngắn, cụ thể.
 3. Cho điểm trên thang 10, làm tròn 0.5, tương ứng với số bài đúng.
@@ -213,4 +213,100 @@ ${exerciseGuide(teacher)}
 5. Viết parentNote cho phụ huynh: lỗi bé mắc trong bài này (đúng như items) và gợi ý cách luyện thêm ở nhà phù hợp với lớp ${grade}.
 
 Nếu ảnh không phải bài tập, trả về isHomework false, detectedGrade 0, score 0, items rỗng và nhẹ nhàng nhờ bé chụp lại bài làm.`;
+}
+
+// Chấm bài nhiều trang (GIA-49): mỗi trang một lần gọi AI, chạy song song, rồi code gộp lại.
+// Gửi nhiều trang trong một lần thì AI hay chỉ chấm trang đầu và sót các trang sau.
+
+/** Lời nhờ chấm gửi kèm ảnh; bài nhiều trang thì nói rõ đang chấm trang mấy. */
+export function pageAsk(teacher: TeacherVoice, page: number, total: number) {
+  const X = teacher === 'thay' ? 'Thầy' : 'Cô';
+  if (total === 1) return `${X} chấm bài này giúp con nhé.`;
+  return `Bài của con có ${total} trang, đây là trang ${page} trên ${total} trang. Chỉ chấm các bài trên trang này, ghi "Trang ${page} – " ở đầu mỗi câu hỏi. ${X} chấm giúp con nhé.`;
+}
+
+/** Thêm "Trang k – " vào câu hỏi nếu AI chưa ghi, để ba mẹ biết bài nằm ở trang nào. */
+export function labelPageItems(result: GradingResult, page: number): GradingResult {
+  return {
+    ...result,
+    items: result.items.map((item) =>
+      /^trang\s*\d/i.test(item.question.trim()) ? item : { ...item, question: `Trang ${page} – ${item.question}` },
+    ),
+  };
+}
+
+/** Trang không có bài nào thường là AI bỏ sót: chấm lại trang đó một lần. */
+export function needsRegrade(result: GradingResult) {
+  return result.items.length === 0;
+}
+
+/** Điểm thang 10 theo số câu đúng, làm tròn 0,5 (giống normalizeResult trong app). */
+function scoreFromItems(items: GradedItem[]) {
+  if (items.length === 0) return 0;
+  return Math.round((items.filter((item) => item.correct).length / items.length) * 20) / 2;
+}
+
+/** Lớp gặp nhiều nhất giữa các trang (bỏ 0); bằng nhau thì lấy lớp gặp trước. */
+function mostCommonGrade(pages: GradingResult[]) {
+  const counts = new Map<number, number>();
+  for (const page of pages) {
+    if (page.detectedGrade) counts.set(page.detectedGrade, (counts.get(page.detectedGrade) ?? 0) + 1);
+  }
+  let best = 0;
+  let bestCount = 0;
+  for (const [grade, count] of counts) {
+    if (count > bestCount) [best, bestCount] = [grade, count];
+  }
+  return best;
+}
+
+/**
+ * Gộp kết quả các trang thành một bài. Trang không phải bài tập (trang bìa, ảnh nhầm) bị bỏ qua
+ * nếu có trang khác là bài tập. Lời nhận xét ở đây chỉ là bản ghép tạm; máy chủ nhờ AI viết lại
+ * lời nhận xét chung bằng summaryAsk.
+ */
+export function mergePages(pages: GradingResult[]): GradingResult {
+  const homework = pages.filter((page) => page.isHomework !== false);
+  if (homework.length === 0) return { ...pages[0], isHomework: false, score: 0, items: [] };
+  const items = homework.flatMap((page) => page.items);
+  const fits = homework.filter((page) => page.fitsGrade === true).length;
+  const notFits = homework.filter((page) => page.fitsGrade === false).length;
+  return {
+    isHomework: true,
+    detectedGrade: mostCommonGrade(homework),
+    // Hoà thì coi là hợp lớp, tránh nhắc ba mẹ khi chưa chắc.
+    fitsGrade: fits >= notFits,
+    score: scoreFromItems(items),
+    spokenFeedback: homework.map((page) => page.spokenFeedback.trim()).filter(Boolean).join(' '),
+    items,
+    parentNote: homework.map((page) => page.parentNote.trim()).filter(Boolean).join('\n'),
+  };
+}
+
+export type GradingSummary = Pick<GradingResult, 'spokenFeedback' | 'parentNote'>;
+
+export const summarySchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['spokenFeedback', 'parentNote'],
+  properties: {
+    spokenFeedback: resultSchema.properties.spokenFeedback,
+    parentNote: resultSchema.properties.parentNote,
+  },
+};
+
+/** Nhờ AI viết lời nhận xét chung cho cả bài nhiều trang, dựa trên kết quả đã chấm (không gửi lại ảnh). */
+export function summaryAsk(merged: GradingResult, teacher: TeacherVoice) {
+  const x = teacher === 'thay' ? 'thầy' : 'cô';
+  const items = merged.items.map(({ question, childAnswer, correctAnswer, correct, explanation }) => ({
+    question,
+    childAnswer,
+    correctAnswer,
+    correct,
+    explanation,
+  }));
+  return `${x[0].toUpperCase()}${x.slice(1)} đã chấm xong từng trang của bài. Kết quả từng bài (${merged.items.filter((item) => item.correct).length}/${merged.items.length} bài đúng):
+${JSON.stringify(items, null, 1)}
+
+Không chấm lại. Dựa đúng vào kết quả trên, viết spokenFeedback và parentNote cho cả bài theo hướng dẫn ở mục 4 và 5.`;
 }
