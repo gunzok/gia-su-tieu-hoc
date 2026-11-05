@@ -3,9 +3,11 @@ import { decode } from 'jpeg-js';
 
 import { CHECK_SIZE, measurePhoto, photoProblems } from '@/lib/photo-quality';
 
-// Cạnh dài nhất của ảnh gửi đi chấm: đủ rõ để đọc chữ viết tay, nhưng nhẹ để gửi nhanh
-// và đỡ tốn lượt dùng AI.
-const maxSide = 1600;
+// Cạnh dài nhất của ảnh gửi đi chấm (GIA-52): 2200 thay vì 1600 để chữ số viết tay to gấp ~1,4 lần.
+// Claude Opus 5.5 đọc ảnh tới 2576 điểm ảnh / 4784 token mỗi ảnh; trang A4 ở 2200 khoảng 4600 token
+// (1600 khoảng 2500), base64 khoảng 700 KB (1600 khoảng 440 KB), vẫn dưới giới hạn 6 MB của máy chủ.
+// Giữ ảnh màu, không chuyển đen trắng (hỏng bài tô màu).
+const maxSide = 2200;
 
 /** Thu nhỏ và nén ảnh bài làm: trả về file JPEG tạm (uri) và nội dung base64 để gửi chấm. */
 export async function preparePhotoForGrading(photo: { uri: string; width: number; height: number }) {
