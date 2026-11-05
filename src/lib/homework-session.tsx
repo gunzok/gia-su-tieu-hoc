@@ -7,7 +7,8 @@ import { GradingError, gradeHomework, type Subject } from '@/lib/grading';
 import { addHistoryEntry, type HistoryEntry } from '@/lib/history';
 import { askAboutLevel, checkLevel } from '@/lib/level-check';
 import { savePagesLocally } from '@/lib/page-images';
-import { preparePhotoForGrading } from '@/lib/prepare-photo';
+import { problemMessage, type PhotoProblem } from '@/lib/photo-quality';
+import { checkPhotoQuality, preparePhotoForGrading } from '@/lib/prepare-photo';
 import { useProfile, useTeacher } from '@/lib/profile';
 import type { Rewards } from '@/lib/rewards';
 import { speakVietnamese, stopSpeaking } from '@/lib/speech';
@@ -41,6 +42,21 @@ type HomeworkSession = {
   notice: Notice | null;
   dismissNotice: () => void;
 };
+
+/** Hỏi có dùng ảnh chưa đạt không. Trả về true nếu vẫn dùng. */
+function askKeepPhoto(problem: PhotoProblem, source: 'camera' | 'library', page?: number) {
+  return new Promise<boolean>((resolve) => {
+    Alert.alert(
+      page ? `Ảnh thứ ${page} chưa rõ` : 'Chụp lại nhé',
+      problemMessage(problem),
+      [
+        { text: 'Vẫn dùng ảnh này', style: 'cancel', onPress: () => resolve(true) },
+        { text: source === 'camera' ? 'Chụp lại' : 'Bỏ ảnh này', onPress: () => resolve(false) },
+      ],
+      { cancelable: false },
+    );
+  });
+}
 
 const HomeworkSessionContext = createContext<HomeworkSession | null>(null);
 
@@ -114,8 +130,24 @@ export function HomeworkSessionProvider({
         : await ImagePicker.launchImageLibraryAsync(options);
     if (picked.canceled) return;
 
+    // Ảnh mờ, tối, lóa: nhắc bé chụp lại trước khi chấm (GIA-48). Ba mẹ vẫn chọn dùng ảnh đó được,
+    // phòng khi máy đo nhầm. Đo lỗi thì cứ dùng ảnh.
+    const kept: ImagePicker.ImagePickerAsset[] = [];
+    for (const [index, asset] of picked.assets.entries()) {
+      const problems = await checkPhotoQuality(asset).catch((error) => {
+        console.warn('Chưa đo được chất lượng ảnh:', error);
+        return [];
+      });
+      const page = picked.assets.length > 1 ? index + 1 : undefined;
+      if (problems.length === 0 || (await askKeepPhoto(problems[0], source, page))) kept.push(asset);
+    }
+    if (kept.length === 0) {
+      if (source === 'camera') await pickPhoto('camera');
+      return;
+    }
+
     stopSpeech();
-    setPhotos((current) => [...current, ...picked.assets].slice(0, MAX_PAGES));
+    setPhotos((current) => [...current, ...kept].slice(0, MAX_PAGES));
   }
 
   async function submitForGrading() {
