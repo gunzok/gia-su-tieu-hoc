@@ -1,5 +1,6 @@
 import { Alert } from 'react-native';
 
+import { levelPrompt, levelSchema } from '../../supabase/functions/_shared/cham-bai';
 import type { GradingResult } from '@/lib/grading';
 
 // Sau khi AI chấm: kiểm tra ảnh có phải bài tập không, và bài có hợp với lớp của bé không.
@@ -16,7 +17,7 @@ export function checkLevel(result: GradingResult, grade: number): LevelVerdict {
   const detected = Number.isInteger(result.detectedGrade) ? (result.detectedGrade as number) : 0;
   const detectedGrade = detected >= 1 && detected <= 5 ? detected : 0;
   // Có lớp AI nhận ra: app tự so (hợp nếu đúng lớp, hoặc ôn bài lớp ngay dưới), không tin hẳn fitsGrade
-  // vì AI đôi khi nói theo lớp đã khai báo.
+  // vì AI nhỏ chạy trên máy hay nói theo lớp đã khai báo.
   if (detectedGrade) {
     const fits = detectedGrade === grade || detectedGrade === grade - 1;
     return fits ? { kind: 'ok' } : { kind: 'wrong-grade', detectedGrade };
@@ -26,6 +27,58 @@ export function checkLevel(result: GradingResult, grade: number): LevelVerdict {
   return { kind: 'ok' };
 }
 
+const lmStudioUrl = process.env.EXPO_PUBLIC_LMSTUDIO_URL?.replace(/\/+$/, '');
+const lmStudioModel = process.env.EXPO_PUBLIC_LMSTUDIO_MODEL;
+
+/**
+ * Bài chấm bằng LM Studio: hỏi riêng lớp của bài (không kèm lớp khai báo, mất vài giây) rồi ghi đè
+ * vào kết quả. Hỏi không được thì giữ nguyên kết quả chấm.
+ */
+export async function detectLevelLocally(images: string[], result: GradingResult): Promise<GradingResult> {
+  if (!lmStudioUrl) return result;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60_000);
+  try {
+    const response = await fetch(`${lmStudioUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        ...(lmStudioModel ? { model: lmStudioModel } : {}),
+        temperature: 0,
+        max_tokens: 200,
+        response_format: { type: 'json_schema', json_schema: { name: 'nhan_biet_lop', strict: true, schema: levelSchema } },
+        messages: [
+          { role: 'system', content: levelPrompt },
+          {
+            role: 'user',
+            content: [
+              // Hai trang đầu là đủ để nhận biết lớp, lại nhanh hơn.
+              ...images.slice(0, 2).map((image) => ({
+                type: 'image_url',
+                image_url: { url: `data:image/jpeg;base64,${image}` },
+              })),
+              { type: 'text', text: 'Bài này lớp mấy?' },
+            ],
+          },
+        ],
+      }),
+    });
+    if (!response.ok) throw new Error(`LM Studio trả lỗi ${response.status}`);
+    const data = await response.json();
+    const content: string = data?.choices?.[0]?.message?.content ?? '';
+    const level = JSON.parse(content.slice(content.indexOf('{'), content.lastIndexOf('}') + 1)) as {
+      isHomework?: boolean;
+      detectedGrade?: number;
+    };
+    return { ...result, isHomework: level.isHomework, detectedGrade: level.detectedGrade };
+  } catch (error) {
+    console.warn('Chưa nhận biết được lớp của bài:', error);
+    return result;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /** Bố mẹ chọn gì khi bài không hợp lớp. */
 export type LevelChoice = 'retake' | 'change-grade' | 'keep';

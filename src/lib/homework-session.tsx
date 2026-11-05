@@ -5,9 +5,10 @@ import { Alert } from 'react-native';
 
 import { GradingError, gradeHomework, type Subject } from '@/lib/grading';
 import { addHistoryEntry, type HistoryEntry } from '@/lib/history';
-import { askAboutLevel, checkLevel } from '@/lib/level-check';
+import { askAboutLevel, checkLevel, detectLevelLocally } from '@/lib/level-check';
 import { savePagesLocally } from '@/lib/page-images';
 import { scanPages } from '@/lib/document-scanner';
+import { getPremiumStatus } from '@/lib/payments';
 import { problemMessage, type PhotoProblem } from '@/lib/photo-quality';
 import { checkPhotoQuality, preparePhotoForGrading } from '@/lib/prepare-photo';
 import { useProfile, useTeacher } from '@/lib/profile';
@@ -69,6 +70,17 @@ const HomeworkSessionContext = createContext<HomeworkSession | null>(null);
 
 /** Thông báo nhỏ tự ẩn ở đầu màn hình (xem components/notice-toast.tsx). */
 export type Notice = { id: number; title: string; message: string };
+
+// Lời báo khi bài được chấm bằng AI trên máy tính ở nhà vì máy chủ không chấm được.
+async function localGradingNotice(): Promise<Notice> {
+  const { isPremium } = await getPremiumStatus();
+  return {
+    id: Date.now(),
+    title: isPremium ? 'Máy chủ đang bận' : 'Bạn chưa mua gói Gia sư Tiểu học Plus',
+    message:
+      'Bài này được chấm bằng AI trên máy tính ở nhà (LM Studio), kết quả có thể kém chính xác hơn.',
+  };
+}
 
 export function HomeworkSessionProvider({
   children,
@@ -183,13 +195,16 @@ export function HomeworkSessionProvider({
       // Môn Toán: đọc chữ trên ảnh để máy chủ tự tính đáp án gửi kèm cho AI (GIA-53).
       const pageLines =
         subject === 'toan' ? await Promise.all(prepared.map((page) => readPageLines(page.uri))) : undefined;
-      const { result: graded, engine } = await gradeHomework({
+      const { result: gradedRaw, engine } = await gradeHomework({
         images,
         pageLines,
         subject,
         grade,
         teacher: teacher.id,
       });
+
+      // AI trên máy hay nói theo lớp đã khai báo, nên hỏi riêng lớp của bài.
+      const graded = engine === 'local' ? await detectLevelLocally(images, gradedRaw) : gradedRaw;
 
       // Ảnh không phải bài tập, hoặc bài không hợp lớp của bé: hỏi bố mẹ trước khi hiện kết quả.
       let gradedAs = grade;
@@ -237,6 +252,8 @@ export function HomeworkSessionProvider({
       setLatestReward(null);
       setPhotos([]);
       speak(graded.spokenFeedback);
+      // Báo mỗi lần chấm bằng LM Studio, bằng thông báo nhỏ tự ẩn để không làm phiền bé.
+      if (engine === 'local') localGradingNotice().then(setNotice);
       await addHistoryEntry(entry);
       // Mỗi bài chấm xong được +15 sao; lỗi lưu sao thì vẫn giữ kết quả chấm.
       await recordGrading()

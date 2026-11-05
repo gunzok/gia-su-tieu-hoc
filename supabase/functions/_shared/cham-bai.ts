@@ -207,7 +207,7 @@ Dù bài có hợp lớp hay không, vẫn chấm bình thường các bước b
 
 ${exerciseGuide(teacher)}
 
-Ảnh là bài làm của bé (có thể viết tay, chụp nghiêng hoặc mờ). Bài nhiều trang được chấm từng trang một; câu hỏi ghi kèm số trang (ví dụ "Trang 2 – Bài 3"). Hãy:
+Ảnh là bài làm của bé (có thể viết tay, chụp nghiêng hoặc mờ). Bài nhiều trang thì câu hỏi ghi kèm số trang (ví dụ "Trang 2 – Bài 3"). Hãy:
 1. Đọc từng câu hỏi và câu trả lời của bé. Chỗ nào không đọc rõ thì ghi "không đọc rõ" thay vì đoán.
 2. Với từng bài: ghi kind (dạng bài), chép nguyên văn câu trả lời của bé vào childAnswer, tự giải lại cẩn thận và ghi kết quả vào correctAnswer, rồi mới so hai kết quả để chấm đúng/sai. Với câu sai, explanation là lời ${x} nói với bé: chỉ ra bé sai ở bước nào và cách làm đúng, ngắn gọn, dễ hiểu với trẻ lớp ${grade}. Với câu đúng, explanation là một câu khen ngắn, cụ thể.
 3. Cho điểm trên thang 10, làm tròn 0.5, tương ứng với số bài đúng.
@@ -343,4 +343,100 @@ export function summaryAsk(merged: GradingResult, teacher: TeacherVoice) {
 ${JSON.stringify(items, null, 1)}
 
 Không chấm lại. Dựa đúng vào kết quả trên, viết spokenFeedback và parentNote cho cả bài theo hướng dẫn ở mục 4 và 5.`;
+}
+
+// ---------- Dành cho LM Studio (AI trên máy tính ở nhà, dự phòng cuối trong app, GIA-54) ----------
+
+/**
+ * Hỏi riêng "bài này lớp mấy?" mà không cho biết lớp phụ huynh khai báo, để AI không bị lớp đó dẫn dắt.
+ * Dùng khi chấm bằng AI nhỏ trên máy (LM Studio); AI trên máy chủ tự nhận biết ngay trong lần chấm.
+ */
+export const levelSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['isHomework', 'detectedGrade'],
+  properties: {
+    isHomework: { type: 'boolean' },
+    detectedGrade: { type: 'integer' },
+  },
+};
+
+export const levelPrompt = `Bạn là giáo viên tiểu học Việt Nam. Nhìn ảnh và cho biết:
+- isHomework: ảnh có phải bài tập/bài làm của học sinh tiểu học không.
+- detectedGrade: bài thuộc kiến thức lớp mấy (1 đến 5) theo chương trình 2018; không xác định hoặc không phải bài tập thì 0.
+Gợi ý: Toán lớp 1 số đến 100, cộng trừ không nhớ. Lớp 2 cộng trừ có nhớ phạm vi 100 và 1000, bảng nhân chia 2 và 5, m dm cm kg lít, xem giờ. Lớp 3 bảng nhân chia 2 đến 9, số đến 100 000, chu vi diện tích hình chữ nhật. Lớp 4 số lớp triệu, phân số. Lớp 5 số thập phân, phần trăm, thể tích, vận tốc.
+Tiếng Việt lớp 1 âm vần ghép tiếng. Lớp 2 chính tả l/n s/x hỏi/ngã, từ chỉ sự vật hoạt động đặc điểm, câu Ai là gì Ai làm gì, viết đoạn 4-5 câu. Lớp 3 so sánh, câu kể câu hỏi câu cảm. Lớp 4 danh từ động từ tính từ, chủ ngữ vị ngữ, nhân hoá. Lớp 5 đại từ, kết từ, từ đồng nghĩa, câu ghép.`;
+
+/**
+ * Chấm 2 bước cho AI nhỏ trên máy (LM Studio): làm một lần vừa đọc ảnh vừa giải toán thì AI 8B
+ * hay bỏ sót bài và tính nhầm. Bước 1 chỉ nhìn ảnh và chép lại; bước 2 chấm từ bản chép (chỉ chữ).
+ * Máy chủ (Gemini, Claude) vẫn chấm một lần như cũ (GIA-54).
+ */
+export type Transcript = {
+  exercises: {
+    page: number;
+    number: string;
+    kind: ItemKind;
+    question: string;
+    given: string;
+    childWork: string;
+  }[];
+};
+
+export const transcriptSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['exercises'],
+  properties: {
+    exercises: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['page', 'number', 'kind', 'question', 'given', 'childWork'],
+        properties: {
+          page: { type: 'integer', description: 'Trang thứ mấy (1, 2…)' },
+          number: { type: 'string', description: 'Số bài, kèm tiết nếu có, ví dụ "Tiết 2 – Bài 1"' },
+          kind: { type: 'string', enum: itemKinds },
+          question: { type: 'string', description: 'Đề bài in trong sách, chép nguyên văn' },
+          given: {
+            type: 'string',
+            description:
+              'Mọi số, phép tính, chữ in sẵn trong bài (trên từng hình, từng ô, từng lựa chọn), mỗi thứ một dòng',
+          },
+          childWork: {
+            type: 'string',
+            description:
+              'Bé đã làm gì, mỗi phần một dòng: số/chữ bé viết, chữ cái bé khoanh, đường bé nối, hình bé tô và màu gì; phần bỏ trống ghi "chưa làm"',
+          },
+        },
+      },
+    },
+  },
+};
+
+export function transcribePrompt(subject: Subject, grade: number) {
+  return `Bạn là giáo viên tiểu học Việt Nam. Ảnh là bài làm môn ${SubjectNames[subject]} lớp ${grade} của một bé, có thể gồm nhiều trang. Việc của bạn CHỈ là chép lại thật đầy đủ và chính xác, CHƯA chấm, CHƯA giải.
+
+Cách chép:
+- Đọc lần lượt từng trang, từ trên xuống dưới, cả "Tiết 1", "Tiết 2". Mỗi bài có số thứ tự (1, 2, 3…) là một mục. Không bỏ bài nào, kể cả bài tô màu, bài nối, bài vẽ hình, bảng.
+- given: chép mọi số và phép tính in sẵn. Bài có hình (ngôi nhà, quả táo, con diều, ô vuông…) thì ghi từng hình một dòng, ví dụ "Ngôi nhà 1: 12 – 9". Bảng thì ghi từng cột. Bài khoanh thì ghi từng lựa chọn A, B, C, D.
+- childWork: chỉ ghi điều bé đã làm, mỗi phần một dòng, đúng thứ tự với given:
+  · Số, chữ bé viết tay: chép đúng nét bé viết, KHÔNG sửa cho đúng. Chữ số viết tay hay lẫn 1/7, 3/8, 4/9, 5/6, 0/6: nhìn kỹ.
+  · Tô màu: hình nào được tô và màu gì (đỏ, xanh lá, xanh dương, vàng, hồng…); hình để trắng ghi "không tô".
+  · Nối: lần theo từng đường, ghi "… nối với …".
+  · Khoanh: chữ cái nào có vòng tròn bao quanh.
+  · Vẽ hình: mô tả hình bé vẽ (loại hình, số cạnh, số ô).
+  · Chỗ không nhìn rõ ghi "không nhìn rõ".`;
+}
+
+/** Lời nhắn bước 2: đưa bản chép cho AI chấm (không gửi lại ảnh). */
+export function gradeFromTranscript(transcript: Transcript) {
+  const lines = transcript.exercises.map(
+    (e, i) =>
+      `Bài ${i + 1} (trang ${e.page}, ${e.number}, dạng ${e.kind})\nĐề: ${e.question}\nIn sẵn:\n${e.given}\nBé làm:\n${e.childWork}`,
+  );
+  return `Đây là bản chép đầy đủ bài làm của bé (đã chép từ ảnh, chép đúng nguyên văn những gì bé làm). Hãy chấm ĐÚNG ${transcript.exercises.length} bài này, mỗi bài một mục trong items, theo thứ tự. Với từng bài: tự giải từng phần từ phần "In sẵn" rồi so với phần "Bé làm".
+
+${lines.join('\n\n')}`;
 }
