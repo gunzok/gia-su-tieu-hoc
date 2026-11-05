@@ -7,18 +7,28 @@ Mỗi bản có một tag Git `vX.Y.Z`. Mã ticket: `GSTH-xxx` (bảng cũ) ho�
 
 ## [Chưa phát hành]
 
+Dự kiến là bản 0.5.0. Cần cài bản build mới mới có trình quét trang và đọc chữ; máy đang cài 0.4.0 nhận
+cập nhật OTA vẫn chạy, chỉ không có hai phần đó. Cách thử từng mục: [docs/kiem-thu-0.5.0.md](docs/kiem-thu-0.5.0.md).
+
 ### Thêm
-- Chấm bài và Hỏi cô bằng Gemini (gói miễn phí, bản thử); Claude làm dự phòng. Thứ tự đổi được trên máy chủ
-  bằng secret `AI_THU_TU`. Cần đặt khoá `GEMINI_API_KEY` và deploy lại hàm (GSTH-039 / GIA-19).
+- Nút Chụp mở trình quét trang: tự tìm mép giấy, cắt phần thừa, làm thẳng trang (GIA-47).
+- Ảnh mờ, tối hoặc lóa đèn được nhắc chụp lại ngay, không mất lượt. Ba mẹ vẫn chọn "Vẫn dùng ảnh này" được (GIA-48).
+- Môn Toán: máy đọc đề và tự tính đáp án các phép tính một dòng, gửi kèm cho cô để cô đỡ tính nhầm (GIA-53).
+- Chấm bài và Hỏi cô bằng Gemini (gói miễn phí, bản thử); Claude làm dự phòng (GSTH-039 / GIA-19).
 - Lời dặn chấm riêng cho từng dạng bài: nối, tô màu, bảng, khoanh, vẽ hình, chữ viết tay (GSTH-038).
 
 ### Sửa
+- Bài nhiều trang không còn bị sót trang: mỗi trang được chấm riêng rồi gộp lại, trang không có bài nào được chấm lại một lần (GIA-49).
+- Chụp trùng một trang không còn bị tính điểm hai lần; chọn lại ảnh đã có trong album thì app bỏ qua và báo (GIA-50).
+- Ảnh gửi chấm nét hơn để đọc chữ số viết tay rõ hơn (GIA-52).
 - Máy chủ không chấm được (AI quá chậm, hết tiền, mất mạng) thì app lại tự chấm bằng LM Studio ở máy tính
   trong nhà như trước, cả bài lẫn Hỏi cô (GIA-54).
+- Nút mua và khôi phục gói Plus đi qua cổng phụ huynh; lời báo thanh toán không còn chữ kỹ thuật (GSTH-040 / GIA-22).
 
 ### Nội bộ
 - Việc chuyển từ bảng Kanban sang Linear; `package.json` dùng cùng version với `app.json` (GIA-35).
 - GitHub Actions chạy lint, typecheck và test mỗi lần đẩy code (GIA-29).
+- Có thêm 2 thư viện mã gốc (`react-native-document-scanner-plugin`, `expo-text-extractor`) và `jpeg-js`.
 
 ## [0.4.0] - 2026-10-20
 
