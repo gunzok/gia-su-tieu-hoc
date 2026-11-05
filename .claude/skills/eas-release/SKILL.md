@@ -35,11 +35,25 @@ Quy trình phát hành riêng của dự án (chỉ làm local, KHÔNG push GitH
 ## 3. Kiểm tra trước khi phát hành (bắt buộc)
 
 1. `npx tsc --noEmit` và `npx expo lint` sạch (trừ lỗi cũ đã có ticket).
-2. Đã commit; ghi commit vào ghi chú ticket trên bảng Kanban.
+2. Đã commit; ghi commit vào comment của ticket trên Linear.
 3. Hàm vừa deploy: gọi thử bằng phiên ẩn danh tạm (`/auth/v1/signup` với publishable key), không in khoá ra màn hình.
 4. Cập nhật OTA xong: mở lại app 2 lần trên máy giả lập (`xcrun simctl terminate/launch booted vn.giasutieuhoc.app`) và kiểm tra tính năng mới.
 
-## 4. Sau khi phát hành
+## 4. Phát hành một version mới (đổi x.y.z)
+
+Làm theo thứ tự, mỗi bước xong mới sang bước sau:
+
+1. Code đã merge vào `setup/khung-du-an`, GitHub Actions "Kiểm tra" xanh (lint + tsc + test).
+2. `npm run version:set -- x.y.z` (đổi cả `app.json` và `package.json`).
+3. `CHANGELOG.md`: đổi mục "Chưa phát hành" thành `## [x.y.z] - YYYY-MM-DD`, viết cho ba mẹ đọc
+   (thấy gì khác, không ghi chi tiết kỹ thuật), giữ mã ticket. Thêm mục "Chưa phát hành" trống ở trên.
+   Có thể dùng skill `changelog-generator` để gom commit từ tag trước: `git log vA.B.C..HEAD --no-merges`.
+4. Commit "Version x.y.z", rồi tag có ghi chú: `git tag -a vx.y.z -m "x.y.z: <tóm tắt>"`.
+5. Build/OTA theo mục 1. Bản OTA không đổi version thì vẫn ghi vào "Chưa phát hành" và ghi Update group ID vào tag
+   hoặc ticket.
+6. Đưa `main` lên bản phát hành chỉ qua PR (GIA-34), khi chủ dự án đồng ý; không tự push tag hay `main`.
+
+## 5. Sau khi phát hành
 
 - Ghi vào ticket: lệnh đã chạy, Update group ID / build ID, kết quả kiểm tra.
 - Nhắc chủ dự án: tắt hẳn app rồi mở lại 1-2 lần trên điện thoại để nhận bản mới.

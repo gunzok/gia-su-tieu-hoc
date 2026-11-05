@@ -4,7 +4,7 @@
 //   npm run build:dev                build bản thử (development) Android
 //   npm run build:ios-sim            build bản iOS hoàn chỉnh cho iPhone giả lập (không cần tài khoản Apple)
 //   npm run update:preview -- "Ghi chú thay đổi"
-//   npm run version:set -- 0.2.0     đổi version (sau đó phải build lại)
+//   npm run version:set -- 0.2.0     đổi version ở app.json và package.json (sau đó phải build lại)
 //   npm run env:eas                  đưa các khoá EXPO_PUBLIC_ trong .env.local lên EAS
 //                                    (máy chủ build không đọc được .env.local)
 //
@@ -56,6 +56,11 @@ switch (command) {
     }
     appJson.expo.version = next;
     fs.writeFileSync(appJsonPath, `${JSON.stringify(appJson, null, 2)}\n`);
+    // Giữ version trong package.json (và package-lock.json) trùng app.json.
+    execFileSync('npm', ['version', next, '--no-git-tag-version', '--allow-same-version'], {
+      cwd: path.join(__dirname, '..'),
+      stdio: 'ignore',
+    });
     console.log(`Đã đổi version: ${version} → ${next} (${APP_PREFIX}_${next}). Nhớ build lại.`);
     break;
   }
