@@ -27,6 +27,7 @@ import {
   type TeacherVoice,
 } from '../_shared/cham-bai.ts';
 import { aiOrder, askGemini, geminiImages } from '../_shared/gemini.ts';
+import { answerKeyNote, checkPage, safeLines } from '../_shared/kiem-tinh.ts';
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 
@@ -90,7 +91,14 @@ Deno.serve(async (req) => {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) return json({ error: 'Chưa đăng nhập' }, 401);
 
-  let body: { images?: unknown; imageBase64?: unknown; subject?: unknown; grade?: unknown; teacher?: unknown };
+  let body: {
+    images?: unknown;
+    imageBase64?: unknown;
+    pageLines?: unknown;
+    subject?: unknown;
+    grade?: unknown;
+    teacher?: unknown;
+  };
   try {
     body = await req.json();
   } catch {
@@ -170,9 +178,20 @@ Deno.serve(async (req) => {
   // Mỗi trang một lần gọi AI, chạy song song (GIA-49). Trang nào lỗi ở mọi AI thì cả bài lỗi,
   // để không trả về kết quả thiếu trang.
   const pages = images as string[];
+  // Môn Toán: code tự tính đáp án từ chữ app đọc được trên từng trang (GIA-53).
+  const answerKeys = pages.map((_, index) =>
+    subject === 'toan' ? answerKeyNote(checkPage(safeLines(body.pageLines, index))) : '',
+  );
   const graded = await Promise.all(
     pages.map((image, index) =>
-      gradePage(order, ask, image, pageAsk(teacher, index + 1, pages.length), index + 1, pages.length),
+      gradePage(
+        order,
+        ask,
+        image,
+        [pageAsk(teacher, index + 1, pages.length), answerKeys[index]].filter(Boolean).join('\n\n'),
+        index + 1,
+        pages.length,
+      ),
     ),
   );
   const failure = graded.find((page): page is Failure => !('result' in page));
