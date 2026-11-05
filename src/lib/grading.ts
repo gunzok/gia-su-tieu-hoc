@@ -206,7 +206,9 @@ async function askLmStudio<T>(
     throw new Error(`LM Studio trả lỗi ${response.status}: ${await response.text()}`);
   }
   const data = await response.json();
-  const content: string | undefined = data?.choices?.[0]?.message?.content;
+  const message = data?.choices?.[0]?.message;
+  // Model có suy luận (vd qwen3.8) khi bị ép mẫu JSON có lúc để kết quả trong reasoning_content, content rỗng.
+  const content: string | undefined = message?.content || message?.reasoning_content;
   if (!content) throw new Error('LM Studio không trả về kết quả chấm.');
   return parseJsonObject(content) as T;
 }

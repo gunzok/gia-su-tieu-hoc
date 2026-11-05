@@ -66,7 +66,9 @@ export async function detectLevelLocally(images: string[], result: GradingResult
     });
     if (!response.ok) throw new Error(`LM Studio trả lỗi ${response.status}`);
     const data = await response.json();
-    const content: string = data?.choices?.[0]?.message?.content ?? '';
+    const message = data?.choices?.[0]?.message;
+    // Model có suy luận có lúc để kết quả JSON trong reasoning_content (xem askLmStudio ở grading.ts).
+    const content: string = message?.content || message?.reasoning_content || '';
     const level = JSON.parse(content.slice(content.indexOf('{'), content.lastIndexOf('}') + 1)) as {
       isHomework?: boolean;
       detectedGrade?: number;

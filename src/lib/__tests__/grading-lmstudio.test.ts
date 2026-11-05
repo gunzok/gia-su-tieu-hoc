@@ -112,3 +112,27 @@ describe('gradeFromTranscript', () => {
     expect(text).toContain('Ngôi nhà 1: không tô');
   });
 });
+
+describe('model có suy luận (GIA-54)', () => {
+  const inReasoning = (reply: unknown) => ({
+    ok: true,
+    json: async () => ({ choices: [{ message: { content: '', reasoning_content: JSON.stringify(reply) } }] }),
+  });
+
+  it('content rỗng thì đọc kết quả JSON trong reasoning_content', async () => {
+    const { gradeHomework } = loadGrading();
+    fetchMock.mockResolvedValueOnce(inReasoning(transcript)).mockResolvedValueOnce(inReasoning(graded));
+
+    const { result, engine } = await gradeHomework(params);
+
+    expect(engine).toBe('local');
+    expect(result.spokenFeedback).toBe('Con giỏi lắm.');
+  });
+
+  it('cả hai đều rỗng thì báo chưa chấm được', async () => {
+    const { gradeHomework } = loadGrading();
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '' } }] }) });
+
+    await expect(gradeHomework(params)).rejects.toThrow('Chưa chấm được bài');
+  });
+});
