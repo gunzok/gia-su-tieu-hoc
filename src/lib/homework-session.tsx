@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 import { GradingError, gradeHomework, gradingFailureMessage, type Subject } from '@/lib/grading';
 import { addHistoryEntry, type HistoryEntry } from '@/lib/history';
@@ -125,7 +125,10 @@ export function HomeworkSessionProvider({
     setSpeaking(false);
   }, []);
 
-  async function pickPhoto(source: 'camera' | 'library') {
+  async function pickPhoto(requested: 'camera' | 'library') {
+    // Trình duyệt máy tính thường không có camera sau để chụp: bấm "chụp" thì mở hộp chọn ảnh
+    // (điện thoại sẽ tự đề nghị chụp). Tránh lỗi xin quyền camera trên web.
+    const source = Platform.OS === 'web' ? 'library' : requested;
     const permission =
       source === 'camera'
         ? await ImagePicker.requestCameraPermissionsAsync()
