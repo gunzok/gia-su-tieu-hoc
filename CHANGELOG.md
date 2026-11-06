@@ -18,6 +18,7 @@ cập nhật OTA vẫn chạy, chỉ không có hai phần đó. Cách thử t�
 - Lời dặn chấm riêng cho từng dạng bài: nối, tô màu, bảng, khoanh, vẽ hình, chữ viết tay (GSTH-038).
 
 ### Sửa
+- Bài chấm bằng Gemini lưu được lên máy chủ, không còn chỉ nằm trên máy (GIA-56).
 - Bài nhiều trang không còn bị sót trang: mỗi trang được chấm riêng rồi gộp lại, trang không có bài nào được chấm lại một lần (GIA-49).
 - Chụp trùng một trang không còn bị tính điểm hai lần; chọn lại ảnh đã có trong album thì app bỏ qua và báo (GIA-50).
 - Vẫn nhận ra trang chụp trùng khi AI gộp hoặc tách câu khác nhau giữa hai ảnh (GIA-57).
