@@ -26,7 +26,7 @@ import {
   type Subject,
   type TeacherVoice,
 } from '../_shared/cham-bai.ts';
-import { aiOrder, askGemini, geminiImages } from '../_shared/gemini.ts';
+import { aiOrder, askGeminiModels, geminiImages } from '../_shared/gemini.ts';
 import { answerKeyNote, checkPage, safeLines } from '../_shared/kiem-tinh.ts';
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
@@ -273,12 +273,13 @@ async function gradePage(
 }
 
 async function askWithGemini(apiKey: string, system: string, request: AskRequest): Promise<Outcome<unknown>> {
-  const text = await askGemini(apiKey, {
+  // Luôn suy luận mức thấp: mức trung bình làm Gemini quá giờ ngay cả với bài 1 trang.
+  const text = await askGeminiModels(apiKey, {
     system,
     input: [{ type: 'text', text: request.text }, ...geminiImages(request.images)],
     schema: request.schema,
     maxTokens: request.maxTokens,
-    thinking: request.level,
+    thinking: 'low',
   });
   return { result: JSON.parse(text) };
 }

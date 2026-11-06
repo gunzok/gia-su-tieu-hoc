@@ -83,6 +83,32 @@ export async function askGemini(
   return text;
 }
 
+/** Model nhanh và rẻ thử trước; quá tải hay quá giờ thì sang model kế tiếp. */
+export const GEMINI_GRADING_MODELS = [GEMINI_MODEL, 'gemini-3.6-flash'];
+
+/** Hai model phải xong trong giờ chờ của app (150 giây), kể cả các lần đợi khi 503. */
+const gradingModelTimeoutMs = 60_000;
+
+/** Gọi lần lượt từng model; model nào lỗi thì thử model sau, hết model thì ném lỗi cuối cùng. */
+export async function askGeminiModels(
+  apiKey: string,
+  request: GeminiRequest,
+  models = GEMINI_GRADING_MODELS,
+  timeoutMs = gradingModelTimeoutMs,
+  retryDelaysMs?: number[],
+): Promise<string> {
+  let lastError: unknown = new Error('Chưa có model Gemini để gọi.');
+  for (const model of models) {
+    try {
+      return await askGemini(apiKey, { ...request, model }, timeoutMs, retryDelaysMs);
+    } catch (error) {
+      console.error(`Lỗi gọi ${model}:`, error);
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
 /** Thứ tự thử AI, đặt bằng secret AI_THU_TU (ví dụ "gemini,claude"). Mặc định Gemini trước vì miễn phí. */
 export function aiOrder(value: string | undefined, available: { gemini: boolean; claude: boolean }) {
   const order = (value || 'gemini,claude')
