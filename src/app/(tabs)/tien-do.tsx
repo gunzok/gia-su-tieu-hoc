@@ -299,7 +299,7 @@ function HistoryCard({ entry }: { entry: HistoryEntry }) {
             </AppText>
             {wrongCount > 0 && (
               <AppText variant="labelSm" color={Palette.coralDark}>
-                {wrongCount} câu cần sửa
+                {wrongCount} phần cần sửa
               </AppText>
             )}
           </View>

@@ -13,7 +13,7 @@ import { Mascot } from '@/components/mascot';
 import { RetryQuestion } from '@/components/retry-question';
 import { Screen } from '@/components/screen';
 import { FontFamily, Palette, Radius, Spacing } from '@/constants/theme';
-import { itemParts, tallyParts } from '../../../supabase/functions/_shared/cham-bai';
+import { essayWords, itemParts, tallyParts } from '../../../supabase/functions/_shared/cham-bai';
 import { SubjectNames, type GradedItem, type Subject } from '@/lib/grading';
 import { loadHistory, type HistoryEntry } from '@/lib/history';
 import { useHomeworkSession } from '@/lib/homework-session';
@@ -111,7 +111,7 @@ export default function ReviewScreen() {
           </AppText>
           <AppText variant="bodyMd" color={Palette.amberInk}>
             {entry.items.length > 0
-              ? `Con làm đúng ${tally.correct}/${tally.total} câu. Cùng sửa với ${T.word} nhé!`
+              ? `Con làm đúng ${tally.correct}/${tally.total} phần. Cùng sửa với ${T.word} nhé!`
               : `${T.Title} chưa đọc được bài, con chụp lại giúp ${T.word} nhé!`}
           </AppText>
         </View>
@@ -316,12 +316,15 @@ function WrongRow({
   // Bé đang làm lại thì che đáp án đúng, để bé tự nghĩ.
   const [hideAnswer, setHideAnswer] = useState(false);
   const parts = itemParts(item);
-  const rightAnswer = parts
-    ? parts
-        .filter((part) => !part.correct)
-        .map((part) => part.right)
-        .join('; ')
-    : item.correctAnswer;
+  const essay = essayWords(item);
+  const rightAnswer = essay?.fixes.length
+    ? essay.fixes.join('; ')
+    : parts
+      ? parts
+          .filter((part) => !part.correct)
+          .map((part) => part.right)
+          .join('; ')
+      : item.correctAnswer;
   return (
     <View style={[styles.row, { backgroundColor: Palette.coralSoft }]}>
       <View style={styles.rowHeader}>
@@ -330,7 +333,14 @@ function WrongRow({
           <AppText variant="labelLg">{item.question}</AppText>
           <AppText variant="labelMd" color={Palette.coralDark}>
             Con viết:{' '}
-            {parts ? (
+            {essay ? (
+              essay.words.map((word, index) => (
+                <AppText key={index} style={word.wrong ? styles.strike : undefined}>
+                  {word.text}
+                  {index < essay.words.length - 1 ? ' ' : ''}
+                </AppText>
+              ))
+            ) : parts ? (
               parts.map((part, index) => (
                 <AppText key={index} style={part.correct ? undefined : styles.strike}>
                   {part.child}

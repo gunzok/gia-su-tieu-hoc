@@ -1,5 +1,8 @@
 import {
   duplicatePages,
+  essayWords,
+  exerciseGuide,
+  itemKinds,
   itemParts,
   scoreFromItems,
   tallyParts,
@@ -273,5 +276,75 @@ describe('điểm bài nhiều phần (GIA-55)', () => {
   it('AI chấm đúng thì mọi phần đều đúng', () => {
     const item = makeItem({ correct: true, childAnswer: 'x; y', correctAnswer: 'x ; z' });
     expect(tallyParts([item])).toEqual({ correct: 2, total: 2 });
+  });
+});
+
+describe('bài viết và bài văn (GIA-66)', () => {
+  const van = makeItem({
+    kind: 'van',
+    correct: false,
+    childAnswer:
+      'Nhà em có nuôi một con mèo tên là mướp.\nBộ lông của nó màu vàng óng như nắng.\nĐôi mắt mướp tròn xoe và long lanh.\nMỗi khi em đi học về, mướp chạy ra quấn lấy chân em. Em rất yêu quý chú mèo mướp của em',
+    correctAnswer:
+      'Nhà em có nuôi một con mèo tên là Mướp.\nBộ lông của nó màu vàng óng như nắng.\nĐôi mắt Mướp tròn xoe và long lanh.\nMỗi khi em đi học về, Mướp chạy ra quấn lấy chân em. Em rất yêu quý chú mèo Mướp của em.',
+  });
+
+  it('bài văn chỉ sai 2 loại lỗi được 8 điểm, lỗi lặp lại chỉ tính một lần', () => {
+    expect(tallyParts([van])).toEqual({ correct: 8, total: 10 });
+    expect(scoreFromItems([van])).toBe(8);
+  });
+
+  it('bài văn chỉ đánh dấu đúng chữ sai', () => {
+    const essay = essayWords(van);
+    expect(essay?.words.filter((word) => word.wrong).map((word) => word.text)).toEqual([
+      'mướp.',
+      'mướp',
+      'mướp',
+      'mướp',
+      'em',
+    ]);
+    expect(essay?.fixes).toEqual(['Mướp.', 'em.']);
+  });
+
+  it('bài văn đúng được đủ điểm', () => {
+    expect(tallyParts([{ ...van, correct: true }])).toEqual({ correct: 10, total: 10 });
+  });
+
+  it('AI báo sai mà chữ không khác thì vẫn chỉ trừ một lỗi', () => {
+    expect(scoreFromItems([{ ...van, correctAnswer: van.childAnswer }])).toBe(9);
+  });
+
+  it('bài văn chưa làm được 0 điểm', () => {
+    expect(scoreFromItems([{ ...van, childAnswer: 'chưa làm' }])).toBe(0);
+  });
+
+  it('dạng khác không có phần chữ riêng của bài văn', () => {
+    expect(essayWords(makeItem({ kind: 'viet' }))).toBeNull();
+    expect(itemParts(van)).toBeNull();
+  });
+
+  it('bài viết phân biệt chữ hoa và dấu câu', () => {
+    const item = makeItem({
+      kind: 'viet',
+      correct: false,
+      childAnswer: 'em quét nhà giúp bà\nMẹ em nấu cơm.',
+      correctAnswer: 'Em quét nhà giúp bà.\nMẹ em nấu cơm.',
+    });
+    expect(itemParts(item)?.map((part) => part.correct)).toEqual([false, true]);
+  });
+
+  it('bài Toán vẫn bỏ qua chữ hoa và dấu chấm', () => {
+    const item = makeItem({ kind: 'tinh', correct: false, childAnswer: '2 X 3 = 6.\n4 + 4 = 9', correctAnswer: '2 x 3 = 6\n4 + 4 = 8' });
+    expect(itemParts(item)?.map((part) => part.correct)).toEqual([true, false]);
+  });
+});
+
+describe('lời dặn chấm bài (GIA-66)', () => {
+  it('có cách đọc đồng hồ và yêu cầu chép đúng chữ sai của bé', () => {
+    const guide = exerciseGuide();
+    expect(guide).toContain('kim ngắn');
+    expect(guide).toContain('6 giờ, không phải 12 giờ');
+    expect(guide).toContain('lói chuyện');
+    expect(itemKinds).toContain('van');
   });
 });

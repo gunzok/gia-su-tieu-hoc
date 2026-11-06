@@ -10,9 +10,9 @@ export const SubjectNames: Record<Subject, string> = {
 };
 
 /** Dạng bài, để AI biết cách đọc bài làm (nối thì lần đường nối, tô màu thì nhìn màu…). */
-export type ItemKind = 'tinh' | 'dien' | 'khoanh' | 'noi' | 'to-mau' | 'bang' | 've-hinh' | 'viet' | 'khac';
+export type ItemKind = 'tinh' | 'dien' | 'khoanh' | 'noi' | 'to-mau' | 'bang' | 've-hinh' | 'viet' | 'van' | 'khac';
 
-export const itemKinds: ItemKind[] = ['tinh', 'dien', 'khoanh', 'noi', 'to-mau', 'bang', 've-hinh', 'viet', 'khac'];
+export const itemKinds: ItemKind[] = ['tinh', 'dien', 'khoanh', 'noi', 'to-mau', 'bang', 've-hinh', 'viet', 'van', 'khac'];
 
 export type GradedItem = {
   /** Dạng bài; bài chấm trước GSTH-038 không có trường này. */
@@ -118,7 +118,9 @@ export function exerciseGuide(teacher: TeacherVoice = 'co') {
 - Tô màu (to-mau): bài tô màu KHÔNG có chữ, phải nhìn màu. Ghi bé đã tô hình nào và màu gì (hình nào để trắng thì là chưa tô). Tự tính phép tính trên từng hình, tìm hình phải tô theo đề (ví dụ hình có kết quả lớn nhất), rồi so với hình bé đã tô. Không chấm tô đẹp hay xấu, tô lem ra ngoài không trừ điểm.
 - Hoàn thành bảng (bang): mỗi ô trống là một phép tính, đọc theo từng cột; ghi đủ từng ô bé điền.
 - Vẽ hình (ve-hinh): xem hình bé vẽ có đúng yêu cầu không (đúng loại hình, đủ số cạnh, số ô, độ dài, vị trí). Không chấm nét vẽ đẹp hay xấu.
-- Viết câu, chính tả (viet): đọc chữ viết tay theo ngữ cảnh để hiểu bé định viết gì, nhưng chỉ ra lỗi chính tả, viết hoa, dấu câu thật sự có. Chữ xấu không phải lỗi.
+- Xem đồng hồ (dien): nhìn hai kim trước, chưa đọc số bé viết. Kim ngắn chỉ giờ, kim dài chỉ phút. Kim dài chỉ số 12 là giờ đúng, giờ là số kim ngắn đang chỉ; kim dài chỉ số 6 là 30 phút. Ví dụ kim dài chỉ số 12, kim ngắn chỉ số 6 là 6 giờ, không phải 12 giờ.
+- Viết câu, chính tả (viet): chép đúng từng chữ bé viết vào childAnswer, kể cả chữ sai. Ví dụ bé viết "lói chuyện" thì chép "lói chuyện", KHÔNG tự sửa thành "nói chuyện". Chỉ dùng ngữ cảnh để nhận ra nét chữ khó đọc, không dùng để sửa chính tả. Bài "… sửa thành …" thì đọc kỹ phần bé viết sau chữ "thành". Chỉ ra lỗi chính tả, viết hoa, dấu câu thật sự có. Chữ xấu không phải lỗi.
+- Đoạn văn, bài văn bé tự viết nhiều câu (van): cũng chép đúng từng chữ như trên. correctAnswer giữ nguyên câu chữ của bé, chỉ sửa đúng những chữ sai chính tả, viết hoa, dấu câu; không viết lại cho hay hơn. Có lỗi thì correct là false; explanation khen ý hay trước rồi nêu lỗi.
 
 Liệt kê bài (bắt buộc):
 - Đọc lần lượt từng trang, từ trên xuống dưới, cả "Tiết 1", "Tiết 2" nếu có. Mỗi bài được đánh số (1, 2, 3…) là MỘT mục trong items, không gộp hai bài, không bỏ bài nào.
@@ -128,6 +130,8 @@ Liệt kê bài (bắt buộc):
 
 Tự kiểm tra trước khi trả lời:
 - correct phải khớp với so sánh: childAnswer khác correctAnswer ở bất kỳ phần nào thì correct là false.
+- childAnswer phải giống chữ trong ảnh. Nếu childAnswer đang giống hệt correctAnswer mà correct là false thì đã chép sai: xem lại ảnh và chép đúng chữ bé viết.
+- explanation nói chắc chắn một ý, không viết kiểu "hoặc viết nhầm".
 - explanation không được nói ngược với correct (correct true thì không nói bé sai; correct false thì chỉ đúng chỗ sai).
 - explanation và spokenFeedback không nêu số lượng câu đúng hay sai (app tự đếm); chỉ nói cụ thể chỗ bé làm tốt và chỗ cần sửa.`;
 }
@@ -156,7 +160,7 @@ export const resultSchema = {
             type: 'string',
             enum: itemKinds,
             description:
-              'Dạng bài: tinh (tính, đặt tính), dien (điền số/chữ vào chỗ trống), khoanh (khoanh đáp án), noi (nối), to-mau (tô màu), bang (hoàn thành bảng), ve-hinh (vẽ hình), viet (viết câu, chính tả), khac',
+              'Dạng bài: tinh (tính, đặt tính), dien (điền số/chữ vào chỗ trống), khoanh (khoanh đáp án), noi (nối), to-mau (tô màu), bang (hoàn thành bảng), ve-hinh (vẽ hình), viet (viết câu, chính tả), van (đoạn văn, bài văn bé tự viết nhiều câu), khac',
           },
           question: { type: 'string' },
           childAnswer: { type: 'string', description: 'Đúng nguyên văn bé đã viết' },
@@ -251,32 +255,98 @@ const splitParts = (text: string) =>
     .map((part) => part.trim())
     .filter(Boolean);
 
-const samePart = (a: string, b: string) => {
-  const clean = (text: string) => text.toLowerCase().replace(/×/g, 'x').replace(/−/g, '-').replace(/[\s.]/g, '');
+/** Bài viết tính cả chữ hoa và dấu câu là lỗi; các dạng khác (Toán) thì bỏ qua. */
+const samePart = (a: string, b: string, kind?: ItemKind) => {
+  const clean = (text: string) =>
+    kind === 'viet'
+      ? text.replace(/\s/g, '')
+      : text.toLowerCase().replace(/×/g, 'x').replace(/−/g, '-').replace(/[\s.]/g, '');
   return clean(a) === clean(b);
 };
+
+/** Những vị trí của a nằm trong dãy con chung dài nhất với b (so nguyên chữ). */
+function matchedWords(a: string[], b: string[]) {
+  const lengths = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0));
+  for (let i = a.length - 1; i >= 0; i--) {
+    for (let j = b.length - 1; j >= 0; j--) {
+      lengths[i][j] = a[i] === b[j] ? lengths[i + 1][j + 1] + 1 : Math.max(lengths[i + 1][j], lengths[i][j + 1]);
+    }
+  }
+  const inA = new Set<number>();
+  const inB = new Set<number>();
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) {
+      inA.add(i++);
+      inB.add(j++);
+    } else if (lengths[i + 1][j] >= lengths[i][j + 1]) {
+      i++;
+    } else {
+      j++;
+    }
+  }
+  return { inA, inB };
+}
+
+/** Cùng một chữ khác nhau chỉ ở hoa/thường hoặc dấu câu thì coi là một loại lỗi. */
+const wordKey = (word: string) => word.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '') || word;
+
+const splitWords = (text: string) => text.split(/\s+/).filter(Boolean);
+
+/** Điểm tối đa của một bài văn; mỗi loại lỗi trừ 1 điểm. */
+const essayPoints = 10;
+
+/**
+ * So bài văn với bản đã sửa theo từng chữ, để chỉ gạch chữ sai thay vì gạch cả bài (GIA-66).
+ * Lỗi lặp lại (viết thường tên riêng nhiều lần) chỉ tính một lỗi.
+ */
+export function essayWords(item: GradedItem) {
+  if (item.kind !== 'van') return null;
+  const child = splitWords(item.childAnswer);
+  const right = splitWords(item.correctAnswer ?? item.childAnswer);
+  const { inA, inB } = matchedWords(child, right);
+  const fixes = new Map<string, string>();
+  right.forEach((word, index) => {
+    if (!inB.has(index) && !fixes.has(wordKey(word))) fixes.set(wordKey(word), word);
+  });
+  const wrongKeys = new Set(child.filter((_, index) => !inA.has(index)).map(wordKey));
+  return {
+    words: child.map((text, index) => ({ text, wrong: !inA.has(index) })),
+    fixes: [...fixes.values()],
+    // AI báo sai mà chữ không khác (câu thiếu ý…) thì vẫn tính một lỗi.
+    mistakes: item.correct ? 0 : Math.max(1, wrongKeys.size, fixes.size),
+  };
+}
 
 /**
  * Tách bài nhiều phần (a, b, c… hoặc nhiều ô) để so từng phần bằng code, vì AI hay đếm nhầm.
  * Không tách được (một phần, số phần lệch nhau, hoặc AI chấm sai mà các phần lại giống hệt) thì trả về null.
  */
 export function itemParts(item: GradedItem): ItemPart[] | null {
-  if (!item.correctAnswer) return null;
+  if (!item.correctAnswer || item.kind === 'van') return null;
   const child = splitParts(item.childAnswer);
   const right = splitParts(item.correctAnswer);
   if (child.length < 2 || child.length !== right.length) return null;
   const parts = child.map((text, index) => ({
     child: text,
     right: right[index],
-    correct: item.correct || samePart(text, right[index]),
+    correct: item.correct || samePart(text, right[index], item.kind),
   }));
   return !item.correct && parts.every((part) => part.correct) ? null : parts;
 }
 
-/** Số phần đúng trên tổng số phần của cả bài. Bài không tách được tính là một phần. */
+/** Số phần đúng trên tổng số phần của cả bài. Bài không tách được tính là một phần; bài văn tính 10 phần. */
 export function tallyParts(items: GradedItem[]) {
   return items.reduce(
     (tally, item) => {
+      const essay = essayWords(item);
+      if (essay) {
+        return {
+          correct: tally.correct + Math.max(0, essayPoints - essay.mistakes),
+          total: tally.total + essayPoints,
+        };
+      }
       const parts = itemParts(item);
       return {
         correct: tally.correct + (parts ? parts.filter((part) => part.correct).length : item.correct ? 1 : 0),
