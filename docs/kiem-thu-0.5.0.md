@@ -7,10 +7,10 @@ Bài mẫu có đáp án: `mau-bai-tap/dap-an.md` (chỉ có trên máy, không 
 
 | Việc | Vì sao | Trạng thái 05/11 |
 |---|---|---|
-| Deploy lại `cham-bai` | Bản trên máy chủ (v19) đã có GIA-49, GIA-50 nhưng chưa có đáp án tự tính GIA-53 | Chưa làm |
+| Deploy `cham-bai` | Cần cho GIA-49, 50, 53, 55 | Xong 06/11 (v20) |
 | Build 0.5.0 iOS và Android | Trình quét trang và đọc chữ cần bản build mới | Chỉ có bản dev trên máy giả lập iPhone; Android chưa build lần nào |
-| AI trên máy chủ chạy được | Log 05/11: Gemini chấm 1 trang quá 120 giây, Claude hết tiền (GIA-19, GIA-21) | **Đang lỗi, chặn mọi test chấm bài bằng máy chủ** |
-| LM Studio bật ở máy tính trong nhà | Để test dự phòng GIA-54 | Chưa thử với LM Studio thật |
+| AI trên máy chủ chạy được | Log 06/11 trên v20: Gemini chấm 1 trang quá 120 giây, Claude hết tiền (GIA-19, GIA-21) | **Đang lỗi, chặn mọi test chấm bài bằng máy chủ** |
+| LM Studio bật ở máy tính trong nhà | Để test dự phòng GIA-54 | Đã thử 06/11: 1 trang khoảng 4 phút, 2 trang khoảng 8 phút |
 | iPhone hoặc Android thật | Máy giả lập không chụp được bằng trình quét | Cần có |
 
 Ghi kết quả: đánh `[x]` nếu đạt. Không đạt thì ghi ảnh hoặc mô tả vào ticket tương ứng trên Linear.
@@ -73,5 +73,6 @@ Ghi kết quả: đánh `[x]` nếu đạt. Không đạt thì ghi ảnh hoặc 
 ## C. Rủi ro đã biết
 
 - **Gemini quá 120 giây.** Máy chủ thử Gemini 120 giây rồi mới sang Claude, app chỉ chờ 150 giây. Claude gần như không còn thời gian. Ảnh 2200 điểm ảnh có thể làm chậm thêm, cần đo.
+- **LM Studio chấm từ bản chép, không nhìn lại ảnh.** Bài hình dễ sai: bản test 06/11 sót lỗi đếm hình tam giác trong `toan5`.
 - **`expo-doctor` báo 2 mục.** Thiếu `expo-asset` (`expo-audio` cần, có thể gây lỗi ngoài Expo Go) và 23 thư viện lệch bản vá so với SDK. Nên xử lý trước khi build 0.5.0.
 - **Ngưỡng ảnh mờ** mới chỉnh trên ảnh mẫu giả lập, ảnh thật có thể cần chỉnh lại.
