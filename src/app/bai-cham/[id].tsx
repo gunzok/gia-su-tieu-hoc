@@ -124,7 +124,7 @@ export default function GradingDetailScreen() {
             </View>
             <View style={styles.flex}>
               <AppText variant="labelLg">
-                Đúng {tally.correct}/{tally.total} câu
+                Đúng {tally.correct}/{tally.total} phần
               </AppText>
               <AppText variant="bodySm" color={Palette.inkSoft}>
                 {engineLabel(entry.engine)}

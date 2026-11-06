@@ -1,4 +1,4 @@
-import { aiOrder, askGemini, geminiBody, geminiImages, geminiText } from '../../../supabase/functions/_shared/gemini';
+import { aiOrder, askGemini, askGeminiModels, geminiBody, geminiImages, geminiText } from '../../../supabase/functions/_shared/gemini';
 import { conversationText } from '../../../supabase/functions/_shared/hoi-co';
 
 describe('geminiBody', () => {
@@ -94,5 +94,43 @@ describe('askGemini thử lại khi quá tải (GIA-55)', () => {
     fetchMock.mockResolvedValue({ ok: false, status: 429, text: async () => 'quota' });
     await expect(askGemini('k', request, 1000, [0, 0])).rejects.toThrow('429');
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('askGeminiModels chuyển model (GIA-19)', () => {
+  const ok = { ok: true, status: 200, json: async () => ({ steps: [{ type: 'model_output', content: [{ type: 'text', text: 'xong' }] }] }) };
+  const busy = { ok: false, status: 503, text: async () => 'high demand' };
+  const request = { system: 's', input: [], maxTokens: 10, thinking: 'low' as const };
+  const fetchMock = jest.fn();
+  const modelOf = (call: number) => JSON.parse(fetchMock.mock.calls[call][1].body).model;
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it('model đầu quá tải thì sang model sau', async () => {
+    fetchMock.mockResolvedValueOnce(busy).mockResolvedValueOnce(ok);
+    await expect(askGeminiModels('k', request, ['a', 'b'], 1000, [])).resolves.toBe('xong');
+    expect([modelOf(0), modelOf(1)]).toEqual(['a', 'b']);
+  });
+
+  it('model đầu quá giờ thì sang model sau', async () => {
+    fetchMock.mockRejectedValueOnce(new Error('TimeoutError')).mockResolvedValueOnce(ok);
+    await expect(askGeminiModels('k', request, ['a', 'b'], 1000, [])).resolves.toBe('xong');
+  });
+
+  it('model đầu chạy được thì không gọi model sau', async () => {
+    fetchMock.mockResolvedValueOnce(ok);
+    await askGeminiModels('k', request, ['a', 'b'], 1000, []);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('mọi model đều lỗi thì báo lỗi để thử AI khác', async () => {
+    fetchMock.mockResolvedValue(busy);
+    await expect(askGeminiModels('k', request, ['a', 'b'], 1000, [])).rejects.toThrow('503');
   });
 });

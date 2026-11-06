@@ -107,6 +107,20 @@ describe('gradeHomework khi lỗi khác', () => {
     expect(failure.title).toBe('Chưa chấm được bài');
   });
 
+  it('hết 150 giây chờ không bị coi là mất mạng, dù lỗi không ghi tên hết giờ (GIA-19)', async () => {
+    const { gradeHomework, gradingFailureMessage, fetchError } = loadGrading();
+    const now = jest.spyOn(Date, 'now');
+    now.mockReturnValue(1_000_000);
+    mockInvoke.mockImplementation(async () => {
+      now.mockReturnValue(1_150_000);
+      return { data: null, error: fetchError() };
+    });
+
+    const failure = gradingFailureMessage(await gradeHomework(params).catch((e) => e));
+    now.mockRestore();
+    expect(failure.title).toBe('Chưa chấm được bài');
+  });
+
   it('mất mạng thật thì tiêu đề nói về kết nối (GIA-55)', async () => {
     const { gradeHomework, gradingFailureMessage, fetchError } = loadGrading();
     mockInvoke.mockResolvedValue({ data: null, error: fetchError() });
