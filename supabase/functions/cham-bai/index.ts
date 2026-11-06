@@ -26,7 +26,7 @@ import {
   type Subject,
   type TeacherVoice,
 } from '../_shared/cham-bai.ts';
-import { aiOrder, askGeminiModels, geminiImages } from '../_shared/gemini.ts';
+import { aiOrder, askGeminiModels, GEMINI_GRADING_MODELS, geminiImages } from '../_shared/gemini.ts';
 import { answerKeyNote, checkPage, safeLines } from '../_shared/kiem-tinh.ts';
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
@@ -44,10 +44,17 @@ const plusDailyLimit = 50;
 const proEntitlement = 'gia_sư_tiểu_học_pro';
 const vietnamOffsetMs = 7 * 60 * 60 * 1000;
 
+// Cho phép bản web của app (chạy trên trình duyệt) gọi hàm này.
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...cors, 'Content-Type': 'application/json' },
   });
 }
 
@@ -82,6 +89,7 @@ async function hasPlus(userId: string) {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json({ error: 'Chỉ nhận POST' }, 405);
 
   // Chỉ người dùng đã đăng nhập (kể cả đăng nhập ẩn danh) mới được gọi Claude.
@@ -217,6 +225,7 @@ Deno.serve(async (req) => {
         schema: summarySchema,
         maxTokens: 4000,
         level: 'low',
+        quick: true,
       }) as Promise<Outcome<GradingSummary>>,
     );
     if ('result' in summary) Object.assign(merged, summary.result);
@@ -234,7 +243,11 @@ type AskRequest = {
   schema: object;
   maxTokens: number;
   level: 'low' | 'medium';
+  /** Việc phụ, có phương án dự phòng: chỉ thử một model, chờ ngắn. */
+  quick?: boolean;
 };
+
+const summaryTimeoutMs = 30_000;
 type Ask = (engine: Engine, request: AskRequest) => Promise<Outcome<unknown>>;
 
 // Thử lần lượt từng AI; AI nào lỗi (hết tiền, hết lượt miễn phí, quá tải…) thì thử AI tiếp theo.
@@ -274,13 +287,17 @@ async function gradePage(
 
 async function askWithGemini(apiKey: string, system: string, request: AskRequest): Promise<Outcome<unknown>> {
   // Luôn suy luận mức thấp: mức trung bình làm Gemini quá giờ ngay cả với bài 1 trang.
-  const text = await askGeminiModels(apiKey, {
+  const body = {
     system,
-    input: [{ type: 'text', text: request.text }, ...geminiImages(request.images)],
+    input: [{ type: 'text' as const, text: request.text }, ...geminiImages(request.images)],
     schema: request.schema,
     maxTokens: request.maxTokens,
-    thinking: 'low',
-  });
+    thinking: 'low' as const,
+  };
+  // Lời nhận xét chung có bản ghép dự phòng, nên không để nó ăn hết giờ chờ của app.
+  const text = request.quick
+    ? await askGeminiModels(apiKey, body, GEMINI_GRADING_MODELS.slice(0, 1), summaryTimeoutMs, [])
+    : await askGeminiModels(apiKey, body);
   return { result: JSON.parse(text) };
 }
 

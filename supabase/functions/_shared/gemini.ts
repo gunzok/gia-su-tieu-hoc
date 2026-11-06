@@ -83,8 +83,11 @@ export async function askGemini(
   return text;
 }
 
-/** Model nhanh và rẻ thử trước; quá tải hay quá giờ thì sang model kế tiếp. */
-export const GEMINI_GRADING_MODELS = [GEMINI_MODEL, 'gemini-3.6-flash'];
+/**
+ * Model thử trước; quá tải hay quá giờ thì sang model kế tiếp. 3.6 đứng trước vì đo 06/11:
+ * 3.8 lúc 503, lúc quá giờ cả với bài 1 trang (GIA-19).
+ */
+export const GEMINI_GRADING_MODELS = ['gemini-3.6-flash', GEMINI_MODEL];
 
 /** Hai model phải xong trong giờ chờ của app (150 giây), kể cả các lần đợi khi 503. */
 const gradingModelTimeoutMs = 60_000;
