@@ -3,9 +3,9 @@ import { router } from 'expo-router';
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { Alert } from 'react-native';
 
-import { GradingError, gradeHomework, type Subject } from '@/lib/grading';
+import { GradingError, gradeHomework, gradingFailureMessage, type Subject } from '@/lib/grading';
 import { addHistoryEntry, type HistoryEntry } from '@/lib/history';
-import { askAboutLevel, checkLevel, detectLevelLocally } from '@/lib/level-check';
+import { askAboutLevel, checkLevel } from '@/lib/level-check';
 import { savePagesLocally } from '@/lib/page-images';
 import { scanPages } from '@/lib/document-scanner';
 import { getPremiumStatus } from '@/lib/payments';
@@ -195,16 +195,13 @@ export function HomeworkSessionProvider({
       // Môn Toán: đọc chữ trên ảnh để máy chủ tự tính đáp án gửi kèm cho AI (GIA-53).
       const pageLines =
         subject === 'toan' ? await Promise.all(prepared.map((page) => readPageLines(page.uri))) : undefined;
-      const { result: gradedRaw, engine } = await gradeHomework({
+      const { result: graded, engine } = await gradeHomework({
         images,
         pageLines,
         subject,
         grade,
         teacher: teacher.id,
       });
-
-      // AI trên máy hay nói theo lớp đã khai báo, nên hỏi riêng lớp của bài.
-      const graded = engine === 'local' ? await detectLevelLocally(images, gradedRaw) : gradedRaw;
 
       // Ảnh không phải bài tập, hoặc bài không hợp lớp của bé: hỏi bố mẹ trước khi hiện kết quả.
       let gradedAs = grade;
@@ -272,13 +269,10 @@ export function HomeworkSessionProvider({
         );
         return false;
       }
-      // Lý do cụ thể chỉ ghi vào log; ba mẹ và bé thấy một lời nhắn chung, dễ hiểu.
+      // Lý do kỹ thuật chỉ ghi vào log; ba mẹ và bé thấy lời nhắn dễ hiểu, đúng nguyên nhân.
       console.warn('Chưa chấm được bài:', error);
-      Alert.alert(
-        'Kết nối đang có vấn đề',
-        'Bố mẹ vui lòng kiểm tra lại Internet và thử lại sau nhé.',
-        [{ text: 'Đã hiểu' }],
-      );
+      const failure = gradingFailureMessage(error);
+      Alert.alert(failure.title, failure.message, [{ text: 'Đã hiểu' }]);
       return false;
     } finally {
       setGrading(false);

@@ -13,6 +13,7 @@ import { Mascot } from '@/components/mascot';
 import { RetryQuestion } from '@/components/retry-question';
 import { Screen } from '@/components/screen';
 import { FontFamily, Palette, Radius, Spacing } from '@/constants/theme';
+import { itemParts, tallyParts } from '../../../supabase/functions/_shared/cham-bai';
 import { SubjectNames, type GradedItem, type Subject } from '@/lib/grading';
 import { loadHistory, type HistoryEntry } from '@/lib/history';
 import { useHomeworkSession } from '@/lib/homework-session';
@@ -92,7 +93,7 @@ export default function ReviewScreen() {
     );
   }
 
-  const correctCount = entry.items.filter((item) => item.correct).length;
+  const tally = tallyParts(entry.items);
 
   return (
     <Screen>
@@ -110,7 +111,7 @@ export default function ReviewScreen() {
           </AppText>
           <AppText variant="bodyMd" color={Palette.amberInk}>
             {entry.items.length > 0
-              ? `Con làm đúng ${correctCount}/${entry.items.length} câu. Cùng sửa với ${T.word} nhé!`
+              ? `Con làm đúng ${tally.correct}/${tally.total} câu. Cùng sửa với ${T.word} nhé!`
               : `${T.Title} chưa đọc được bài, con chụp lại giúp ${T.word} nhé!`}
           </AppText>
         </View>
@@ -314,6 +315,13 @@ function WrongRow({
   const T = useTeacher();
   // Bé đang làm lại thì che đáp án đúng, để bé tự nghĩ.
   const [hideAnswer, setHideAnswer] = useState(false);
+  const parts = itemParts(item);
+  const rightAnswer = parts
+    ? parts
+        .filter((part) => !part.correct)
+        .map((part) => part.right)
+        .join('; ')
+    : item.correctAnswer;
   return (
     <View style={[styles.row, { backgroundColor: Palette.coralSoft }]}>
       <View style={styles.rowHeader}>
@@ -321,10 +329,20 @@ function WrongRow({
         <View style={styles.flex}>
           <AppText variant="labelLg">{item.question}</AppText>
           <AppText variant="labelMd" color={Palette.coralDark}>
-            Con viết: <AppText style={styles.strike}>{item.childAnswer}</AppText>
-            {item.correctAnswer && !hideAnswer ? (
+            Con viết:{' '}
+            {parts ? (
+              parts.map((part, index) => (
+                <AppText key={index} style={part.correct ? undefined : styles.strike}>
+                  {part.child}
+                  {index < parts.length - 1 ? '; ' : ''}
+                </AppText>
+              ))
+            ) : (
+              <AppText style={styles.strike}>{item.childAnswer}</AppText>
+            )}
+            {rightAnswer && !hideAnswer ? (
               <AppText variant="labelMd" color={Palette.blue}>
-                {'  •  '}Đúng là: {item.correctAnswer}
+                {'  •  '}Đúng là: {rightAnswer}
               </AppText>
             ) : null}
           </AppText>

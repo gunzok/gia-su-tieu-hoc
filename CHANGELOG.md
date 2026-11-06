@@ -23,6 +23,10 @@ cập nhật OTA vẫn chạy, chỉ không có hai phần đó. Cách thử t�
 - Ảnh gửi chấm nét hơn để đọc chữ số viết tay rõ hơn (GIA-52).
 - Máy chủ không chấm được (AI quá chậm, hết tiền, mất mạng) thì app lại tự chấm bằng LM Studio ở máy tính
   trong nhà như trước, cả bài lẫn Hỏi cô (GIA-54).
+- Bài nhiều phần tính điểm theo từng phần: sai 2 trong 8 phép không còn bị tính sai cả bài; "Con viết" chỉ gạch phần sai (GIA-55).
+- Lời báo khi chưa chấm được nói đúng nguyên nhân, chỉ bảo kiểm tra mạng khi thật sự mất mạng (GIA-55).
+- Gemini quá tải tạm thời thì thử lại trước khi chuyển AI khác (GIA-55).
+- LM Studio chấm được bài nhiều trang, đỡ chờ thêm bước nhận biết lớp, đọc được kết quả của model có suy luận (GIA-54, GIA-55).
 - Nút mua và khôi phục gói Plus đi qua cổng phụ huynh; lời báo thanh toán không còn chữ kỹ thuật (GSTH-040 / GIA-22).
 
 ### Nội bộ

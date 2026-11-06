@@ -128,7 +128,8 @@ Liệt kê bài (bắt buộc):
 
 Tự kiểm tra trước khi trả lời:
 - correct phải khớp với so sánh: childAnswer khác correctAnswer ở bất kỳ phần nào thì correct là false.
-- explanation không được nói ngược với correct (correct true thì không nói bé sai; correct false thì chỉ đúng chỗ sai).`;
+- explanation không được nói ngược với correct (correct true thì không nói bé sai; correct false thì chỉ đúng chỗ sai).
+- explanation và spokenFeedback không nêu số lượng câu đúng hay sai (app tự đếm); chỉ nói cụ thể chỗ bé làm tốt và chỗ cần sửa.`;
 }
 
 export const resultSchema = {
@@ -242,10 +243,54 @@ export function needsRegrade(result: GradingResult) {
   return result.items.length === 0;
 }
 
-/** Điểm thang 10 theo số câu đúng, làm tròn 0,5 (giống normalizeResult trong app). */
-function scoreFromItems(items: GradedItem[]) {
-  if (items.length === 0) return 0;
-  return Math.round((items.filter((item) => item.correct).length / items.length) * 20) / 2;
+export type ItemPart = { child: string; right: string; correct: boolean };
+
+const splitParts = (text: string) =>
+  text
+    .split(/\n|;/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+const samePart = (a: string, b: string) => {
+  const clean = (text: string) => text.toLowerCase().replace(/×/g, 'x').replace(/−/g, '-').replace(/[\s.]/g, '');
+  return clean(a) === clean(b);
+};
+
+/**
+ * Tách bài nhiều phần (a, b, c… hoặc nhiều ô) để so từng phần bằng code, vì AI hay đếm nhầm.
+ * Không tách được (một phần, số phần lệch nhau, hoặc AI chấm sai mà các phần lại giống hệt) thì trả về null.
+ */
+export function itemParts(item: GradedItem): ItemPart[] | null {
+  if (!item.correctAnswer) return null;
+  const child = splitParts(item.childAnswer);
+  const right = splitParts(item.correctAnswer);
+  if (child.length < 2 || child.length !== right.length) return null;
+  const parts = child.map((text, index) => ({
+    child: text,
+    right: right[index],
+    correct: item.correct || samePart(text, right[index]),
+  }));
+  return !item.correct && parts.every((part) => part.correct) ? null : parts;
+}
+
+/** Số phần đúng trên tổng số phần của cả bài. Bài không tách được tính là một phần. */
+export function tallyParts(items: GradedItem[]) {
+  return items.reduce(
+    (tally, item) => {
+      const parts = itemParts(item);
+      return {
+        correct: tally.correct + (parts ? parts.filter((part) => part.correct).length : item.correct ? 1 : 0),
+        total: tally.total + (parts ? parts.length : 1),
+      };
+    },
+    { correct: 0, total: 0 },
+  );
+}
+
+/** Điểm thang 10 theo số phần đúng, làm tròn 0,5. */
+export function scoreFromItems(items: GradedItem[]) {
+  const { correct, total } = tallyParts(items);
+  return total === 0 ? 0 : Math.round((correct / total) * 20) / 2;
 }
 
 /** Lớp gặp nhiều nhất giữa các trang (bỏ 0); bằng nhau thì lấy lớp gặp trước. */
@@ -339,7 +384,7 @@ export function summaryAsk(merged: GradingResult, teacher: TeacherVoice) {
     correct,
     explanation,
   }));
-  return `${x[0].toUpperCase()}${x.slice(1)} đã chấm xong từng trang của bài. Kết quả từng bài (${merged.items.filter((item) => item.correct).length}/${merged.items.length} bài đúng):
+  return `${x[0].toUpperCase()}${x.slice(1)} đã chấm xong từng trang của bài. Kết quả từng bài:
 ${JSON.stringify(items, null, 1)}
 
 Không chấm lại. Dựa đúng vào kết quả trên, viết spokenFeedback và parentNote cho cả bài theo hướng dẫn ở mục 4 và 5.`;
@@ -351,28 +396,15 @@ Không chấm lại. Dựa đúng vào kết quả trên, viết spokenFeedback 
  * Hỏi riêng "bài này lớp mấy?" mà không cho biết lớp phụ huynh khai báo, để AI không bị lớp đó dẫn dắt.
  * Dùng khi chấm bằng AI nhỏ trên máy (LM Studio); AI trên máy chủ tự nhận biết ngay trong lần chấm.
  */
-export const levelSchema = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['isHomework', 'detectedGrade'],
-  properties: {
-    isHomework: { type: 'boolean' },
-    detectedGrade: { type: 'integer' },
-  },
-};
-
-export const levelPrompt = `Bạn là giáo viên tiểu học Việt Nam. Nhìn ảnh và cho biết:
-- isHomework: ảnh có phải bài tập/bài làm của học sinh tiểu học không.
-- detectedGrade: bài thuộc kiến thức lớp mấy (1 đến 5) theo chương trình 2018; không xác định hoặc không phải bài tập thì 0.
-Gợi ý: Toán lớp 1 số đến 100, cộng trừ không nhớ. Lớp 2 cộng trừ có nhớ phạm vi 100 và 1000, bảng nhân chia 2 và 5, m dm cm kg lít, xem giờ. Lớp 3 bảng nhân chia 2 đến 9, số đến 100 000, chu vi diện tích hình chữ nhật. Lớp 4 số lớp triệu, phân số. Lớp 5 số thập phân, phần trăm, thể tích, vận tốc.
-Tiếng Việt lớp 1 âm vần ghép tiếng. Lớp 2 chính tả l/n s/x hỏi/ngã, từ chỉ sự vật hoạt động đặc điểm, câu Ai là gì Ai làm gì, viết đoạn 4-5 câu. Lớp 3 so sánh, câu kể câu hỏi câu cảm. Lớp 4 danh từ động từ tính từ, chủ ngữ vị ngữ, nhân hoá. Lớp 5 đại từ, kết từ, từ đồng nghĩa, câu ghép.`;
-
 /**
  * Chấm 2 bước cho AI nhỏ trên máy (LM Studio): làm một lần vừa đọc ảnh vừa giải toán thì AI 8B
  * hay bỏ sót bài và tính nhầm. Bước 1 chỉ nhìn ảnh và chép lại; bước 2 chấm từ bản chép (chỉ chữ).
- * Máy chủ (Gemini, Claude) vẫn chấm một lần như cũ (GIA-54).
+ * Bước 1 cũng tự nhận biết lớp, không báo trước lớp đã khai báo vì AI nhỏ hay nói theo lớp đó.
+ * Máy chủ (Gemini, Claude) không dùng cách này (GIA-54).
  */
 export type Transcript = {
+  isHomework?: boolean;
+  detectedGrade?: number;
   exercises: {
     page: number;
     number: string;
@@ -386,8 +418,10 @@ export type Transcript = {
 export const transcriptSchema = {
   type: 'object',
   additionalProperties: false,
-  required: ['exercises'],
+  required: ['isHomework', 'detectedGrade', 'exercises'],
   properties: {
+    isHomework: { type: 'boolean' },
+    detectedGrade: { type: 'integer' },
     exercises: {
       type: 'array',
       items: {
@@ -415,8 +449,14 @@ export const transcriptSchema = {
   },
 };
 
-export function transcribePrompt(subject: Subject, grade: number) {
-  return `Bạn là giáo viên tiểu học Việt Nam. Ảnh là bài làm môn ${SubjectNames[subject]} lớp ${grade} của một bé, có thể gồm nhiều trang. Việc của bạn CHỈ là chép lại thật đầy đủ và chính xác, CHƯA chấm, CHƯA giải.
+export function transcribePrompt(subject: Subject) {
+  return `Bạn là giáo viên tiểu học Việt Nam. Ảnh là bài làm môn ${SubjectNames[subject]} của một bé, có thể gồm nhiều trang. Việc của bạn CHỈ là chép lại thật đầy đủ và chính xác, CHƯA chấm, CHƯA giải.
+
+Nhận biết bài:
+- isHomework: ảnh có phải bài tập/bài làm của học sinh tiểu học không. Không phải thì exercises rỗng.
+- detectedGrade: bài thuộc kiến thức lớp mấy (1 đến 5) theo chương trình 2018; không xác định hoặc không phải bài tập thì 0.
+Gợi ý: Toán lớp 1 số đến 100, cộng trừ không nhớ. Lớp 2 cộng trừ có nhớ phạm vi 100 và 1000, bảng nhân chia 2 và 5, m dm cm kg lít, xem giờ. Lớp 3 bảng nhân chia 2 đến 9, số đến 100 000, chu vi diện tích hình chữ nhật. Lớp 4 số lớp triệu, phân số. Lớp 5 số thập phân, phần trăm, thể tích, vận tốc.
+Tiếng Việt lớp 1 âm vần ghép tiếng. Lớp 2 chính tả l/n s/x hỏi/ngã, từ chỉ sự vật hoạt động đặc điểm, câu Ai là gì Ai làm gì, viết đoạn 4-5 câu. Lớp 3 so sánh, câu kể câu hỏi câu cảm. Lớp 4 danh từ động từ tính từ, chủ ngữ vị ngữ, nhân hoá. Lớp 5 đại từ, kết từ, từ đồng nghĩa, câu ghép.
 
 Cách chép:
 - Đọc lần lượt từng trang, từ trên xuống dưới, cả "Tiết 1", "Tiết 2". Mỗi bài có số thứ tự (1, 2, 3…) là một mục. Không bỏ bài nào, kể cả bài tô màu, bài nối, bài vẽ hình, bảng.

@@ -51,15 +51,30 @@ export function geminiImages(images: string[]): GeminiInput[] {
   return images.map((data) => ({ type: 'image', data, mime_type: 'image/jpeg' }));
 }
 
-/** Gọi Gemini, trả về phần chữ. Lỗi HTTP, hết lượt miễn phí, bị chặn… đều ném lỗi để thử AI khác. */
-export async function askGemini(apiKey: string, request: GeminiRequest, timeoutMs = 120_000): Promise<string> {
-  const response = await fetch(GEMINI_URL, {
-    method: 'POST',
-    // Gửi khoá qua header, không để trong đường link (tránh lộ trong nhật ký).
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-    body: JSON.stringify(geminiBody(request)),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+/**
+ * Gọi Gemini, trả về phần chữ. Quá tải tạm thời (503) thì đợi rồi thử lại; lỗi khác, hết lượt miễn phí,
+ * bị chặn… đều ném lỗi để thử AI khác.
+ */
+export async function askGemini(
+  apiKey: string,
+  request: GeminiRequest,
+  timeoutMs = 120_000,
+  retryDelaysMs = [2_000, 5_000],
+): Promise<string> {
+  const send = () =>
+    fetch(GEMINI_URL, {
+      method: 'POST',
+      // Gửi khoá qua header, không để trong đường link (tránh lộ trong nhật ký).
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify(geminiBody(request)),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  let response = await send();
+  for (const delay of retryDelaysMs) {
+    if (response.status !== 503) break;
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    response = await send();
+  }
   if (!response.ok) throw new Error(`Gemini trả lỗi ${response.status}: ${(await response.text()).slice(0, 500)}`);
   const data = await response.json();
   if (data?.status && data.status !== 'completed') throw new Error(`Gemini chưa xong: ${data.status}`);

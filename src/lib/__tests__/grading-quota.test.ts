@@ -22,8 +22,8 @@ function loadGrading(lmStudioUrl?: string) {
   return {
     ...grading,
     // Máy chủ trả lỗi kèm nội dung JSON, giống supabase.functions.invoke khi hàm trả 4xx/5xx.
-    httpError: (body: unknown) => new errors.FunctionsHttpError({ json: async () => body }),
-    fetchError: () => new errors.FunctionsFetchError('offline'),
+    httpError: (body: unknown, status = 400) => new errors.FunctionsHttpError({ status, json: async () => body }),
+    fetchError: (name?: string) => new errors.FunctionsFetchError(name ? { name } : 'offline'),
   };
 }
 
@@ -69,13 +69,13 @@ describe('gradeHomework khi hết lượt', () => {
 });
 
 describe('gradeHomework khi lỗi khác', () => {
-  it('mất mạng thì báo lời nhắn thân thiện, không có code', async () => {
+  it('mất mạng thì báo lời nhắn thân thiện, có code mất mạng', async () => {
     const { gradeHomework, GradingError, fetchError } = loadGrading();
     mockInvoke.mockResolvedValue({ data: null, error: fetchError() });
 
     const error = await gradeHomework(params).catch((e) => e);
     expect(error).toBeInstanceOf(GradingError);
-    expect(error.code).toBeUndefined();
+    expect(error.code).toBe('mat-mang');
     expect(error.message).toMatch(/mất mạng/);
   });
 
@@ -87,6 +87,32 @@ describe('gradeHomework khi lỗi khác', () => {
     expect(error).toBeInstanceOf(GradingError);
     expect(error.message).toBe('Máy chủ chưa chấm được bài');
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('AI trên máy chủ hỏng (5xx) không bảo kiểm tra mạng (GIA-55)', async () => {
+    const { gradeHomework, gradingFailureMessage, httpError } = loadGrading();
+    mockInvoke.mockResolvedValue({ data: null, error: httpError({ error: 'Máy chủ chưa chấm được bài' }, 502) });
+
+    const failure = gradingFailureMessage(await gradeHomework(params).catch((e) => e));
+    expect(failure.title).toBe('Chưa chấm được bài');
+    expect(failure.message).not.toMatch(/Internet|Wi-Fi|mạng/);
+    expect(failure.message).toMatch(/lượt chấm vẫn còn/);
+  });
+
+  it('hết giờ chờ máy chủ không bị coi là mất mạng (GIA-55)', async () => {
+    const { gradeHomework, gradingFailureMessage, fetchError } = loadGrading();
+    mockInvoke.mockResolvedValue({ data: null, error: fetchError('AbortError') });
+
+    const failure = gradingFailureMessage(await gradeHomework(params).catch((e) => e));
+    expect(failure.title).toBe('Chưa chấm được bài');
+  });
+
+  it('mất mạng thật thì tiêu đề nói về kết nối (GIA-55)', async () => {
+    const { gradeHomework, gradingFailureMessage, fetchError } = loadGrading();
+    mockInvoke.mockResolvedValue({ data: null, error: fetchError() });
+
+    const failure = gradingFailureMessage(await gradeHomework(params).catch((e) => e));
+    expect(failure.title).toBe('Kết nối đang có vấn đề');
   });
 
   it('máy chủ lỗi thì thử LM Studio ở nhà (dự phòng ở cả bản phát hành, GIA-54)', async () => {

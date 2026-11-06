@@ -112,3 +112,42 @@ describe('gradeFromTranscript', () => {
     expect(text).toContain('Ngôi nhà 1: không tô');
   });
 });
+
+describe('nhận biết lớp từ bản chép (GIA-55)', () => {
+  it('lấy lớp ở bước chép, không gọi thêm lần nào, và lời dặn chép không nói lớp đã khai báo', async () => {
+    const { gradeHomework } = loadGrading();
+    fetchMock
+      .mockResolvedValueOnce(lmReply({ ...transcript, isHomework: true, detectedGrade: 4 }))
+      .mockResolvedValueOnce(lmReply({ ...graded, detectedGrade: 2 }));
+
+    const { result } = await gradeHomework(params);
+
+    expect(result.detectedGrade).toBe(4);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(body(0).messages[0].content).not.toContain('lớp 2 của');
+  });
+});
+
+describe('model có suy luận (GIA-54)', () => {
+  const inReasoning = (reply: unknown) => ({
+    ok: true,
+    json: async () => ({ choices: [{ message: { content: '', reasoning_content: JSON.stringify(reply) } }] }),
+  });
+
+  it('content rỗng thì đọc kết quả JSON trong reasoning_content', async () => {
+    const { gradeHomework } = loadGrading();
+    fetchMock.mockResolvedValueOnce(inReasoning(transcript)).mockResolvedValueOnce(inReasoning(graded));
+
+    const { result, engine } = await gradeHomework(params);
+
+    expect(engine).toBe('local');
+    expect(result.spokenFeedback).toBe('Con giỏi lắm.');
+  });
+
+  it('cả hai đều rỗng thì báo chưa chấm được', async () => {
+    const { gradeHomework } = loadGrading();
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '' } }] }) });
+
+    await expect(gradeHomework(params)).rejects.toThrow(/đang bận/);
+  });
+});
