@@ -1,4 +1,4 @@
-import { aiOrder, geminiBody, geminiImages, geminiText } from '../../../supabase/functions/_shared/gemini';
+import { aiOrder, askGemini, geminiBody, geminiImages, geminiText } from '../../../supabase/functions/_shared/gemini';
 import { conversationText } from '../../../supabase/functions/_shared/hoi-co';
 
 describe('geminiBody', () => {
@@ -64,5 +64,35 @@ describe('conversationText', () => {
     ]);
     expect(text).toContain('Đã trả lời: Vì 14 trừ 8 bằng 6.');
     expect(text.indexOf('Bé hỏi: Cô giảng lại được không?')).toBeGreaterThan(text.indexOf('Đã trả lời'));
+  });
+});
+
+describe('askGemini thử lại khi quá tải (GIA-55)', () => {
+  const ok = { ok: true, status: 200, json: async () => ({ steps: [{ type: 'model_output', content: [{ type: 'text', text: 'xong' }] }] }) };
+  const busy = { ok: false, status: 503, text: async () => 'high demand' };
+  const request = { system: 's', input: [], maxTokens: 10 };
+  const fetchMock = jest.fn();
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  it('503 rồi thành công thì trả kết quả', async () => {
+    fetchMock.mockResolvedValueOnce(busy).mockResolvedValueOnce(ok);
+    await expect(askGemini('k', request, 1000, [0, 0])).resolves.toBe('xong');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('503 mãi thì báo lỗi sau số lần thử', async () => {
+    fetchMock.mockResolvedValue(busy);
+    await expect(askGemini('k', request, 1000, [0, 0])).rejects.toThrow('503');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('lỗi khác không thử lại', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 429, text: async () => 'quota' });
+    await expect(askGemini('k', request, 1000, [0, 0])).rejects.toThrow('429');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

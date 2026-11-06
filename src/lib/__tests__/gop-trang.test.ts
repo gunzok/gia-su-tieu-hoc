@@ -1,5 +1,8 @@
 import {
   duplicatePages,
+  itemParts,
+  scoreFromItems,
+  tallyParts,
   labelPageItems,
   mergePages,
   needsRegrade,
@@ -162,5 +165,43 @@ describe('duplicatePages', () => {
 
   it('trang không có bài nào không bị coi là trùng', () => {
     expect(duplicatePages([makeResult({ items: [] }), makeResult({ items: [] })])).toEqual([]);
+  });
+});
+
+describe('điểm bài nhiều phần (GIA-55)', () => {
+  const bai1 = makeItem({
+    correct: false,
+    childAnswer: 'a) 2 x 3 = 6; b) 5 x 4 = 20; c) 2 x 7 = 16; d) 5 x 6 = 30; e) 2 x 9 = 18; g) 10 : 2 = 5; h) 35 : 5 = 7; i) 18 : 2 = 8',
+    correctAnswer: 'a) 2 x 3 = 6; b) 5 x 4 = 20; c) 2 x 7 = 14; d) 5 x 6 = 30; e) 2 x 9 = 18; g) 10 : 2 = 5; h) 35 : 5 = 7; i) 18 : 2 = 9',
+  });
+
+  it('6/8 phép đúng và một bài đúng thì được 8 điểm, không phải 5', () => {
+    expect(tallyParts([bai1, makeItem()])).toEqual({ correct: 7, total: 9 });
+    expect(scoreFromItems([bai1, makeItem()])).toBe(8);
+  });
+
+  it('chỉ đánh dấu sai đúng các phần sai', () => {
+    expect(itemParts(bai1)?.filter((part) => !part.correct).map((part) => part.right)).toEqual([
+      'c) 2 x 7 = 14',
+      'i) 18 : 2 = 9',
+    ]);
+  });
+
+  it('tách được phần theo từng dòng, bỏ qua khác biệt khoảng trắng và dấu nhân', () => {
+    const item = makeItem({ correct: false, childAnswer: '2 × 3 = 6\n4 + 4 = 9', correctAnswer: '2 x 3 = 6\n4 + 4 = 8' });
+    expect(itemParts(item)?.map((part) => part.correct)).toEqual([true, false]);
+  });
+
+  it('không tách được thì giữ kết luận của AI', () => {
+    expect(itemParts(makeItem({ correct: false, childAnswer: 'a; b', correctAnswer: 'a; b; c' }))).toBeNull();
+    expect(itemParts(makeItem({ correct: false, childAnswer: 'chưa làm', correctAnswer: '14' }))).toBeNull();
+    // AI chấm sai mà hai bên giống hệt: có thể sai ở chỗ khác (bài văn, nét vẽ).
+    expect(itemParts(makeItem({ correct: false, childAnswer: 'a; b', correctAnswer: 'a; b' }))).toBeNull();
+    expect(tallyParts([makeItem({ correct: false, childAnswer: 'chưa làm' })])).toEqual({ correct: 0, total: 1 });
+  });
+
+  it('AI chấm đúng thì mọi phần đều đúng', () => {
+    const item = makeItem({ correct: true, childAnswer: 'x; y', correctAnswer: 'x ; z' });
+    expect(tallyParts([item])).toEqual({ correct: 2, total: 2 });
   });
 });

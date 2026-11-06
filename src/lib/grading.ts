@@ -1,6 +1,7 @@
 import {
   gradeFromTranscript,
   resultSchema,
+  scoreFromItems,
   systemPrompt,
   transcribePrompt,
   transcriptSchema,
@@ -29,7 +30,9 @@ const serverTimeoutMs = 150_000;
 const lmStudioUrl = process.env.EXPO_PUBLIC_LMSTUDIO_URL?.replace(/\/+$/, '');
 const lmStudioModel = process.env.EXPO_PUBLIC_LMSTUDIO_MODEL;
 // Chấm 2 bước (chép bài rồi chấm) mất khoảng 3 phút trên máy Mac M-series với AI 8B.
-const lmStudioTimeoutMs = 360_000;
+// Mỗi bước LM Studio có giới hạn riêng: bài 2 trang đo được 3 phút 40 giây chỉ riêng bước chép.
+const lmStudioStepTimeoutMs = 360_000;
+const lmStudioModelsTimeoutMs = 15_000;
 
 type GradeParams = {
   /** Các trang bài làm (JPEG base64), theo thứ tự. */
@@ -48,11 +51,11 @@ type GradeParams = {
  */
 export type GradingEngine = 'claude' | 'gemini' | 'local';
 
-/** Lỗi chấm bài có lời nhắn thân thiện cho bé; code "het-luot" khi đã chấm đủ số bài hôm nay. */
+/** Lỗi chấm bài có lời nhắn thân thiện cho bé; code "het-luot" khi đã chấm đủ số bài hôm nay, "mat-mang" khi mất mạng. */
 export class GradingError extends Error {
   constructor(
     message: string,
-    readonly code?: 'het-luot',
+    readonly code?: 'het-luot' | 'mat-mang',
     /** Lúc hết lượt: tài khoản có gói Plus không (theo máy chủ). */
     readonly plus?: boolean,
   ) {
@@ -80,8 +83,9 @@ export async function gradeHomework(
       return { result: normalizeResult(await gradeWithLmStudio(params)), engine: 'local' };
     } catch (lmStudioError) {
       console.warn('Máy chủ lỗi:', serverError, '— LM Studio lỗi:', lmStudioError);
-      throw new Error(
-        'Chưa chấm được bài. Bố mẹ kiểm tra mạng Internet, hoặc bật LM Studio trên máy tính ở nhà nhé.',
+      if (serverError instanceof GradingError && serverError.code === 'mat-mang') throw serverError;
+      throw new GradingError(
+        'Chưa chấm được bài. Cô trên máy chủ đang bận và chưa nối được LM Studio ở nhà. Bố mẹ thử lại sau ít phút nhé, lượt chấm vẫn còn nguyên.',
       );
     }
   }
@@ -102,18 +106,17 @@ export function speakable(text: string) {
   return spokenSymbols.reduce((out, [pattern, word]) => out.replace(pattern, word), text);
 }
 
-// Điểm tính từ số câu đúng (làm tròn 0.5) để luôn khớp với phần chấm từng câu;
+// Điểm tính từ số phần đúng (làm tròn 0.5) để luôn khớp với phần chấm từng câu;
 // model nhỏ chạy trên máy hay cộng điểm sai.
 export function normalizeResult(result: GradingResult): GradingResult {
   const spokenFeedback = speakable(result.spokenFeedback);
   if (result.items.length === 0) return { ...result, spokenFeedback };
-  const correct = result.items.filter((item) => item.correct).length;
-  return { ...result, spokenFeedback, score: Math.round((correct / result.items.length) * 20) / 2 };
+  return { ...result, spokenFeedback, score: scoreFromItems(result.items) };
 }
 
 async function gradeOnServer(params: GradeParams): Promise<GradingResult & { engine?: string }> {
   if (!supabase) throw new Error('Chưa cấu hình Supabase trong .env.local.');
-  if (!(await ensureSession())) throw new GradingError(offlineMessage);
+  if (!(await ensureSession())) throw new GradingError(offlineMessage, 'mat-mang');
 
   const { data, error } = await supabase.functions.invoke<GradingResult & { engine?: string }>('cham-bai', {
     body: params,
@@ -125,22 +128,38 @@ async function gradeOnServer(params: GradeParams): Promise<GradingResult & { eng
 }
 
 const offlineMessage = 'Hình như mất mạng rồi. Ba mẹ kiểm tra Wi-Fi hoặc 4G rồi con thử lại nhé.';
+const busyMessage = 'Cô đang bận một chút, chưa chấm được bài. Con đợi một lát rồi thử lại nhé, lượt chấm vẫn còn nguyên.';
+
+/** Tiêu đề và lời nhắn khi chấm lỗi: chỉ bảo kiểm tra mạng khi đúng là mất mạng. */
+export function gradingFailureMessage(error: unknown) {
+  if (error instanceof GradingError && error.code === 'mat-mang') {
+    return { title: 'Kết nối đang có vấn đề', message: error.message };
+  }
+  return { title: 'Chưa chấm được bài', message: error instanceof GradingError ? error.message : busyMessage };
+}
 
 // Máy chủ trả lời lỗi kèm lời nhắn tiếng Việt ({ error, code }); lấy ra để báo cho bé.
 async function friendlyError(error: unknown): Promise<GradingError> {
   if (error instanceof FunctionsHttpError) {
+    const response = error.context as Response;
+    // Máy chủ hoặc AI lỗi (hết tiền, quá tải): lời nhắn của máy chủ không giúp gì cho bé.
+    if (response.status >= 500) return new GradingError(busyMessage);
     try {
-      const body = await (error.context as Response).json();
+      const body = await response.json();
       if (typeof body?.error === 'string') {
         return new GradingError(body.error, body.code === 'het-luot' ? 'het-luot' : undefined, body.plus === true);
       }
     } catch {
       // Không đọc được lời nhắn thì dùng câu chung bên dưới.
     }
-    return new GradingError('Máy chủ chưa chấm được bài. Con đợi một chút rồi thử lại nhé.');
+    return new GradingError(busyMessage);
   }
-  if (error instanceof FunctionsFetchError) return new GradingError(offlineMessage);
-  return new GradingError('Chưa chấm được bài. Con thử lại sau một chút nhé.');
+  if (error instanceof FunctionsFetchError) {
+    // Hết giờ chờ nghĩa là AI chậm, mạng vẫn tốt.
+    const timedOut = ['AbortError', 'TimeoutError'].includes((error.context as Error | undefined)?.name ?? '');
+    return timedOut ? new GradingError(busyMessage) : new GradingError(offlineMessage, 'mat-mang');
+  }
+  return new GradingError(busyMessage);
 }
 
 // LM Studio có API giống OpenAI: /v1/chat/completions, ảnh gửi dạng data URL.
@@ -148,35 +167,35 @@ async function friendlyError(error: unknown): Promise<GradingError> {
 // nên chấm 2 bước: (1) nhìn ảnh, chỉ chép lại đề và bài bé làm; (2) chấm từ bản chép, không gửi ảnh.
 // Đo trên bài thật lớp 2 (GSTH-038): 1 bước tìm được 5/8 bài, 2 bước tìm đủ 8/8, chấm đúng 7/8.
 async function gradeWithLmStudio(params: GradeParams): Promise<GradingResult> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), lmStudioTimeoutMs);
-  try {
-    const model = lmStudioModel ?? (await firstLoadedModel(controller.signal));
-    const images = params.images.map((image) => ({
-      type: 'image_url',
-      image_url: { url: `data:image/jpeg;base64,${image}` },
-    }));
-    const grading = systemPrompt(params.subject, params.grade, params.teacher);
+  const model = lmStudioModel ?? (await firstLoadedModel());
+  const images = params.images.map((image) => ({
+    type: 'image_url',
+    image_url: { url: `data:image/jpeg;base64,${image}` },
+  }));
+  const grading = systemPrompt(params.subject, params.grade, params.teacher);
 
-    const transcript = await askLmStudio<Transcript>(controller.signal, model, 'ban_chep', transcriptSchema, [
-      { role: 'system', content: transcribePrompt(params.subject, params.grade) },
-      { role: 'user', content: [...images, { type: 'text', text: 'Chép lại đầy đủ các bài trong ảnh.' }] },
-    ]);
-    // Không chép được bài nào (ảnh không phải bài tập, hoặc AI trả lời lạ): chấm 1 bước như cũ, để AI
-    // nhìn ảnh và tự báo "không phải bài tập".
-    if (!transcript.exercises?.length) {
-      return await askLmStudio<GradingResult>(controller.signal, model, 'ket_qua_cham_bai', resultSchema, [
-        { role: 'system', content: grading },
-        { role: 'user', content: [...images, { type: 'text', text: teacherAsk(params.teacher) }] },
-      ]);
-    }
-    return await askLmStudio<GradingResult>(controller.signal, model, 'ket_qua_cham_bai', resultSchema, [
+  const transcript = await askLmStudio<Transcript>(model, 'ban_chep', transcriptSchema, [
+    { role: 'system', content: transcribePrompt(params.subject) },
+    { role: 'user', content: [...images, { type: 'text', text: 'Chép lại đầy đủ các bài trong ảnh.' }] },
+  ]);
+  // Không chép được bài nào (ảnh không phải bài tập, hoặc AI trả lời lạ): chấm 1 bước như cũ, để AI
+  // nhìn ảnh và tự báo "không phải bài tập".
+  if (!transcript.exercises?.length) {
+    return await askLmStudio<GradingResult>(model, 'ket_qua_cham_bai', resultSchema, [
       { role: 'system', content: grading },
-      { role: 'user', content: gradeFromTranscript(transcript) },
+      { role: 'user', content: [...images, { type: 'text', text: teacherAsk(params.teacher) }] },
     ]);
-  } finally {
-    clearTimeout(timer);
   }
+  const graded = await askLmStudio<GradingResult>(model, 'ket_qua_cham_bai', resultSchema, [
+    { role: 'system', content: grading },
+    { role: 'user', content: gradeFromTranscript(transcript) },
+  ]);
+  // Bản chép nhận biết lớp khi chưa biết lớp đã khai báo, nên tin hơn bước chấm.
+  return {
+    ...graded,
+    isHomework: transcript.isHomework ?? graded.isHomework,
+    detectedGrade: transcript.detectedGrade ?? graded.detectedGrade,
+  };
 }
 
 function teacherAsk(teacher: TeacherVoice) {
@@ -184,24 +203,30 @@ function teacherAsk(teacher: TeacherVoice) {
 }
 
 async function askLmStudio<T>(
-  signal: AbortSignal,
   model: string,
   name: string,
   schema: object,
   messages: { role: 'system' | 'user'; content: unknown }[],
 ): Promise<T> {
-  const response = await fetch(`${lmStudioUrl}/v1/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    signal,
-    body: JSON.stringify({
-      model,
-      temperature: 0.1,
-      max_tokens: 6000,
-      response_format: { type: 'json_schema', json_schema: { name, strict: true, schema } },
-      messages,
-    }),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), lmStudioStepTimeoutMs);
+  let response: Response;
+  try {
+    response = await fetch(`${lmStudioUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model,
+        temperature: 0.1,
+        max_tokens: 6000,
+        response_format: { type: 'json_schema', json_schema: { name, strict: true, schema } },
+        messages,
+      }),
+    });
+  } finally {
+    clearTimeout(timer);
+  }
   if (!response.ok) {
     throw new Error(`LM Studio trả lỗi ${response.status}: ${await response.text()}`);
   }
@@ -214,8 +239,12 @@ async function askLmStudio<T>(
 }
 
 // /api/v0/models của LM Studio cho biết model nào đang được nạp; ưu tiên model biết nhìn ảnh.
-async function firstLoadedModel(signal: AbortSignal): Promise<string> {
-  const response = await fetch(`${lmStudioUrl}/api/v0/models`, { signal });
+async function firstLoadedModel(): Promise<string> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), lmStudioModelsTimeoutMs);
+  const response = await fetch(`${lmStudioUrl}/api/v0/models`, { signal: controller.signal }).finally(() =>
+    clearTimeout(timer),
+  );
   if (!response.ok) throw new Error(`LM Studio trả lỗi ${response.status}`);
   const data = await response.json();
   const models: { id: string; type?: string; state?: string }[] = data?.data ?? [];

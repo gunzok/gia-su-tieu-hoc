@@ -113,6 +113,21 @@ describe('gradeFromTranscript', () => {
   });
 });
 
+describe('nhận biết lớp từ bản chép (GIA-55)', () => {
+  it('lấy lớp ở bước chép, không gọi thêm lần nào, và lời dặn chép không nói lớp đã khai báo', async () => {
+    const { gradeHomework } = loadGrading();
+    fetchMock
+      .mockResolvedValueOnce(lmReply({ ...transcript, isHomework: true, detectedGrade: 4 }))
+      .mockResolvedValueOnce(lmReply({ ...graded, detectedGrade: 2 }));
+
+    const { result } = await gradeHomework(params);
+
+    expect(result.detectedGrade).toBe(4);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(body(0).messages[0].content).not.toContain('lớp 2 của');
+  });
+});
+
 describe('model có suy luận (GIA-54)', () => {
   const inReasoning = (reply: unknown) => ({
     ok: true,

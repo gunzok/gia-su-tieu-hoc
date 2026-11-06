@@ -1,3 +1,4 @@
+import { tallyParts } from '../../supabase/functions/_shared/cham-bai';
 import { SubjectNames, type Subject } from '@/lib/grading';
 import type { HistoryEntry } from '@/lib/history';
 
@@ -15,9 +16,8 @@ export function averageScore(entries: HistoryEntry[]) {
 
 /** Tỉ lệ câu làm đúng trên tổng số câu đã chấm, từ 0 đến 1. */
 export function accuracy(entries: HistoryEntry[]) {
-  const items = entries.flatMap((entry) => entry.items);
-  if (items.length === 0) return null;
-  return items.filter((item) => item.correct).length / items.length;
+  const { correct, total } = tallyParts(entries.flatMap((entry) => entry.items));
+  return total === 0 ? null : correct / total;
 }
 
 export function scoreLabel(score: number) {
