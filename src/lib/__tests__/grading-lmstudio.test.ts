@@ -148,6 +148,6 @@ describe('model có suy luận (GIA-54)', () => {
     const { gradeHomework } = loadGrading();
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '' } }] }) });
 
-    await expect(gradeHomework(params)).rejects.toThrow('Chưa chấm được bài');
+    await expect(gradeHomework(params)).rejects.toThrow(/đang bận/);
   });
 });

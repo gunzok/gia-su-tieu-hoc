@@ -85,7 +85,7 @@ export async function gradeHomework(
       console.warn('Máy chủ lỗi:', serverError, '— LM Studio lỗi:', lmStudioError);
       if (serverError instanceof GradingError && serverError.code === 'mat-mang') throw serverError;
       throw new GradingError(
-        'Chưa chấm được bài. Cô trên máy chủ đang bận và chưa nối được LM Studio ở nhà. Bố mẹ thử lại sau ít phút nhé, lượt chấm vẫn còn nguyên.',
+        'Cô trên máy chủ đang bận và chưa nối được LM Studio ở nhà. Bố mẹ thử lại sau ít phút nhé, lượt chấm vẫn còn nguyên.',
       );
     }
   }
