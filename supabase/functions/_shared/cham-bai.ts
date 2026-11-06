@@ -113,6 +113,7 @@ export function exerciseGuide(teacher: TeacherVoice = 'co') {
   const x = teacher === 'thay' ? 'thầy' : 'cô';
   return `Cách chấm từng dạng bài (đọc kỹ trước khi chấm):
 - Tính, điền số (tinh, dien): đọc từng phép tính, chép đúng số bé viết. Tự tính lại rồi so. Chữ số trẻ viết tay hay lẫn 1 và 7, 3 và 8, 4 và 9, 5 và 6, 0 và 6: nhìn kỹ nét chữ, KHÔNG tự sửa số bé viết cho khớp đáp án.
+- Điền chữ, điền âm vần (dien): chép đúng cả từ bé viết vào childAnswer, kể cả từ sai hoặc vô nghĩa. Ví dụ bé viết "lo nắng" thì chép "lo nắng", KHÔNG đọc thành "lo lắng" dù từ đó có nghĩa hơn. Đọc từng từ theo nét chữ trong ảnh, không đoán theo nghĩa hay theo các từ khác trên trang.
 - Khoanh đáp án (khoanh): tìm chữ cái A, B, C, D có vòng tròn bao quanh, đó là lựa chọn của bé. Tự giải bài toán, tìm chữ cái đúng, rồi so: chỉ đúng khi chữ bé khoanh trùng chữ đúng.
 - Nối (noi): lần theo từng đường bé vẽ, từ đầu này tới đầu kia, ghi "… nối với …". Tự tính kết quả của từng ô để biết ô nào phải nối với ô nào. Đường nào mờ hoặc chồng nhau không lần được thì dựa vào số bé ghi cạnh ô (nếu có) và nói rõ là ${x} nhìn chưa rõ đường nối.
 - Tô màu (to-mau): bài tô màu KHÔNG có chữ, phải nhìn màu. Ghi bé đã tô hình nào và màu gì (hình nào để trắng thì là chưa tô). Tự tính phép tính trên từng hình, tìm hình phải tô theo đề (ví dụ hình có kết quả lớn nhất), rồi so với hình bé đã tô. Không chấm tô đẹp hay xấu, tô lem ra ngoài không trừ điểm.
@@ -131,7 +132,7 @@ Liệt kê bài (bắt buộc):
 Tự kiểm tra trước khi trả lời:
 - correct phải khớp với so sánh: childAnswer khác correctAnswer ở bất kỳ phần nào thì correct là false.
 - childAnswer phải giống chữ trong ảnh. Nếu childAnswer đang giống hệt correctAnswer mà correct là false thì đã chép sai: xem lại ảnh và chép đúng chữ bé viết.
-- explanation nói chắc chắn một ý, không viết kiểu "hoặc viết nhầm".
+- correctAnswer và explanation nói chắc chắn: mỗi phần chỉ nêu một đáp án, không viết kiểu "hoặc …", "hoặc viết nhầm", không chú thích thêm trong ngoặc.
 - explanation không được nói ngược với correct (correct true thì không nói bé sai; correct false thì chỉ đúng chỗ sai).
 - explanation và spokenFeedback không nêu số lượng câu đúng hay sai (app tự đếm); chỉ nói cụ thể chỗ bé làm tốt và chỗ cần sửa.`;
 }

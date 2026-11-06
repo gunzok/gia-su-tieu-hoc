@@ -347,4 +347,12 @@ describe('lời dặn chấm bài (GIA-66)', () => {
     expect(guide).toContain('lói chuyện');
     expect(itemKinds).toContain('van');
   });
+
+  it('bài điền chữ cũng chép đúng từ bé viết, và đáp án chỉ nêu một ý', () => {
+    const guide = exerciseGuide();
+    expect(guide).toContain('Điền chữ, điền âm vần (dien)');
+    expect(guide).toContain('lo nắng');
+    expect(guide).toContain('correctAnswer và explanation');
+    expect(guide).toContain('chỉ nêu một đáp án');
+  });
 });
