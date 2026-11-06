@@ -56,6 +56,15 @@ App iOS + Android giúp học sinh tiểu học (lớp 1–5) làm bài tập v�
 - Dự án được sửa chung bởi Claude Code, Google Antigravity và OpenAI Codex. Mỗi công cụ làm trên nhánh Git riêng, commit nhỏ và thường xuyên, không sửa cùng file cùng lúc.
 - Chủ dự án không phải lập trình viên chuyên nghiệp: giải thích ngắn gọn bằng tiếng Việt và hỏi ý kiến trước mỗi quyết định lớn về tính năng hoặc công nghệ.
 
+## Tách Mobile / Web (Linear, 06/11/2026)
+
+Linear có 2 project: **Gia sư Tiểu học — App mobile (iOS/Android)** (P-GIA-2) và **Gia sư Tiểu học — Web app** (P-GIA-4). Hai bản dùng chung code chức năng; giao diện và nhánh Git riêng.
+
+- **Dùng chung** (nhãn Linear `Dùng chung`): `supabase/`, `src/lib/`, hook thuần logic, `src/constants/`. Không import từ `src/app/` hay `src/components/`. Sửa ở đây phải chạy được cho cả hai bản (tsc, lint, `npm test`).
+- **Riêng mobile** (nhãn `Mobile`): giao diện native, build EAS/OTA, TestFlight/store. Nhánh `ticket/GIA-xx` từ `setup/khung-du-an`.
+- **Riêng web** (nhãn `Web`): giao diện web, khác biệt nền tảng dùng hậu tố `.web.ts(x)`. Nhánh `web/*` (đang có `web/giao-dien-desktop`). Không sửa file giao diện native từ nhánh web và ngược lại.
+- Mỗi issue Linear thuộc đúng một project; việc lõi dùng chung nằm ở project nơi phát sinh và gắn nhãn `Dùng chung`. Quy ước chi tiết đang chốt ở GIA-59.
+
 ## Đồng bộ hiện trạng và quyết định giữa Claude Code và Antigravity qua ai-memory
 
 Dự án dùng MCP **ai-memory** để duy trì bối cảnh liên tục và đồng bộ giữa các AI agent (Claude Code, Antigravity, Codex):
