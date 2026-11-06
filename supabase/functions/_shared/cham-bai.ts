@@ -330,17 +330,19 @@ export function mergePages(pages: GradingResult[]): GradingResult {
   };
 }
 
-/** Khoá so sánh một bài: đề + câu trả lời của bé, bỏ "Trang k –", dấu câu, khoảng trắng, chữ hoa. */
-function itemKey(item: GradedItem) {
-  const clean = (text: string) =>
-    text
-      .replace(/^\s*trang\s*\d+\s*[–-]\s*/i, '')
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}+\-×x:=<>]/gu, '');
-  return `${clean(item.question)}|${clean(item.childAnswer)}`;
+// Nhãn do AI đặt, mỗi lần đọc một khác: "Trang 2", "Bài 2a", "Câu 3", "a)".
+const itemLabels = /(?<![\p{L}\p{N}])(?:(?:trang|bài|câu)\s*\d+\s*\p{L}?|\p{L}\))(?![\p{L}\p{N}])/gu;
+
+/**
+ * Các số và chữ trong đề và câu trả lời của bé trên cả trang. Không so từng câu, vì cùng một ảnh
+ * AI có lần gộp nhiều phép thành một câu, có lần tách riêng (GIA-57).
+ */
+function pageTokens(page: GradingResult) {
+  const text = page.items.map((item) => `${item.question} ${item.childAnswer}`).join(' ').toLowerCase();
+  return new Set(text.replace(itemLabels, ' ').match(/[\p{L}\p{N}]+/gu) ?? []);
 }
 
-/** Hai trang trùng khi ít nhất 80% bài (cả đề lẫn câu bé trả lời) giống nhau. */
+/** Hai trang trùng khi ít nhất 80% số và chữ của cả hai trang giống nhau. */
 const duplicateOverlap = 0.8;
 
 /**
@@ -348,14 +350,14 @@ const duplicateOverlap = 0.8;
  * So nội dung đã chấm chứ không so ảnh, vì các trang vở cùng mẫu trông rất giống nhau.
  */
 export function duplicatePages(pages: GradingResult[]) {
-  const keys = pages.map((page) => new Set(page.items.map(itemKey)));
+  const keys = pages.map(pageTokens);
   const duplicates: number[] = [];
   keys.forEach((current, index) => {
     if (current.size === 0) return;
     const same = keys.slice(0, index).some((earlier, earlierIndex) => {
       if (earlier.size === 0 || duplicates.includes(earlierIndex + 1)) return false;
       const shared = [...current].filter((key) => earlier.has(key)).length;
-      return shared / Math.max(current.size, earlier.size) >= duplicateOverlap;
+      return shared / new Set([...current, ...earlier]).size >= duplicateOverlap;
     });
     if (same) duplicates.push(index + 1);
   });

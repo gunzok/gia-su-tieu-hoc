@@ -163,6 +163,76 @@ describe('duplicatePages', () => {
     expect(duplicatePages([pageA(), other])).toEqual([]);
   });
 
+  // Lấy từ lần thử thật 06/11 (GIA-57): cùng một ảnh, Gemini lần gộp, lần tách câu.
+  const grouped = () =>
+    makeResult({
+      items: [
+        makeItem({
+          question: 'Trang 1 – Bài 1: Đặt tính rồi tính (47 + 25, 63 - 28, 38 + 46, 91 - 37)',
+          childAnswer: '47 + 25 = 72; 63 - 28 = 35; 38 + 46 = 74; 91 - 37 = 54',
+        }),
+        makeItem({
+          question: 'Trang 1 – Bài 2: Tính nhẩm',
+          childAnswer: 'a) 40 + 30 = 70; b) 90 - 50 = 40; c) 8 + 7 = 15; d) 16 - 9 = 8; e) 6 + 9 = 15; g) 13 - 5 = 8',
+        }),
+      ],
+    });
+  const split = (answers: Record<string, string> = {}) =>
+    makeResult({
+      items: [
+        ['Bài 1: Đặt tính rồi tính (47 + 25)', '72'],
+        ['Bài 1: Đặt tính rồi tính (63 - 28)', '35'],
+        ['Bài 1: Đặt tính rồi tính (38 + 46)', '74'],
+        ['Bài 1: Đặt tính rồi tính (91 - 37)', '54'],
+        ['Bài 2a: Tính nhẩm (40 + 30)', '40 + 30 = 70'],
+        ['Bài 2b: Tính nhẩm (90 - 50)', '90 - 50 = 40'],
+        ['Bài 2c: Tính nhẩm (8 + 7)', '8 + 7 = 15'],
+        ['Bài 2d: Tính nhẩm (16 - 9)', '16 - 9 = 8'],
+        ['Bài 2e: Tính nhẩm (6 + 9)', '6 + 9 = 15'],
+        ['Bài 2g: Tính nhẩm (13 - 5)', '13 - 5 = 8'],
+      ].map(([question, childAnswer]) =>
+        makeItem({ question: `Trang 2 – ${question}`, childAnswer: answers[question] ?? childAnswer }),
+      ),
+    });
+
+  it('cùng một trang, AI lần gộp lần tách câu vẫn bị coi là trùng', () => {
+    expect(duplicatePages([grouped(), split()])).toEqual([2]);
+    expect(duplicatePages([split(), grouped()])).toEqual([2]);
+  });
+
+  it('AI đọc nhầm một số giữa hai lần vẫn bị coi là trùng', () => {
+    expect(duplicatePages([grouped(), split({ 'Bài 1: Đặt tính rồi tính (91 - 37)': '64' })])).toEqual([2]);
+  });
+
+  it('hai trang Toán khác đề, có vài số giống nhau, không bị coi là trùng', () => {
+    const other = makeResult({
+      items: [
+        makeItem({
+          question: 'Trang 2 – Bài 1: Tính',
+          childAnswer: 'a) 25 + 17 - 12 = 30; b) 64 - 28 + 5 = 41; c) 3 + 47 + 20 = 60; d) 90 - 45 - 15 = 40',
+        }),
+        makeItem({ question: 'Trang 2 – Bài 2: Hình bên có mấy hình tam giác?', childAnswer: 'Có 2 hình tam giác.' }),
+        makeItem({ question: 'Trang 2 – Bài 3: Số liền trước của 60, số liền sau của 99', childAnswer: '59; 100' }),
+      ],
+    });
+    expect(duplicatePages([grouped(), other])).toEqual([]);
+  });
+
+  it('trang Tiếng Việt chụp lại bị coi là trùng dù AI tách câu khác', () => {
+    const whole = makeResult({
+      items: [makeItem({ question: 'Trang 1 – Bài 1: Điền c, k hoặc q', childAnswer: 'a) cái kéo; b) con kiến; c) quả cam; d) cây cầu' })],
+    });
+    const parts = makeResult({
+      items: [
+        makeItem({ question: 'Trang 2 – Bài 1a: Điền c, k hoặc q', childAnswer: 'cái kéo' }),
+        makeItem({ question: 'Trang 2 – Bài 1b: Điền c, k hoặc q', childAnswer: 'con kiến' }),
+        makeItem({ question: 'Trang 2 – Bài 1c: Điền c, k hoặc q', childAnswer: 'quả cam' }),
+        makeItem({ question: 'Trang 2 – Bài 1d: Điền c, k hoặc q', childAnswer: 'cây cầu' }),
+      ],
+    });
+    expect(duplicatePages([whole, parts])).toEqual([2]);
+  });
+
   it('trang không có bài nào không bị coi là trùng', () => {
     expect(duplicatePages([makeResult({ items: [] }), makeResult({ items: [] })])).toEqual([]);
   });

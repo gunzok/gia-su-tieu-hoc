@@ -20,6 +20,7 @@ cập nhật OTA vẫn chạy, chỉ không có hai phần đó. Cách thử t�
 ### Sửa
 - Bài nhiều trang không còn bị sót trang: mỗi trang được chấm riêng rồi gộp lại, trang không có bài nào được chấm lại một lần (GIA-49).
 - Chụp trùng một trang không còn bị tính điểm hai lần; chọn lại ảnh đã có trong album thì app bỏ qua và báo (GIA-50).
+- Vẫn nhận ra trang chụp trùng khi AI gộp hoặc tách câu khác nhau giữa hai ảnh (GIA-57).
 - Ảnh gửi chấm nét hơn để đọc chữ số viết tay rõ hơn (GIA-52).
 - Máy chủ không chấm được (AI quá chậm, hết tiền, mất mạng) thì app lại tự chấm bằng LM Studio ở máy tính
   trong nhà như trước, cả bài lẫn Hỏi cô (GIA-54).
