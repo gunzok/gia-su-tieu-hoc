@@ -21,8 +21,7 @@ import { speakVietnamese, stopSpeaking } from '@/lib/speech';
 import { Columns } from '@/web/columns';
 import { DropZone } from '@/web/drop-zone';
 import { Screen } from '@/web/screen';
-import { useIsDesktop } from '@/web/use-layout';
-
+import { useLayout } from '@/web/use-layout';
 
 const subjectStyles: Record<Subject, { tint: string; dot: string; ink: string; icon: IconName; hint: string }> = {
   toan: { tint: Palette.mintSoft, dot: Palette.blue, ink: Palette.blueDark, icon: 'calculate', hint: 'Số & Hình' },
@@ -35,10 +34,17 @@ const subjectStyles: Record<Subject, { tint: string; dot: string; ink: string; i
   },
 };
 
+function dayPart(hour: number) {
+  if (hour < 11) return 'Chào buổi sáng';
+  if (hour < 14) return 'Chào buổi trưa';
+  if (hour < 18) return 'Chào buổi chiều';
+  return 'Chào buổi tối';
+}
+
 export default function HomeScreen() {
-  const { grade, subject, setSubject, pickPhoto, addPhotos } = useHomeworkSession();
-  const desktop = useIsDesktop();
+  const { grade, setSubject, pickPhoto, addPhotos } = useHomeworkSession();
   const { profile, rewards } = useProfile();
+  const { wide, narrow } = useLayout();
   const now = new Date();
   const streak = currentStreak(rewards, now);
   const T = useTeacher();
@@ -74,7 +80,7 @@ export default function HomeScreen() {
     router.navigate('/quet-bai');
   }
 
-  // Máy tính: thả ảnh hoặc chọn ảnh ngay ở Trang chủ rồi sang màn Quét bài để chấm.
+  // Thả ảnh hoặc chọn ảnh ngay ở Trang chủ rồi sang màn Quét bài để chấm.
   async function handleDroppedPhotos(assets: ImagePickerAsset[]) {
     await addPhotos(assets);
     router.navigate('/quet-bai');
@@ -84,6 +90,179 @@ export default function HomeScreen() {
     await pickPhoto('library');
     router.navigate('/quet-bai');
   }
+
+  const heroText = (
+    <View style={styles.heroText}>
+      <View style={styles.tagRow}>
+        <View style={[styles.tag, { backgroundColor: Palette.amberSoft }]}>
+          <MaterialIcons name="wb-sunny" size={16} color={Palette.amberInk} />
+          <AppText variant="labelSm" color={Palette.amberInk}>
+            {dayPart(now.getHours())}
+          </AppText>
+        </View>
+        {streak > 0 && (
+          <View style={[styles.tag, { backgroundColor: Palette.coralSoft }]}>
+            <AppText variant="labelSm" color={Palette.coralInk}>
+              🔥 {streak} ngày chăm chỉ liên tiếp!
+            </AppText>
+          </View>
+        )}
+      </View>
+      <AppText variant="headlineXl" style={wide ? styles.heroTitleWide : undefined}>
+        Xin chào <AppText variant="headlineXl" color={Palette.blue} style={wide ? styles.heroTitleWide : undefined}>
+          Bé {profile?.name || 'yêu'}!
+        </AppText>{' '}
+        👋
+      </AppText>
+      <AppText variant="bodyLg" color={Palette.inkSoft}>
+        {greeting.title} {greeting.body}
+      </AppText>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={speaking ? 'Dừng đọc' : `Nghe ${T.word} dặn hôm nay`}
+        onPress={toggleGreeting}
+        style={({ pressed }) => [styles.listen, pressed && styles.pressed]}>
+        <View style={[styles.listenIcon, speaking && { backgroundColor: Palette.mint }]}>
+          <PulseRing active={speaking} size={30} color={Palette.blueDark} />
+          <MaterialIcons name={speaking ? 'stop' : 'volume-up'} size={22} color={speaking ? Palette.blueDark : Palette.white} />
+        </View>
+        <View style={styles.flex}>
+          <AppText variant="labelLg" color={Palette.blueDark}>
+            {speaking ? `${T.Title} đang nói…` : `Lời nhắn từ ${T.Title}`}
+          </AppText>
+          <AppText variant="bodySm" color={Palette.inkSoft}>
+            {speaking ? 'Bấm để dừng' : `Bấm nghe ${T.word} dặn hôm nay nha`}
+          </AppText>
+        </View>
+        <SoundWave
+          active={speaking}
+          heights={[10, 18, 12, 22, 14, 20]}
+          colors={[Palette.blueDark]}
+          barWidth={4}
+          gap={4}
+          restHeight={10}
+        />
+      </Pressable>
+
+      <View style={styles.ctaRow}>
+        <View style={styles.ctaMain}>
+          <BigButton label={`Chấm bài cùng ${T.Title} ngay`} icon="document-scanner" onPress={() => router.navigate('/quet-bai')} />
+        </View>
+        {history[0] && !narrow && (
+          <BigButton label="Xem bài vừa chấm" icon="auto-fix-high" variant="ghost" onPress={() => router.navigate('/chua-bai')} />
+        )}
+      </View>
+    </View>
+  );
+
+  const heroArt = (
+    <View style={[styles.art, !wide && styles.artMedium, narrow && styles.artNarrow]}>
+      <View style={[styles.artBlob, !wide && styles.artBlobMedium]} />
+      <Mascot variant="full" size={narrow ? 150 : wide ? 280 : 190} />
+      <View style={styles.artBadge}>
+        <MaterialIcons name="auto-awesome" size={16} color={Palette.blue} />
+        <AppText variant="labelSm" color={Palette.blueDark}>
+          {T.Title} sẵn sàng hỗ trợ {profile?.name ? 'bé' : 'con'}!
+        </AppText>
+      </View>
+    </View>
+  );
+
+  const heroCard = (
+    <View style={[styles.hero, narrow && styles.heroNarrow]}>
+      {narrow ? (
+        <>
+          {heroArt}
+          {heroText}
+        </>
+      ) : (
+        <>
+          <View style={styles.flex}>{heroText}</View>
+          {heroArt}
+        </>
+      )}
+    </View>
+  );
+
+  const dropCard = (
+    <DropZone onAssets={handleDroppedPhotos} style={styles.dropBox} overStyle={styles.dropBoxOver}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Chọn ảnh bài tập từ máy tính"
+        onPress={pickFromComputer}
+        style={({ pressed }) => [styles.dropInner, narrow && styles.dropInnerNarrow, pressed && styles.pressed]}>
+        <View style={styles.dropIcon}>
+          <MaterialIcons name="add-a-photo" size={32} color={Palette.amberInk} />
+        </View>
+        <View style={styles.flex}>
+          <AppText variant="headlineSm">Kéo ảnh bài tập vào đây</AppText>
+          <AppText variant="bodyMd" color={Palette.inkSoft}>
+            Hoặc bấm để chọn ảnh vở viết tay, sách bài tập, phiếu bài. {T.Title} sẽ chấm và giảng lại ngay.
+          </AppText>
+        </View>
+        {!narrow && <MaterialIcons name="arrow-forward" size={28} color={Palette.blue} />}
+      </Pressable>
+    </DropZone>
+  );
+
+  const subjectsSection = (
+    <View style={styles.section}>
+      <AppText variant="headlineSm">Môn học vui vẻ · Lớp {grade}</AppText>
+      <View style={styles.subjectRow}>
+        {allSubjects.map((subject) => {
+          const look = subjectStyles[subject];
+          const entries = history.filter((entry) => entry.subject === subject);
+          const average = averageScore(entries);
+          return (
+            <Pressable
+              key={subject}
+              accessibilityRole="button"
+              onPress={() => startSubject(subject)}
+              style={({ pressed }) => [styles.subjectTile, { backgroundColor: look.tint }, pressed && styles.pressed]}>
+              <View style={[styles.subjectIcon, { backgroundColor: look.dot }]}>
+                <MaterialIcons name={look.icon} size={28} color={Palette.white} />
+              </View>
+              <AppText variant="headlineSm" color={look.ink}>
+                {SubjectNames[subject]} {grade}
+              </AppText>
+              <AppText variant="bodySm" color={look.ink}>
+                {average === null ? look.hint : `${entries.length} bài đã chấm`}
+              </AppText>
+              <View style={styles.track}>
+                <View style={[styles.fill, { width: `${(average ?? 0) * 10}%`, backgroundColor: look.dot }]} />
+              </View>
+              <AppText variant="labelSm" color={look.ink}>
+                {average === null ? 'Chưa có bài' : `Điểm TB ${average.toFixed(1)}`}
+              </AppText>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+
+  const latestCard = history[0] && (
+    <Card tint={Palette.amberSoft} borderColor={Palette.amberSoft} style={styles.latestCard}>
+      <View style={styles.latestScore}>
+        <AppText variant="headlineXl" color={Palette.amberInk}>
+          {history[0].score}
+        </AppText>
+        <AppText variant="labelMd" color={Palette.amberInk}>
+          /10
+        </AppText>
+      </View>
+      <View style={styles.flex}>
+        <AppText variant="labelSm" color={Palette.amberInk}>
+          BÀI GẦN NHẤT
+        </AppText>
+        <AppText variant="labelLg">
+          {SubjectNames[history[0].subject]} lớp {history[0].grade}
+        </AppText>
+      </View>
+      <BigButton label="Xem lại" compact variant="ghost" onPress={() => router.navigate('/chua-bai')} />
+    </Card>
+  );
 
   const streakCard = (
     <View accessible accessibilityLabel={`Chuỗi ${streak} ngày học. ${streakMessage(rewards, now)}`} style={styles.streakRow}>
@@ -104,145 +283,6 @@ export default function HomeScreen() {
     </View>
   );
 
-  const greetingCard = (
-    <Card style={styles.greetingCard}>
-      {desktop && (
-        <View style={styles.classTag}>
-          <View style={styles.classDot} />
-          <AppText variant="labelSm" color={Palette.inkSoft}>
-            Lớp {grade} • {SubjectNames[subject]}
-          </AppText>
-        </View>
-      )}
-      <View style={styles.greetingRow}>
-        <Mascot variant="full" size={desktop ? 150 : 96} />
-        <View style={[styles.bubble, desktop && styles.bubbleDesktop]}>
-          <AppText variant={desktop ? 'headlineMd' : 'labelLg'} color={Palette.blueDark}>
-            {greeting.title}
-          </AppText>
-          <AppText variant={desktop ? 'bodyLg' : 'bodyMd'}>{greeting.body}</AppText>
-        </View>
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={speaking ? 'Dừng đọc' : `Nghe ${T.word} dặn hôm nay`}
-        onPress={toggleGreeting}
-        style={({ pressed }) => [styles.listenButton, speaking && styles.listenActive, pressed && styles.pressed]}>
-        <View style={styles.listenIcon}>
-          <PulseRing active={speaking} size={30} color={Palette.blueDark} />
-          <MaterialIcons name={speaking ? 'stop' : 'volume-up'} size={22} color={Palette.blueDark} />
-        </View>
-        <AppText variant="labelLg" color={Palette.blueDark} style={styles.flex}>
-          {speaking ? `${T.Title} đang nói…` : `Nghe ${T.Title} dặn hôm nay`}
-        </AppText>
-        <SoundWave
-          active={speaking}
-          heights={[10, 18, 12, 22, 14]}
-          colors={[Palette.blueDark]}
-          barWidth={4}
-          gap={4}
-          restHeight={10}
-        />
-      </Pressable>
-    </Card>
-  );
-
-  const heroCard = (
-    <View style={[styles.hero, desktop && styles.heroDesktop]}>
-      {!desktop && (
-        <View style={styles.heroIcon}>
-          <MaterialIcons name="photo-camera" size={30} color={Palette.blue} />
-        </View>
-      )}
-      <View style={styles.heroTag}>
-        <AppText variant="labelSm" color={Palette.ink}>
-          TRỢ THỦ AI THÔNG MINH
-        </AppText>
-      </View>
-      <AppText variant="headlineLg" style={desktop ? undefined : styles.center}>
-        Chấm bài cùng {T.Title} ngay!
-      </AppText>
-      <AppText variant="bodyMd" color={Palette.inkSoft} style={desktop ? undefined : styles.center}>
-        Chỉ 1 bức ảnh, {T.Title} sẽ sửa lỗi sai và giảng lại cho con nghe ngay.
-      </AppText>
-      {desktop && (
-        <DropZone onAssets={handleDroppedPhotos} style={styles.dropBox} overStyle={styles.dropBoxOver}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Chọn ảnh bài tập từ máy tính"
-            onPress={pickFromComputer}
-            style={({ pressed }) => [styles.dropInner, pressed && styles.pressed]}>
-            <View style={styles.dropIcon}>
-              <MaterialIcons name="add-a-photo" size={30} color={Palette.amberInk} />
-            </View>
-            <View style={styles.flex}>
-              <AppText variant="labelLg">Kéo ảnh bài tập vào đây</AppText>
-              <AppText variant="bodySm" color={Palette.inkSoft}>
-                Hoặc bấm để chọn ảnh vở viết tay, sách bài tập, phiếu bài
-              </AppText>
-            </View>
-          </Pressable>
-        </DropZone>
-      )}
-      <BigButton
-        label={desktop ? 'Tải ảnh bài tập lên ngay 🚀' : 'Chụp bài tập 📸'}
-        icon={desktop ? 'upload-file' : 'camera'}
-        onPress={() => router.navigate('/quet-bai')}
-      />
-    </View>
-  );
-
-  const subjectsSection = (
-    <View style={styles.section}>
-      <AppText variant="headlineSm">Môn học vui vẻ</AppText>
-      <View style={styles.subjectRow}>
-        {allSubjects.map((subject) => {
-          const look = subjectStyles[subject];
-          const average = averageScore(history.filter((entry) => entry.subject === subject));
-          return (
-            <Pressable
-              key={subject}
-              accessibilityRole="button"
-              onPress={() => startSubject(subject)}
-              style={({ pressed }) => [styles.subjectTile, { backgroundColor: look.tint }, pressed && styles.pressed]}>
-              <View style={[styles.subjectIcon, { backgroundColor: look.dot }]}>
-                <MaterialIcons name={look.icon} size={28} color={Palette.white} />
-              </View>
-              <AppText variant="labelLg" color={look.ink}>
-                {SubjectNames[subject]} {grade}
-              </AppText>
-              <AppText variant="bodySm" color={look.ink}>
-                {average === null ? look.hint : `Điểm TB ${average.toFixed(1)}`}
-              </AppText>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
-
-  const latestCard = history[0] && (
-    <Card tint={Palette.amberSoft} borderColor={Palette.amberSoft} style={styles.latestCard}>
-      <View style={styles.latestScore}>
-        <AppText variant="headlineLg" color={Palette.amberInk}>
-          {history[0].score}
-        </AppText>
-        <AppText variant="labelSm" color={Palette.amberInk}>
-          /10
-        </AppText>
-      </View>
-      <View style={styles.flex}>
-        <AppText variant="labelSm" color={Palette.amberInk}>
-          BÀI GẦN NHẤT
-        </AppText>
-        <AppText variant="labelLg">
-          {SubjectNames[history[0].subject]} lớp {history[0].grade}
-        </AppText>
-      </View>
-      <BigButton label="Xem lại" compact variant="ghost" onPress={() => router.navigate('/chua-bai')} />
-    </Card>
-  );
-
   const parentRow = (
     <Pressable
       accessibilityRole="button"
@@ -261,20 +301,20 @@ export default function HomeScreen() {
     </Pressable>
   );
 
-  // Cửa sổ hẹp thì Columns tự xếp dọc: lời chào, chấm bài, môn học, bài gần nhất, chuỗi ngày, góc phụ huynh.
   return (
     <Screen>
-      <Columns ratio={1.25} main={greetingCard} aside={heroCard} />
+      {heroCard}
       <Columns
         ratio={1.6}
         main={
           <>
+            {dropCard}
             {subjectsSection}
-            {latestCard}
           </>
         }
         aside={
           <>
+            {latestCard}
             {streakCard}
             {parentRow}
           </>
@@ -288,62 +328,105 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  center: {
-    textAlign: 'center',
-  },
   pressed: {
     opacity: 0.85,
     transform: [{ scale: 0.98 }],
   },
-  streakRow: {
+  hero: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
-    backgroundColor: Palette.coralSoft,
-    borderRadius: Radius.lg,
-    paddingVertical: Spacing.two + 4,
-    paddingHorizontal: Spacing.three,
+    gap: Spacing.four,
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.lg + 8,
+    padding: Spacing.five,
+    overflow: 'hidden',
   },
-  streakBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    backgroundColor: Palette.white,
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.three,
-    minHeight: 48,
-  },
-  streakIcon: {
-    fontSize: 22,
-    lineHeight: 28,
-  },
-  greetingCard: {
+  heroNarrow: {
+    flexDirection: 'column',
+    padding: Spacing.three + 4,
     gap: Spacing.three,
   },
-  classTag: {
-    alignSelf: 'flex-start',
+  heroText: {
+    gap: Spacing.three,
+  },
+  heroTitleWide: {
+    fontSize: 44,
+    lineHeight: 56,
+  },
+  tagRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: Spacing.two,
-    backgroundColor: Palette.surfaceStrong,
+  },
+  tag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one + 2,
     borderRadius: Radius.full,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one + 2,
   },
-  classDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: Palette.blue,
+  listen: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    backgroundColor: Palette.surfaceMuted,
+    borderRadius: Radius.lg,
+    padding: Spacing.three,
   },
-  bubbleDesktop: {
-    padding: Spacing.four,
+  listenIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Palette.blue,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaMain: {
+    flexGrow: 1,
+    flexBasis: 240,
+  },
+  ctaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: Spacing.three,
+  },
+  art: {
+    width: 320,
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: Spacing.two,
   },
-  heroDesktop: {
-    alignItems: 'stretch',
-    padding: Spacing.four + 4,
-    gap: Spacing.three,
+  artMedium: {
+    width: 230,
+  },
+  artBlobMedium: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+  },
+  artNarrow: {
+    width: '100%',
+  },
+  artBlob: {
+    position: 'absolute',
+    top: 10,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: Palette.mintSoft,
+  },
+  artBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one + 2,
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderWidth: 1,
+    borderColor: Palette.border,
   },
   dropBox: {
     borderRadius: Radius.lg,
@@ -360,67 +443,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
+    padding: Spacing.four,
+  },
+  dropInnerNarrow: {
     padding: Spacing.three + 4,
   },
   dropIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Palette.amber,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  greetingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  bubble: {
-    flex: 1,
-    backgroundColor: Palette.surfaceMuted,
-    borderRadius: Radius.md + 4,
-    borderTopLeftRadius: 4,
-    padding: Spacing.three,
-    gap: Spacing.one,
-  },
-  listenButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    backgroundColor: Palette.mint,
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.four,
-    minHeight: 52,
-  },
-  listenActive: {
-    backgroundColor: Palette.mintSoft,
-  },
-  listenIcon: {
-    width: 30,
-    height: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hero: {
-    backgroundColor: Palette.surfaceStrong,
-    borderRadius: Radius.lg,
-    padding: Spacing.four,
-    gap: Spacing.two + 2,
-    alignItems: 'center',
-  },
-  heroIcon: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: Palette.white,
+    backgroundColor: Palette.amber,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  heroTag: {
-    backgroundColor: Palette.white,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-    borderRadius: Radius.full,
   },
   section: {
     gap: Spacing.three,
@@ -431,19 +465,28 @@ const styles = StyleSheet.create({
   },
   subjectTile: {
     flex: 1,
-    alignItems: 'center',
     gap: Spacing.one + 2,
     borderRadius: Radius.lg,
-    paddingVertical: Spacing.four,
-    paddingHorizontal: Spacing.two,
+    padding: Spacing.four,
   },
   subjectIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.one,
+  },
+  track: {
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    overflow: 'hidden',
+    marginTop: Spacing.one,
+  },
+  fill: {
+    height: '100%',
+    borderRadius: 5,
   },
   latestCard: {
     flexDirection: 'row',
@@ -452,6 +495,27 @@ const styles = StyleSheet.create({
   latestScore: {
     flexDirection: 'row',
     alignItems: 'baseline',
+  },
+  streakRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    backgroundColor: Palette.coralSoft,
+    borderRadius: Radius.lg,
+    padding: Spacing.three,
+  },
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    backgroundColor: Palette.white,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.three,
+    minHeight: 48,
+  },
+  streakIcon: {
+    fontSize: 22,
+    lineHeight: 28,
   },
   parentRow: {
     flexDirection: 'row',

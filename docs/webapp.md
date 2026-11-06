@@ -1,7 +1,15 @@
 # Bản web (webapp)
 
-Giao diện web làm theo bộ thiết kế "Web App" trong Stitch (dự án "AI Gia Sư Tiểu Học"): thanh bên trái, thanh trên,
-bố cục 2 cột; cửa sổ hẹp (< 1024px) tự chuyển thành thanh tab dưới giống app.
+Giao diện web làm theo bộ thiết kế "Web App … Đa thiết bị & Màn hình gập" trong Stitch (dự án "AI Gia Sư Tiểu Học"),
+dùng đúng tính năng app đã có. Ba cỡ màn hình (`src/web/use-layout.ts`):
+
+| Cỡ | Rộng | Điều hướng | Bố cục |
+|---|---|---|---|
+| wide (máy tính) | ≥ 1100px | thanh bên có chữ + thẻ sao/chuỗi, thanh trên có huy hiệu lớp | nhiều cột |
+| medium (máy gập mở ra, tablet) | 700–1099px | thanh icon bên trái | Chữa bài chia 2 khung 50:50, màn khác xếp dọc |
+| narrow (điện thoại) | < 700px | thanh tab dưới | 1 cột |
+
+Chữa bài có dải chọn Câu 1…N (tự mở câu sai đầu tiên): bên trái chi tiết câu, bên phải giọng cô.
 
 ## Chạy thử
 

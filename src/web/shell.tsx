@@ -10,8 +10,8 @@ import { Palette, Radius, Spacing } from '@/constants/theme';
 import { avatarEmoji, useProfile } from '@/lib/profile';
 import { currentStreak } from '@/lib/rewards';
 import { APP_NAME } from '@/lib/teacher';
-import { NarrowContentWidth, SidebarWidth, TopBarHeight } from '@/web/constants';
-import { useIsDesktop } from '@/web/use-layout';
+import { NarrowContentWidth, RailWidth, SidebarWidth, TopBarHeight } from '@/web/constants';
+import { useLayout, type LayoutMode } from '@/web/use-layout';
 
 const items: {
   name: string;
@@ -26,21 +26,22 @@ const items: {
   { name: 'tien-do', href: '/tien-do', icon: 'insights', short: 'Tiến độ', long: 'Báo cáo Tiến độ' },
 ];
 
-// Khung điều hướng của bản web (thiết kế "Web App" trong Stitch):
-// - Cửa sổ rộng (>= 1024px): thanh bên trái + thanh trên.
-// - Cửa sổ hẹp: thanh trên gọn + thanh tab dưới.
+// Khung điều hướng của bản web (bộ thiết kế Stitch "Đa thiết bị & Màn hình gập"):
+// - wide (>= 1100px): thanh bên có chữ + thanh trên.
+// - medium (700–1099px, máy gập mở ra / tablet): thanh bên chỉ biểu tượng.
+// - narrow: thanh trên gọn + thanh tab dưới.
 export default function WebShell() {
-  const desktop = useIsDesktop();
+  const { mode, navWidth } = useLayout();
   return (
     <Tabs>
-      <TabSlot style={{ height: '100%', paddingLeft: desktop ? SidebarWidth : 0 }} />
-      <TopBar desktop={desktop} />
+      <TabSlot style={{ height: '100%', paddingLeft: navWidth }} />
+      <TopBar mode={mode} />
       <TabList asChild>
-        <NavList desktop={desktop}>
+        <NavList mode={mode}>
           {items.map((item) => (
             <TabTrigger key={item.name} name={item.name} href={item.href} asChild>
-              <NavButton icon={item.icon} desktop={desktop}>
-                {desktop ? item.long : item.short}
+              <NavButton icon={item.icon} mode={mode}>
+                {mode === 'wide' ? item.long : item.short}
               </NavButton>
             </TabTrigger>
           ))}
@@ -50,14 +51,27 @@ export default function WebShell() {
   );
 }
 
-function NavList({ desktop, ...props }: TabListProps & { desktop: boolean }) {
-  if (!desktop) {
+function NavList({ mode, ...props }: TabListProps & { mode: LayoutMode }) {
+  const { profile, rewards } = useProfile();
+  const streak = currentStreak(rewards, new Date());
+
+  if (mode === 'narrow') {
     return (
       <View {...props} style={styles.bottomBar}>
         <View style={styles.bottomBarInner}>{props.children}</View>
       </View>
     );
   }
+
+  if (mode === 'medium') {
+    return (
+      <View {...props} style={styles.rail}>
+        <Mascot size={52} />
+        <View style={styles.railNav}>{props.children}</View>
+      </View>
+    );
+  }
+
   return (
     <View {...props} style={styles.sidebar}>
       <View style={styles.sidebarTop}>
@@ -72,6 +86,11 @@ function NavList({ desktop, ...props }: TabListProps & { desktop: boolean }) {
             </AppText>
           </View>
         </View>
+        <View accessible accessibilityLabel={`${rewards.stars} sao, chuỗi ${streak} ngày`} style={styles.statsCard}>
+          <AppText variant="labelLg">⭐ {rewards.stars} sao</AppText>
+          <View style={styles.statsDivider} />
+          <AppText variant="labelLg">🔥 {streak} ngày</AppText>
+        </View>
         <View style={styles.nav}>{props.children}</View>
       </View>
       <View style={styles.safeCard}>
@@ -82,7 +101,7 @@ function NavList({ desktop, ...props }: TabListProps & { desktop: boolean }) {
           </AppText>
         </View>
         <AppText variant="bodySm" color={Palette.inkSoft}>
-          Không quảng cáo, không mở link lạ. Môi trường học tập an toàn cho bé.
+          Không quảng cáo, không mở link lạ. Môi trường học tập an toàn cho {profile?.name || 'bé'}.
         </AppText>
       </View>
     </View>
@@ -93,10 +112,10 @@ function NavButton({
   children,
   isFocused,
   icon,
-  desktop,
+  mode,
   ...props
-}: TabTriggerSlotProps & { icon: IconName; desktop: boolean }) {
-  if (desktop) {
+}: TabTriggerSlotProps & { icon: IconName; mode: LayoutMode }) {
+  if (mode === 'wide') {
     return (
       <Pressable
         {...(props as PressableProps)}
@@ -108,8 +127,11 @@ function NavButton({
       </Pressable>
     );
   }
+  // Thanh icon (máy gập / tablet) và tab dưới (điện thoại) cùng kiểu: biểu tượng + chữ nhỏ.
   return (
-    <Pressable {...(props as PressableProps)} style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}>
+    <Pressable
+      {...(props as PressableProps)}
+      style={({ pressed }) => [mode === 'narrow' ? styles.tabButton : styles.railButton, pressed && styles.pressed]}>
       <View style={[styles.iconWrap, isFocused && styles.iconWrapFocused]}>
         <MaterialIcons name={icon} size={24} color={isFocused ? Palette.blueDark : Palette.inkSoft} />
       </View>
@@ -120,7 +142,19 @@ function NavButton({
   );
 }
 
-function Pill({ icon, label, tint, ink, accessibilityLabel }: { icon: string; label: string; tint: string; ink: string; accessibilityLabel: string }) {
+function Pill({
+  icon,
+  label,
+  tint,
+  ink,
+  accessibilityLabel,
+}: {
+  icon: string;
+  label: string;
+  tint: string;
+  ink: string;
+  accessibilityLabel: string;
+}) {
   return (
     <View accessible accessibilityLabel={accessibilityLabel} style={[styles.pill, { backgroundColor: tint }]}>
       <AppText style={styles.pillIcon}>{icon}</AppText>
@@ -131,52 +165,58 @@ function Pill({ icon, label, tint, ink, accessibilityLabel }: { icon: string; la
   );
 }
 
-// Thanh trên: sao thưởng, chuỗi ngày, cổng phụ huynh và hồ sơ của bé.
-function TopBar({ desktop }: { desktop: boolean }) {
+// Thanh trên: huy hiệu lớp, sao thưởng, chuỗi ngày, cổng phụ huynh và hồ sơ của bé.
+function TopBar({ mode }: { mode: LayoutMode }) {
   const { profile, rewards } = useProfile();
   const streak = currentStreak(rewards, new Date());
+  const wide = mode === 'wide';
+  const narrow = mode === 'narrow';
+  const left = wide ? SidebarWidth : narrow ? 0 : RailWidth;
   return (
-    <View style={[styles.topBar, { left: desktop ? SidebarWidth : 0 }, !desktop && styles.topBarNarrow]}>
+    <View style={[styles.topBar, { left }, narrow && styles.topBarNarrow]}>
+      <View style={styles.topGroup}>
+        {!narrow && (
+          <View style={styles.classPill}>
+            <MaterialIcons name="school" size={18} color={Palette.amberInk} />
+            <AppText variant="labelMd" color={Palette.amberInk}>
+              Lớp {profile?.grade ?? ''} – Bé {profile?.name || 'yêu'}
+            </AppText>
+          </View>
+        )}
+      </View>
       <View style={styles.topGroup}>
         <Pill
           icon="⭐"
-          label={desktop ? `${rewards.stars} sao` : String(rewards.stars)}
+          label={wide ? `${rewards.stars} sao` : String(rewards.stars)}
           tint={Palette.amber}
           ink={Palette.amberInk}
           accessibilityLabel={`Con có ${rewards.stars} ngôi sao`}
         />
         <Pill
           icon="🔥"
-          label={desktop ? `${streak} ngày` : String(streak)}
+          label={wide ? `${streak} ngày` : String(streak)}
           tint={Palette.coralSoft}
           ink={Palette.coralInk}
           accessibilityLabel={`Chuỗi ${streak} ngày học`}
         />
-      </View>
-      <View style={styles.topGroup}>
         <Pressable
           accessibilityRole="link"
           accessibilityLabel="Cổng phụ huynh"
           onPress={() => router.navigate('/tien-do')}
           style={({ pressed }) => [styles.parentPill, pressed && styles.pressed]}>
           <MaterialIcons name="family-restroom" size={20} color={Palette.blue} />
-          {desktop && <AppText variant="labelMd">Cổng Phụ Huynh</AppText>}
+          {wide && <AppText variant="labelMd">Cổng Phụ Huynh</AppText>}
         </Pressable>
         <Pressable
           accessibilityRole="link"
           accessibilityLabel="Hồ sơ của bé"
           onPress={() => router.push('/sua-ho-so')}
-          style={({ pressed }) => [styles.profileChip, desktop && styles.profileChipWide, pressed && styles.pressed]}>
+          style={({ pressed }) => [styles.profileChip, wide && styles.profileChipWide, pressed && styles.pressed]}>
           <View style={styles.avatar}>
             <AppText style={styles.avatarEmoji}>{avatarEmoji(profile?.avatar ?? '')}</AppText>
           </View>
-          {desktop && (
-            <View>
-              <AppText variant="labelMd">{profile?.name || 'Bé yêu'}</AppText>
-              <AppText variant="labelSm" color={Palette.inkSoft}>
-                Lớp {profile?.grade ?? ''}
-              </AppText>
-            </View>
+          {wide && (
+            <AppText variant="labelMd">{profile?.name || 'Bé yêu'}</AppText>
           )}
         </Pressable>
       </View>
@@ -189,7 +229,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
 
-  // --- Thanh tab dưới (cửa sổ hẹp) ---
+  // --- Thanh tab dưới (điện thoại) ---
   bottomBar: {
     position: 'absolute',
     bottom: 0,
@@ -218,10 +258,33 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
   },
   iconWrapFocused: {
-    backgroundColor: Palette.mintSoft,
+    backgroundColor: Palette.mint,
   },
 
-  // --- Thanh bên (cửa sổ rộng) ---
+  // --- Thanh icon (máy gập mở ra / tablet) ---
+  rail: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: RailWidth,
+    alignItems: 'center',
+    gap: Spacing.four,
+    backgroundColor: Palette.surfaceMuted,
+    paddingVertical: Spacing.four,
+    zIndex: 50,
+  },
+  railNav: {
+    gap: Spacing.three,
+    alignItems: 'center',
+  },
+  railButton: {
+    width: RailWidth - 12,
+    alignItems: 'center',
+    gap: Spacing.half,
+  },
+
+  // --- Thanh bên (máy tính) ---
   sidebar: {
     position: 'absolute',
     top: 0,
@@ -235,7 +298,7 @@ const styles = StyleSheet.create({
     zIndex: 50,
   },
   sidebarTop: {
-    gap: Spacing.five,
+    gap: Spacing.four,
   },
   brand: {
     flexDirection: 'row',
@@ -245,6 +308,19 @@ const styles = StyleSheet.create({
   },
   brandName: {
     lineHeight: 24,
+  },
+  statsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.three,
+  },
+  statsDivider: {
+    width: 1,
+    height: 22,
+    backgroundColor: Palette.border,
   },
   nav: {
     gap: Spacing.one + 2,
@@ -282,18 +358,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.five,
-    backgroundColor: 'rgba(249,249,255,0.88)',
+    backgroundColor: 'rgba(249,249,255,0.9)',
     zIndex: 40,
     // Chỉ có trên trình duyệt: làm mờ nội dung cuộn phía sau thanh trên.
     ...({ backdropFilter: 'blur(16px)' } as object),
   },
   topBarNarrow: {
     paddingHorizontal: Spacing.three + 4,
+    justifyContent: 'flex-end',
   },
   topGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.two + 2,
+  },
+  classPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one + 2,
+    backgroundColor: Palette.amber,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
   },
   pill: {
     flexDirection: 'row',

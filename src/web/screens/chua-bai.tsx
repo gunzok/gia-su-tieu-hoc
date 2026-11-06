@@ -33,6 +33,8 @@ export default function ReviewScreen() {
   const [saved, setSaved] = useState<HistoryEntry | null>(null);
   // Câu đang được giảng lại (null = lời nhận xét chung, "retry-<số>" = lời cô ở phần làm lại câu đó).
   const [activeItem, setActiveItem] = useState<number | `retry-${number}` | null>(null);
+  // Câu đang xem ở khung chi tiết (null = mặc định: câu sai đầu tiên).
+  const [picked, setPicked] = useState<number | null>(null);
   const feedbackSpeaking = speaking && activeItem === null;
 
   useFocusEffect(
@@ -93,54 +95,158 @@ export default function ReviewScreen() {
   }
 
   const tally = tallyParts(entry.items);
+  const total = entry.items.length;
+  // Mặc định mở câu sai đầu tiên (nếu có) để bé sửa ngay.
+  const firstWrong = entry.items.findIndex((item) => !item.correct);
+  const selected = Math.min(picked ?? (firstWrong >= 0 ? firstWrong : 0), Math.max(total - 1, 0));
+  const item = entry.items[selected];
+  const showReward = latestReward && entry === latest;
 
-  return (
-    <Screen>
-      <View style={styles.hero}>
-        <View style={styles.heroText}>
-          <View style={styles.heroTag}>
-            <AppText variant="labelSm" color={Palette.amberInk}>
-              🏆 {praiseForScore(entry.score)} {entry.score}/10 điểm 🎉
-            </AppText>
+  const banner = (
+    <View style={styles.hero}>
+      <View style={styles.heroText}>
+        <View style={styles.heroTag}>
+          <AppText variant="labelSm" color={Palette.amberInk}>
+            🏆 {praiseForScore(entry.score)} {entry.score}/10 điểm 🎉
+          </AppText>
+        </View>
+        <AppText variant="headlineMd" color={Palette.amberInk}>
+          Bài {SubjectNames[entry.subject]} lớp {entry.grade}
+        </AppText>
+        <AppText variant="bodyMd" color={Palette.amberInk}>
+          {total > 0
+            ? `Con làm đúng ${tally.correct}/${tally.total} câu. Cùng sửa với ${T.word} nhé!`
+            : `${T.Title} chưa đọc được bài, con chụp lại giúp ${T.word} nhé!`}
+        </AppText>
+        {showReward && (
+          <View
+            accessible
+            accessibilityLabel={`Con được thêm ${STARS_PER_GRADING} ngôi sao. Học liên tiếp ${latestReward.streak} ngày`}
+            style={styles.rewardInline}>
+            <View style={[styles.rewardChipSmall, { backgroundColor: Palette.amberSoft }]}>
+              <AppText variant="labelMd" color={Palette.amberInk}>
+                ⭐ +{STARS_PER_GRADING} sao
+              </AppText>
+            </View>
+            <View style={[styles.rewardChipSmall, { backgroundColor: Palette.coralSoft }]}>
+              <AppText variant="labelMd" color={Palette.coralInk}>
+                🔥 {latestReward.streak > 1 ? `${latestReward.streak} ngày liền!` : 'Ngày 1, cố lên!'}
+              </AppText>
+            </View>
           </View>
-          <AppText variant="headlineMd" color={Palette.amberInk}>
-            Bài {SubjectNames[entry.subject]} lớp {entry.grade}
-          </AppText>
-          <AppText variant="bodyMd" color={Palette.amberInk}>
-            {entry.items.length > 0
-              ? `Con làm đúng ${tally.correct}/${tally.total} câu. Cùng sửa với ${T.word} nhé!`
-              : `${T.Title} chưa đọc được bài, con chụp lại giúp ${T.word} nhé!`}
-          </AppText>
-        </View>
-        <View style={styles.medal}>
-          <MaterialIcons name="military-tech" size={34} color={Palette.amberInk} />
-        </View>
+        )}
       </View>
+      <View style={styles.medal}>
+        <MaterialIcons name="military-tech" size={34} color={Palette.amberInk} />
+      </View>
+    </View>
+  );
 
-      {/* Chỉ khen sao ngay sau bài vừa chấm, không hiện lại khi xem bài cũ. */}
-      {latestReward && entry === latest && (
-        <View
-          accessible
-          accessibilityLabel={`Con được thêm ${STARS_PER_GRADING} ngôi sao. Học liên tiếp ${latestReward.streak} ngày`}
-          style={styles.rewardRow}>
-          <View style={[styles.rewardChip, { backgroundColor: Palette.amberSoft }]}>
-            <AppText style={styles.rewardIcon}>⭐</AppText>
-            <AppText variant="labelLg" color={Palette.amberInk}>
-              +{STARS_PER_GRADING} sao
+  // Dải chọn câu: mỗi câu một nút, câu đúng có dấu tích, câu sai có chấm đào.
+  const tabs = total > 0 && (
+    <View style={styles.tabsRow} accessibilityRole="tablist">
+      {entry.items.map((tabItem, index) => {
+        const active = index === selected;
+        return (
+          <Pressable
+            key={index}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={`Câu ${index + 1}, ${tabItem.correct ? 'đúng' : 'cần sửa'}`}
+            onPress={() => setPicked(index)}
+            style={({ pressed }) => [
+              styles.tab,
+              active && (tabItem.correct ? styles.tabActiveOk : styles.tabActiveWrong),
+              pressed && styles.pressed,
+            ]}>
+            {tabItem.correct ? (
+              <MaterialIcons name="check-circle-outline" size={18} color={Palette.blueDark} />
+            ) : (
+              <View style={styles.tabDot} />
+            )}
+            <AppText variant="labelMd" color={active ? Palette.ink : Palette.inkSoft}>
+              Câu {index + 1}
             </AppText>
-          </View>
-          <View style={[styles.rewardChip, { backgroundColor: Palette.coralSoft }]}>
-            <AppText style={styles.rewardIcon}>🔥</AppText>
-            <AppText variant="labelLg" color={Palette.coralInk}>
-              {latestReward.streak > 1 ? `${latestReward.streak} ngày liền!` : 'Ngày 1, cố lên!'}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
+  const speakProps = {
+    speakingNow: speaking && activeItem === selected,
+    onSpeak: () => toggleItem(selected),
+    onAsk: () => {
+      stopSpeech();
+      openAskTeacher({ item, number: selected + 1, subject: entry.subject, grade: entry.grade });
+    },
+  };
+  const retryKey = `retry-${selected}` as const;
+
+  const detail =
+    total > 0 ? (
+      <Card>
+        <View style={styles.detailHeader}>
+          <MaterialIcons name="menu-book" size={22} color={Palette.blue} />
+          <AppText variant="headlineSm" style={styles.flex}>
+            Chi tiết bài làm trên vở
+          </AppText>
+          <View style={styles.countTag}>
+            <AppText variant="labelSm">
+              Câu {selected + 1}/{total}
             </AppText>
           </View>
         </View>
-      )}
+        <AppText variant="bodySm" color={Palette.inkSoft}>
+          Bấm nút loa để nghe {T.word} giảng lại, hoặc bấm Hỏi {T.word} nếu con còn thắc mắc nhé!
+        </AppText>
+        {item.correct ? (
+          <CorrectRow key={selected} item={item} number={selected + 1} {...speakProps} />
+        ) : (
+          <WrongRow
+            key={selected}
+            item={item}
+            number={selected + 1}
+            subject={entry.subject}
+            grade={entry.grade}
+            retrySpeaking={speaking && activeItem === retryKey}
+            onRetrySpeak={(text) => {
+              setActiveItem(retryKey);
+              speak(text);
+            }}
+            stopSpeech={stopSpeech}
+            {...speakProps}
+          />
+        )}
+        <View style={styles.stepRow}>
+          <BigButton
+            label="Câu trước"
+            icon="chevron-left"
+            variant="ghost"
+            compact
+            disabled={selected === 0}
+            onPress={() => setPicked(selected - 1)}
+          />
+          <BigButton
+            label="Câu tiếp"
+            icon="chevron-right"
+            iconAfter
+            compact
+            disabled={selected >= total - 1}
+            onPress={() => setPicked(selected + 1)}
+          />
+        </View>
+      </Card>
+    ) : (
+      <Card>
+        <AppText variant="bodyMd" color={Palette.inkSoft}>
+          Chưa có câu nào để chữa. Con chụp lại bài giúp {T.word} nhé!
+        </AppText>
+      </Card>
+    );
 
-      <Columns
-        ratio={0.85}
-        main={
+  const voice = (
+    <>
       <View style={styles.voiceCard}>
         <View style={styles.voiceHeader}>
           <Mascot size={60} background={Palette.white} />
@@ -175,56 +281,16 @@ export default function ReviewScreen() {
           <View style={styles.roundButtonSpacer} />
         </View>
       </View>
-        }
-        aside={
-          entry.items.length > 0 ? (
-<Card>
-          <View style={styles.detailHeader}>
-            <MaterialIcons name="menu-book" size={22} color={Palette.blue} />
-            <AppText variant="headlineSm" style={styles.flex}>
-              Chi tiết bài làm trên vở
-            </AppText>
-            <View style={styles.countTag}>
-              <AppText variant="labelSm">{entry.items.length} câu</AppText>
-            </View>
-          </View>
-          <AppText variant="bodySm" color={Palette.inkSoft}>
-            Bấm nút loa để nghe {T.word} giảng lại, hoặc bấm Hỏi {T.word} nếu con còn thắc mắc nhé!
-          </AppText>
-          {entry.items.map((item, index) => {
-            const speakProps = {
-              speakingNow: speaking && activeItem === index,
-              onSpeak: () => toggleItem(index),
-              onAsk: () => {
-                stopSpeech();
-                openAskTeacher({ item, number: index + 1, subject: entry.subject, grade: entry.grade });
-              },
-            };
-            if (item.correct) return <CorrectRow key={index} item={item} number={index + 1} {...speakProps} />;
-            const retryKey = `retry-${index}` as const;
-            return (
-              <WrongRow
-                key={index}
-                item={item}
-                number={index + 1}
-                subject={entry.subject}
-                grade={entry.grade}
-                retrySpeaking={speaking && activeItem === retryKey}
-                onRetrySpeak={(text) => {
-                  setActiveItem(retryKey);
-                  speak(text);
-                }}
-                stopSpeech={stopSpeech}
-                {...speakProps}
-              />
-            );
-          })}
-        </Card>
-          ) : null
-        }
-      />
-
       <BigButton label="Chụp bài khác" icon="photo-camera" onPress={scanAnother} />
+    </>
+  );
+
+  // Hai khung 50:50 (hợp máy gập mở ra): bên trái xem từng câu, bên phải nghe cô giảng.
+  return (
+    <Screen>
+      {banner}
+      {tabs}
+      <Columns ratio={1.1} from="medium" main={detail} aside={voice} stickyAside />
     </Screen>
   );
 }
@@ -381,8 +447,49 @@ function WrongRow({
 }
 
 const styles = StyleSheet.create({
-  rewardRow: {
+  rewardInline: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  rewardChipSmall: {
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one + 2,
+  },
+  tabsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one + 2,
+    backgroundColor: Palette.surface,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Palette.border,
+    paddingHorizontal: Spacing.three,
+    minHeight: 44,
+  },
+  tabActiveOk: {
+    backgroundColor: Palette.mint,
+    borderColor: Palette.mint,
+  },
+  tabActiveWrong: {
+    backgroundColor: Palette.coral,
+    borderColor: Palette.coral,
+  },
+  tabDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Palette.coralDark,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     gap: Spacing.three,
   },
   rewardChip: {

@@ -17,12 +17,14 @@ import { tallyParts } from '../../../supabase/functions/_shared/cham-bai';
 import { SubjectNames, type Subject } from '@/lib/grading';
 import { clearHistory, loadHistory, type HistoryEntry } from '@/lib/history';
 import { accuracy, allSubjects, averageScore, scoreLabel, SubjectIcons, thisWeek } from '@/lib/progress';
-import { useTeacher } from '@/lib/profile';
+import { currentStreak } from '@/lib/rewards';
+import { avatarEmoji, useProfile, useTeacher } from '@/lib/profile';
 import { speakVietnamese } from '@/lib/speech';
 import { APP_NAME } from '@/lib/teacher';
 import { Columns } from '@/web/columns';
 import { Screen } from '@/web/screen';
 import { WebPlusCard } from '@/web/plus-card';
+import { useLayout } from '@/web/use-layout';
 
 const subjectBarColors: Record<Subject, { bar: string; ink: string }> = {
   toan: { bar: Palette.mint, ink: Palette.blueDark },
@@ -43,6 +45,9 @@ export default function ProgressScreen() {
   const [filter, setFilter] = useState<Subject | 'all'>('all');
   const shown = filter === 'all' ? history : history.filter((entry) => entry.subject === filter);
   const teacher = useTeacher();
+  const { profile, rewards } = useProfile();
+  const { narrow } = useLayout();
+  const streak = currentStreak(rewards, new Date());
 
   useFocusEffect(
     useCallback(() => {
@@ -70,16 +75,48 @@ export default function ProgressScreen() {
   }
 
   const titleBlock = (
-    <View style={styles.titleRow}>
-      <View style={styles.titleIcon}>
-        <MaterialIcons name="insights" size={26} color={Palette.blue} />
+    <View style={styles.pageHead}>
+      <View style={styles.titleRow}>
+        <View style={styles.titleIcon}>
+          <MaterialIcons name="insights" size={26} color={Palette.blue} />
+        </View>
+        <View>
+          <AppText variant="headlineLg">Báo cáo tiến độ</AppText>
+          <AppText variant="bodySm" color={Palette.inkSoft}>
+            Dành cho bố mẹ
+          </AppText>
+        </View>
       </View>
-      <View>
-        <AppText variant="headlineLg">Báo cáo tiến độ</AppText>
-        <AppText variant="bodySm" color={Palette.inkSoft}>
-          Dành cho bố mẹ
-        </AppText>
-      </View>
+      <Card style={styles.profileCard}>
+        <View style={styles.profileAvatar}>
+          <AppText style={styles.profileEmoji}>{avatarEmoji(profile?.avatar ?? '')}</AppText>
+        </View>
+        <View style={styles.flex}>
+          <View style={styles.profileNameRow}>
+            <AppText variant="headlineMd">Bé {profile?.name || 'yêu'}</AppText>
+            <View style={styles.gradeTag}>
+              <AppText variant="labelSm" color={Palette.blueDark}>
+                Lớp {profile?.grade ?? ''}
+              </AppText>
+            </View>
+          </View>
+          <AppText variant="bodySm" color={Palette.inkSoft}>
+            Học cùng {teacher.name}
+          </AppText>
+          <View style={styles.profileChips}>
+            <View style={[styles.chip, { backgroundColor: Palette.amberSoft }]}>
+              <AppText variant="labelMd" color={Palette.amberInk}>
+                ⭐ {rewards.stars} ngôi sao
+              </AppText>
+            </View>
+            <View style={[styles.chip, { backgroundColor: Palette.coralSoft }]}>
+              <AppText variant="labelMd" color={Palette.coralInk}>
+                🔥 {streak} ngày liên tiếp
+              </AppText>
+            </View>
+          </View>
+        </View>
+      </Card>
     </View>
   );
 
@@ -254,7 +291,13 @@ export default function ProgressScreen() {
           Chưa có bài nào của môn này.
         </AppText>
       ) : (
-        shown.map((entry) => <HistoryCard key={entry.id} entry={entry} />)
+        <View style={styles.historyGrid}>
+          {shown.map((entry) => (
+            <View key={entry.id} style={[styles.historyCell, narrow && styles.historyCellFull]}>
+              <HistoryCard entry={entry} />
+            </View>
+          ))}
+        </View>
       )}
     </View>
   );
@@ -367,6 +410,62 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.85,
+  },
+  pageHead: {
+    gap: Spacing.three,
+  },
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.four,
+  },
+  profileAvatar: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: Palette.mintSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileEmoji: {
+    fontSize: 46,
+    lineHeight: 56,
+  },
+  profileNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    flexWrap: 'wrap',
+  },
+  gradeTag: {
+    backgroundColor: Palette.surfaceStrong,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.two + 2,
+    paddingVertical: Spacing.half + 1,
+  },
+  profileChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  chip: {
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one + 2,
+  },
+  historyGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.three,
+  },
+  historyCell: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    minWidth: 280,
+  },
+  historyCellFull: {
+    flexBasis: '100%',
   },
   titleRow: {
     flexDirection: 'row',
