@@ -1,0 +1,34 @@
+# Bản web (webapp)
+
+Giao diện web làm theo bộ thiết kế "Web App" trong Stitch (dự án "AI Gia Sư Tiểu Học"): thanh bên trái, thanh trên,
+bố cục 2 cột; cửa sổ hẹp (< 1024px) tự chuyển thành thanh tab dưới giống app.
+
+## Chạy thử
+
+```bash
+npx expo start --web --port 8090
+```
+
+## Tách riêng khỏi app mobile
+
+Nhánh `web/giao-dien-desktop` (làm trong thư mục riêng `../gia-su-tieu-hoc-web`, tạo bằng `git worktree`) để phiên làm app mobile
+và phiên làm web không giẫm lên nhau.
+
+- **Giao diện web nằm riêng**: thư mục `src/web/` và các file route đuôi `.web.tsx` trong `src/app/`
+  (`(tabs)/_layout.web.tsx`, `(tabs)/index.web.tsx`, `quet-bai.web.tsx`, `chua-bai.web.tsx`, `tien-do.web.tsx`, `goi-plus.web.tsx`).
+  Các file này chỉ có trên trình duyệt; app mobile bỏ qua. Không sửa file giao diện mobile (`src/app/(tabs)/*.tsx`, `src/components/*`).
+- **Chức năng dùng chung** ở `src/lib/` (chấm bài, lịch sử, hồ sơ, đăng nhập, giọng đọc…): sửa ở đâu thì chỉ đưa qua nhánh kia
+  khi chủ dự án duyệt, và giữ thay đổi nhỏ, cộng thêm.
+- Thay đổi chức năng riêng cho web: `src/lib/web-alert.ts` (thay `Alert.alert`, vì react-native-web để trống),
+  `src/lib/page-images.web.ts` (lưu ảnh bài làm ở trình duyệt), `addPhotos` trong `homework-session.tsx` (nhận ảnh kéo thả),
+  hai dòng gắn `WebAlertHost` trong `src/app/_layout.tsx`, và CORS cho hàm `cham-bai`.
+- Thành phần nhỏ dùng chung (Card, BigButton, AppText, Mascot, ChoiceChips, GradingOverlay, AccountCard, PrivacyCard…) vẫn lấy
+  từ `src/components/`; nếu mobile đổi giao diện các thành phần này thì web đổi theo.
+
+## Chưa có trên web
+
+- Chụp bằng webcam (hiện chọn ảnh từ máy tính hoặc kéo thả).
+- Mua gói Plus (RevenueCat chỉ bán trong app điện thoại; web chỉ hướng dẫn).
+- Đăng nhập Google: cần thêm địa chỉ web vào danh sách chuyển hướng của Supabase Auth.
+- Các màn ngoài 4 tab (Khởi động, Hồ sơ, Đăng nhập, Hỏi cô, Xem bài đã chấm) vẫn dùng giao diện mobile, căn giữa cột 600px.
+- Nhiệm vụ hôm nay, đố vui, cửa hàng đổi quà, Tiếng Anh, biểu đồ tuần/tháng: app chưa làm (GIA-37…41) nên web cũng chưa có.
