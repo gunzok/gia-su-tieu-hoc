@@ -1,0 +1,33 @@
+# Kiểm tra mỗi lần đẩy code hoặc mở PR: lint, typecheck, test.
+# Chỉ chạy kiểm tra; không build, không deploy, không cần khoá bí mật.
+name: Kiểm tra
+
+on:
+  push:
+    branches: [main, setup/khung-du-an, 'ticket/**', 'claude/**']
+  pull_request:
+
+concurrency:
+  group: kiem-tra-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kiem-tra:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # expo-env.d.ts bị gitignore (do `expo start` tạo ra) nhưng tsc cần nó.
+      - name: Tạo expo-env.d.ts
+        run: echo '/// <reference types="expo/types" />' > expo-env.d.ts
+      - name: Lint
+        run: npx expo lint
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Test
+        run: npm test -- --ci

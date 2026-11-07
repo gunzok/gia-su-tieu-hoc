@@ -12,6 +12,7 @@ import { RetryQuestion } from '@/components/retry-question';
 import { Screen } from '@/components/screen';
 import { SoundWave } from '@/components/sound-wave';
 import { Palette, Radius, Spacing } from '@/constants/theme';
+import { tallyParts } from '../../../supabase/functions/_shared/cham-bai';
 import { SubjectNames } from '@/lib/grading';
 import { findHistoryEntry, type HistoryEntry } from '@/lib/history';
 import { openAskTeacher } from '@/lib/hoi-co';
@@ -67,6 +68,7 @@ export default function GradingDetailScreen() {
   }, [id]);
 
   // Ảnh trên máy nếu còn; không có (ví dụ xem trên máy khác) thì lấy từ kho Supabase.
+  const tally = tallyParts(entry?.items ?? []);
   const localPages = entry?.pages ?? [];
   const imagePaths = localPages.length ? null : entry?.imagePaths;
   useEffect(() => {
@@ -122,10 +124,10 @@ export default function GradingDetailScreen() {
             </View>
             <View style={styles.flex}>
               <AppText variant="labelLg">
-                Đúng {entry.items.filter((item) => item.correct).length}/{entry.items.length} câu
+                Đúng {tally.correct}/{tally.total} phần
               </AppText>
               <AppText variant="bodySm" color={Palette.inkSoft}>
-                {entry.engine === 'local' ? 'Chấm bằng AI trên máy tính ở nhà' : 'Chấm bằng AI trên máy chủ'}
+                {engineLabel(entry.engine)}
               </AppText>
             </View>
           </View>
@@ -308,3 +310,9 @@ const styles = StyleSheet.create({
     gap: Spacing.two + 2,
   },
 });
+
+function engineLabel(engine?: string) {
+  if (engine === 'local') return 'Chấm bằng AI trên máy tính ở nhà';
+  if (engine === 'gemini') return 'Chấm bằng AI Gemini (bản thử)';
+  return 'Chấm bằng AI trên máy chủ';
+}

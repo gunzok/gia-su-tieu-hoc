@@ -1,6 +1,6 @@
 # Nối app với Supabase (lưu dữ liệu + đăng nhập + chấm bài bằng Claude trên máy chủ)
 
-Khi chưa làm các bước dưới, app vẫn chạy: dữ liệu chỉ lưu trên máy, chấm bài dùng LM Studio ở nhà.
+Khi chưa làm các bước dưới, app chưa chấm bài được (chấm bài và Hỏi cô chạy trên máy chủ: Gemini hoặc Claude, xem `docs/gemini.md`).
 
 ## 1. Tạo dự án (trên trình duyệt)
 1. Vào https://supabase.com, đăng ký miễn phí, bấm **New project**.

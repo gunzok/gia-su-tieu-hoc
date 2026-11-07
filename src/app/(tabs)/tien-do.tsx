@@ -16,6 +16,7 @@ import { Card } from '@/components/card';
 import { Mascot } from '@/components/mascot';
 import { Screen } from '@/components/screen';
 import { Palette, Radius, Spacing } from '@/constants/theme';
+import { tallyParts } from '../../../supabase/functions/_shared/cham-bai';
 import { SubjectNames, type Subject } from '@/lib/grading';
 import { clearHistory, loadHistory, type HistoryEntry } from '@/lib/history';
 import { accuracy, allSubjects, averageScore, scoreLabel, SubjectIcons, thisWeek } from '@/lib/progress';
@@ -268,7 +269,8 @@ function StatTile(props: { icon: IconName; value: string; label: string; tint: s
 }
 
 function HistoryCard({ entry }: { entry: HistoryEntry }) {
-  const wrongCount = entry.items.filter((item) => !item.correct).length;
+  const { correct, total } = tallyParts(entry.items);
+  const wrongCount = total - correct;
   const pageCount = Math.max(entry.pages?.length ?? 0, entry.imagePaths?.length ?? 0);
   const thumbnail = entry.pages?.[0];
 
@@ -297,7 +299,7 @@ function HistoryCard({ entry }: { entry: HistoryEntry }) {
             </AppText>
             {wrongCount > 0 && (
               <AppText variant="labelSm" color={Palette.coralDark}>
-                {wrongCount} câu cần sửa
+                {wrongCount} phần cần sửa
               </AppText>
             )}
           </View>

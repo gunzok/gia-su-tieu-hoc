@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { Platform } from 'react-native';
 
 import { askSystemPrompt, cleanAnswer, type AskItem, type AskRequest } from '../../supabase/functions/_shared/hoi-co';
 import { speakable, type Subject } from '@/lib/grading';
@@ -11,24 +12,25 @@ export {
   type AskTurn,
 } from '../../supabase/functions/_shared/hoi-co';
 
-// Bé hỏi thêm cô về một câu: gọi hàm "hoi-co" trên Supabase (Claude).
-// Claude lỗi (hết tiền, mất mạng…) thì hỏi LM Studio ở nhà, giống như khi chấm bài.
+// Bé hỏi thêm cô về một câu: gọi hàm "hoi-co" trên Supabase (máy chủ hỏi Gemini rồi Claude).
+// Máy chủ lỗi (AI hết tiền, mất mạng…) thì hỏi LM Studio ở nhà, giống như khi chấm bài (GIA-54).
 const askTimeoutMs = 45_000;
-const lmStudioUrl = process.env.EXPO_PUBLIC_LMSTUDIO_URL?.replace(/\/+$/, '');
+// Bản web không dùng LM Studio: địa chỉ mạng nhà không truy cập được từ trình duyệt của người khác (GIA-70).
+const lmStudioUrl = Platform.OS === 'web' ? undefined : process.env.EXPO_PUBLIC_LMSTUDIO_URL?.replace(/\/+$/, '');
 const lmStudioModel = process.env.EXPO_PUBLIC_LMSTUDIO_MODEL;
 
 /** Lời cô trả lời, đã đổi ký hiệu phép tính sang chữ để đọc thành tiếng. */
 export async function askTeacher(request: AskRequest): Promise<string> {
   try {
-    return speakable(cleanAnswer(await askClaude(request)));
-  } catch (claudeError) {
-    if (!lmStudioUrl) throw claudeError;
-    console.warn('Không hỏi được Claude, thử LM Studio:', claudeError);
+    return speakable(cleanAnswer(await askServer(request)));
+  } catch (serverError) {
+    if (!lmStudioUrl) throw serverError;
+    console.warn('Máy chủ không trả lời, thử LM Studio:', serverError);
     return speakable(cleanAnswer(await askLmStudio(request)));
   }
 }
 
-async function askClaude(request: AskRequest) {
+async function askServer(request: AskRequest) {
   if (!supabase) throw new Error('Chưa cấu hình Supabase trong .env.local.');
   if (!(await ensureSession())) throw new Error('Chưa đăng nhập được Supabase.');
   const { data, error } = await supabase.functions.invoke<{ answer?: string }>('hoi-co', {

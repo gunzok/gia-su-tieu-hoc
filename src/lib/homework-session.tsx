@@ -1,15 +1,18 @@
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
-import { GradingError, gradeHomework, type Subject } from '@/lib/grading';
+import { GradingError, gradeHomework, gradingFailureMessage, type Subject } from '@/lib/grading';
 import { addHistoryEntry, type HistoryEntry } from '@/lib/history';
-import { askAboutLevel, checkLevel, detectLevelLocally } from '@/lib/level-check';
+import { askAboutLevel, checkLevel } from '@/lib/level-check';
 import { savePagesLocally } from '@/lib/page-images';
+import { scanPages } from '@/lib/document-scanner';
 import { getPremiumStatus } from '@/lib/payments';
-import { preparePhotoForGrading } from '@/lib/prepare-photo';
+import { problemMessage, type PhotoProblem } from '@/lib/photo-quality';
+import { checkPhotoQuality, preparePhotoForGrading } from '@/lib/prepare-photo';
 import { useProfile, useTeacher } from '@/lib/profile';
+import { readPageLines } from '@/lib/read-page-text';
 import type { Rewards } from '@/lib/rewards';
 import { speakVietnamese, stopSpeaking } from '@/lib/speech';
 
@@ -32,6 +35,8 @@ type HomeworkSession = {
   latestReward: Rewards | null;
   /** Chụp thêm một trang, hoặc chọn nhiều trang từ album (thêm vào sau các trang đã có). */
   pickPhoto: (source: 'camera' | 'library') => Promise<void>;
+  /** Thêm ảnh có sẵn (ví dụ ảnh kéo thả vào trang web) như ảnh chọn từ album. */
+  addPhotos: (assets: ImagePicker.ImagePickerAsset[]) => Promise<void>;
   /** Trả về true nếu chấm xong. */
   submitForGrading: () => Promise<boolean>;
   startOver: () => void;
@@ -43,12 +48,36 @@ type HomeworkSession = {
   dismissNotice: () => void;
 };
 
+/** Ảnh album có assetId; ảnh vừa chụp thì mỗi lần một uri mới. */
+function photoKey(asset: ImagePicker.ImagePickerAsset) {
+  return asset.assetId ?? asset.uri;
+}
+
+/** Hỏi có dùng ảnh chưa đạt không. Trả về true nếu vẫn dùng. */
+function askKeepPhoto(problem: PhotoProblem, source: 'camera' | 'library', page?: number) {
+  return new Promise<boolean>((resolve) => {
+    Alert.alert(
+      page ? `Ảnh thứ ${page} chưa rõ` : 'Chụp lại nhé',
+      problemMessage(problem),
+      [
+        { text: 'Vẫn dùng ảnh này', style: 'cancel', onPress: () => resolve(true) },
+        { text: source === 'camera' ? 'Chụp lại' : 'Bỏ ảnh này', onPress: () => resolve(false) },
+      ],
+      { cancelable: false },
+    );
+  });
+}
+
 const HomeworkSessionContext = createContext<HomeworkSession | null>(null);
 
 /** Thông báo nhỏ tự ẩn ở đầu màn hình (xem components/notice-toast.tsx). */
 export type Notice = { id: number; title: string; message: string };
 
-// Lời báo khi bài được chấm bằng AI trên máy tính ở nhà thay vì Claude.
+function newNotice(title: string, message: string): Notice {
+  return { id: Date.now(), title, message };
+}
+
+// Lời báo khi bài được chấm bằng AI trên máy tính ở nhà vì máy chủ không chấm được.
 async function localGradingNotice(): Promise<Notice> {
   const { isPremium } = await getPremiumStatus();
   return {
@@ -96,7 +125,10 @@ export function HomeworkSessionProvider({
     setSpeaking(false);
   }, []);
 
-  async function pickPhoto(source: 'camera' | 'library') {
+  async function pickPhoto(requested: 'camera' | 'library') {
+    // Trình duyệt máy tính thường không có camera sau để chụp: bấm "chụp" thì mở hộp chọn ảnh
+    // (điện thoại sẽ tự đề nghị chụp). Tránh lỗi xin quyền camera trên web.
+    const source = Platform.OS === 'web' ? 'library' : requested;
     const permission =
       source === 'camera'
         ? await ImagePicker.requestCameraPermissionsAsync()
@@ -120,14 +152,61 @@ export function HomeworkSessionProvider({
       selectionLimit: remaining,
       orderedSelection: true,
     };
-    const picked =
-      source === 'camera'
+    // Chụp: ưu tiên trình quét trang (cắt mép, làm thẳng; GIA-47); máy không quét được thì dùng camera thường.
+    const scanned = source === 'camera' ? await scanPages(remaining) : null;
+    if (scanned && scanned.length === 0) return;
+    const picked: { canceled: boolean; assets: ImagePicker.ImagePickerAsset[] | null } = scanned
+      ? { canceled: false, assets: scanned.map((page) => ({ ...page, type: 'image' as const })) }
+      : source === 'camera'
         ? await ImagePicker.launchCameraAsync(options)
         : await ImagePicker.launchImageLibraryAsync(options);
-    if (picked.canceled) return;
+    if (picked.canceled || !picked.assets) return;
+    await addAssets(picked.assets, source);
+  }
+
+  async function addPhotos(assets: ImagePicker.ImagePickerAsset[]) {
+    await addAssets(assets, 'library');
+  }
+
+  async function addAssets(assets: ImagePicker.ImagePickerAsset[], source: 'camera' | 'library') {
+    const remaining = MAX_PAGES - photos.length;
+    if (remaining <= 0) {
+      Alert.alert('Đủ trang rồi', `Mỗi lần chấm tối đa ${MAX_PAGES} trang. Con chấm bộ này trước nhé!`);
+      return;
+    }
+    // Kéo thả được nhiều ảnh hơn số trang còn trống: chỉ lấy phần đầu.
+    assets = assets.slice(0, remaining);
+
+    // Ảnh trong album đã chọn rồi thì bỏ qua (GIA-50).
+    const chosen = new Set(photos.map(photoKey));
+    const fresh = assets.filter((asset) => {
+      const key = photoKey(asset);
+      if (chosen.has(key)) return false;
+      chosen.add(key);
+      return true;
+    });
+    if (fresh.length < assets.length) {
+      setNotice(newNotice('Trang này con chọn rồi', 'Cô bỏ bớt trang trùng cho con nhé.'));
+    }
+
+    // Ảnh mờ, tối, lóa: nhắc bé chụp lại trước khi chấm (GIA-48). Ba mẹ vẫn chọn dùng ảnh đó được,
+    // phòng khi máy đo nhầm. Đo lỗi thì cứ dùng ảnh.
+    const kept: ImagePicker.ImagePickerAsset[] = [];
+    for (const [index, asset] of fresh.entries()) {
+      const problems = await checkPhotoQuality(asset).catch((error) => {
+        console.warn('Chưa đo được chất lượng ảnh:', error);
+        return [];
+      });
+      const page = fresh.length > 1 ? index + 1 : undefined;
+      if (problems.length === 0 || (await askKeepPhoto(problems[0], source, page))) kept.push(asset);
+    }
+    if (kept.length === 0) {
+      if (source === 'camera') await pickPhoto('camera');
+      return;
+    }
 
     stopSpeech();
-    setPhotos((current) => [...current, ...picked.assets].slice(0, MAX_PAGES));
+    setPhotos((current) => [...current, ...kept].slice(0, MAX_PAGES));
   }
 
   async function submitForGrading() {
@@ -136,15 +215,16 @@ export function HomeworkSessionProvider({
     try {
       const prepared = await Promise.all(photos.map(preparePhotoForGrading));
       const images = prepared.map((page) => page.base64);
-      const { result: gradedRaw, engine } = await gradeHomework({
+      // Môn Toán: đọc chữ trên ảnh để máy chủ tự tính đáp án gửi kèm cho AI (GIA-53).
+      const pageLines =
+        subject === 'toan' ? await Promise.all(prepared.map((page) => readPageLines(page.uri))) : undefined;
+      const { result: graded, engine } = await gradeHomework({
         images,
+        pageLines,
         subject,
         grade,
         teacher: teacher.id,
       });
-
-      // AI trên máy hay nói theo lớp đã khai báo, nên hỏi riêng lớp của bài.
-      const graded = engine === 'local' ? await detectLevelLocally(images, gradedRaw) : gradedRaw;
 
       // Ảnh không phải bài tập, hoặc bài không hợp lớp của bé: hỏi bố mẹ trước khi hiện kết quả.
       let gradedAs = grade;
@@ -180,6 +260,14 @@ export function HomeworkSessionProvider({
         pages,
         engine,
       };
+      if (graded.duplicatePages?.length) {
+        const pagesText = graded.duplicatePages.join(', ');
+        setNotice({
+          id: Date.now(),
+          title: 'Có trang chụp trùng',
+          message: `Trang ${pagesText} giống trang trước nên cô chỉ chấm một lần thôi nhé.`,
+        });
+      }
       setLatest(entry);
       setLatestReward(null);
       setPhotos([]);
@@ -204,13 +292,10 @@ export function HomeworkSessionProvider({
         );
         return false;
       }
-      // Lý do cụ thể chỉ ghi vào log; ba mẹ và bé thấy một lời nhắn chung, dễ hiểu.
+      // Lý do kỹ thuật chỉ ghi vào log; ba mẹ và bé thấy lời nhắn dễ hiểu, đúng nguyên nhân.
       console.warn('Chưa chấm được bài:', error);
-      Alert.alert(
-        'Kết nối đang có vấn đề',
-        'Bố mẹ vui lòng kiểm tra lại Internet và thử lại sau nhé.',
-        [{ text: 'Đã hiểu' }],
-      );
+      const failure = gradingFailureMessage(error);
+      Alert.alert(failure.title, failure.message, [{ text: 'Đã hiểu' }]);
       return false;
     } finally {
       setGrading(false);
@@ -239,6 +324,7 @@ export function HomeworkSessionProvider({
         latest,
         latestReward,
         pickPhoto,
+        addPhotos,
         submitForGrading,
         startOver,
         notice,
