@@ -28,7 +28,7 @@ import {
   type Subject,
   type TeacherVoice,
 } from '../_shared/cham-bai.ts';
-import { aiOrder, askGemini, geminiImages } from '../_shared/gemini.ts';
+import { aiOrder, askGeminiModels, GEMINI_GRADING_MODELS, geminiImages } from '../_shared/gemini.ts';
 import { engineOrderFor, GLOBAL_GRADING_DAILY_DEFAULT, isBrowserRequest, limitFrom } from '../_shared/gioi-han.ts';
 import { answerKeyNote, checkPage, safeLines } from '../_shared/kiem-tinh.ts';
 import { startOfTodayInVietnam } from '../_shared/luot-ngay.ts';
@@ -225,6 +225,7 @@ Deno.serve(async (req) => {
         schema: summarySchema,
         maxTokens: 4000,
         level: 'low',
+        quick: true,
       }) as Promise<Outcome<GradingSummary>>,
     );
     if ('result' in summary) Object.assign(merged, summary.result);
@@ -242,7 +243,11 @@ type AskRequest = {
   schema: object;
   maxTokens: number;
   level: 'low' | 'medium';
+  /** Việc phụ, có phương án dự phòng: chỉ thử một model, chờ ngắn. */
+  quick?: boolean;
 };
+
+const summaryTimeoutMs = 30_000;
 type Ask = (engine: Engine, request: AskRequest) => Promise<Outcome<unknown>>;
 
 // Thử lần lượt từng AI; AI nào lỗi (hết tiền, hết lượt miễn phí, quá tải…) thì thử AI tiếp theo.
@@ -281,13 +286,18 @@ async function gradePage(
 }
 
 async function askWithGemini(apiKey: string, system: string, request: AskRequest): Promise<Outcome<unknown>> {
-  const text = await askGemini(apiKey, {
+  // Luôn suy luận mức thấp: mức trung bình làm Gemini quá giờ ngay cả với bài 1 trang.
+  const body = {
     system,
-    input: [{ type: 'text', text: request.text }, ...geminiImages(request.images)],
+    input: [{ type: 'text' as const, text: request.text }, ...geminiImages(request.images)],
     schema: request.schema,
     maxTokens: request.maxTokens,
-    thinking: request.level,
-  });
+    thinking: 'low' as const,
+  };
+  // Lời nhận xét chung có bản ghép dự phòng, nên không để nó ăn hết giờ chờ của app.
+  const text = request.quick
+    ? await askGeminiModels(apiKey, body, GEMINI_GRADING_MODELS.slice(0, 1), summaryTimeoutMs, [])
+    : await askGeminiModels(apiKey, body);
   return { result: JSON.parse(text) };
 }
 

@@ -120,11 +120,12 @@ async function gradeOnServer(params: GradeParams): Promise<GradingResult & { eng
   if (!supabase) throw new Error('Chưa cấu hình Supabase trong .env.local.');
   if (!(await ensureSession())) throw new GradingError(offlineMessage, 'mat-mang');
 
+  const startedAt = Date.now();
   const { data, error } = await supabase.functions.invoke<GradingResult & { engine?: string }>('cham-bai', {
     body: params,
     timeout: serverTimeoutMs,
   });
-  if (error) throw await friendlyError(error);
+  if (error) throw await friendlyError(error, Date.now() - startedAt);
   if (!data) throw new GradingError('Máy chủ không trả về kết quả chấm. Con thử lại nhé.');
   return data;
 }
@@ -141,7 +142,7 @@ export function gradingFailureMessage(error: unknown) {
 }
 
 // Máy chủ trả lời lỗi kèm lời nhắn tiếng Việt ({ error, code }); lấy ra để báo cho bé.
-async function friendlyError(error: unknown): Promise<GradingError> {
+async function friendlyError(error: unknown, elapsedMs: number): Promise<GradingError> {
   if (error instanceof FunctionsHttpError) {
     const response = error.context as Response;
     // Máy chủ hoặc AI lỗi (hết tiền, quá tải): lời nhắn của máy chủ không giúp gì cho bé.
@@ -157,8 +158,10 @@ async function friendlyError(error: unknown): Promise<GradingError> {
     return new GradingError(busyMessage);
   }
   if (error instanceof FunctionsFetchError) {
-    // Hết giờ chờ nghĩa là AI chậm, mạng vẫn tốt.
-    const timedOut = ['AbortError', 'TimeoutError'].includes((error.context as Error | undefined)?.name ?? '');
+    // Hết giờ chờ nghĩa là AI chậm, mạng vẫn tốt. Tên lỗi khi huỷ khác nhau tuỳ máy, nên xem cả thời gian đã chờ.
+    const timedOut =
+      elapsedMs >= serverTimeoutMs - 1000 ||
+      ['AbortError', 'TimeoutError'].includes((error.context as Error | undefined)?.name ?? '');
     return timedOut ? new GradingError(busyMessage) : new GradingError(offlineMessage, 'mat-mang');
   }
   return new GradingError(busyMessage);

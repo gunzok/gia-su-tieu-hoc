@@ -18,8 +18,12 @@ cập nhật OTA vẫn chạy, chỉ không có hai phần đó. Cách thử t�
 - Lời dặn chấm riêng cho từng dạng bài: nối, tô màu, bảng, khoanh, vẽ hình, chữ viết tay (GSTH-038).
 
 ### Sửa
+- Bài chấm bằng Gemini lưu được lên máy chủ, không còn chỉ nằm trên máy (GIA-56).
 - Bài nhiều trang không còn bị sót trang: mỗi trang được chấm riêng rồi gộp lại, trang không có bài nào được chấm lại một lần (GIA-49).
 - Chụp trùng một trang không còn bị tính điểm hai lần; chọn lại ảnh đã có trong album thì app bỏ qua và báo (GIA-50).
+- Vẫn nhận ra trang chụp trùng khi AI gộp hoặc tách câu khác nhau giữa hai ảnh (GIA-57).
+- Bài văn sai vài lỗi nhỏ không còn bị 0 điểm: mỗi loại lỗi trừ 1 điểm, chỉ gạch đúng chữ sai. Bài viết tính cả lỗi viết hoa và dấu câu (GIA-66).
+- Cô đọc đồng hồ đúng hơn và chép đúng chữ bé viết, không tự sửa chữ sai của bé (GIA-66).
 - Ảnh gửi chấm nét hơn để đọc chữ số viết tay rõ hơn (GIA-52).
 - Máy chủ không chấm được (AI quá chậm, hết tiền, mất mạng) thì app lại tự chấm bằng LM Studio ở máy tính
   trong nhà như trước, cả bài lẫn Hỏi cô (GIA-54).

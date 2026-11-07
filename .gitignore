@@ -33,6 +33,10 @@ yarn-error.*
 # local env files
 .env*.local
 
+# bộ mẫu chấm bài, chỉ để ở máy
+/mau-bai-tap/
+/mau-giong/
+
 # typescript
 *.tsbuildinfo
 
@@ -41,3 +45,6 @@ example
 # generated native folders
 /ios
 /android
+
+# cấu hình Codex trên máy, có chứa khoá
+/.codex/
