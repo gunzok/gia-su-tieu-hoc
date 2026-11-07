@@ -15,6 +15,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { NoticeToast } from '@/components/notice-toast';
 import { WebAlertHost } from '@/web/web-alert-host';
+import { WebAuthReturn } from '@/web/auth-return';
 import { Palette } from '@/constants/theme';
 import { AuthProvider } from '@/lib/auth';
 import { HomeworkSessionProvider } from '@/lib/homework-session';
@@ -81,6 +82,7 @@ function RootNavigator() {
       </Stack>
       <NoticeToast />
       <WebAlertHost />
+      <WebAuthReturn />
     </HomeworkSessionProvider>
   );
 }

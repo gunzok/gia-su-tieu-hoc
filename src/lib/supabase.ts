@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 import { sessionStorage } from '@/lib/session-storage';
 
@@ -16,7 +16,8 @@ export const supabase: SupabaseClient | null =
           storage: sessionStorage,
           autoRefreshToken: true,
           persistSession: true,
-          detectSessionInUrl: false,
+          // Bản web: Google đưa người dùng quay lại kèm phiên đăng nhập trên địa chỉ (GIA-64).
+          detectSessionInUrl: Platform.OS === 'web',
         },
       })
     : null;
