@@ -20,6 +20,7 @@ import { currentStreak, streakMessage } from '@/lib/rewards';
 import { speakVietnamese, stopSpeaking } from '@/lib/speech';
 import { Columns } from '@/web/columns';
 import { DropZone } from '@/web/drop-zone';
+import { LegalLinks } from '@/web/legal-links';
 import { Screen } from '@/web/screen';
 import { useLayout } from '@/web/use-layout';
 
@@ -320,6 +321,7 @@ export default function HomeScreen() {
           </>
         }
       />
+      <LegalLinks />
     </Screen>
   );
 }

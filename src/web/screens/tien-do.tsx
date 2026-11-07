@@ -22,6 +22,7 @@ import { avatarEmoji, useProfile, useTeacher } from '@/lib/profile';
 import { speakVietnamese } from '@/lib/speech';
 import { APP_NAME } from '@/lib/teacher';
 import { Columns } from '@/web/columns';
+import { LegalLinks } from '@/web/legal-links';
 import { Screen } from '@/web/screen';
 import { WebPlusCard } from '@/web/plus-card';
 import { useLayout } from '@/web/use-layout';
@@ -148,6 +149,7 @@ export default function ProgressScreen() {
         {titleBlock}
         <Columns ratio={1.3} main={empty} aside={accountBlocks} />
         {versionText}
+        <LegalLinks />
       </Screen>
     );
   }
@@ -333,6 +335,7 @@ export default function ProgressScreen() {
         }
       />
       {versionText}
+      <LegalLinks />
     </Screen>
   );
 }
