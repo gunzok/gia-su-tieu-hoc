@@ -17,6 +17,7 @@ concurrency:
 # Quyền tối thiểu cho mọi job.
 permissions:
   contents: read
+  pull-requests: read # gitleaks đọc danh sách commit của PR
 
 env:
   CI: "true"
