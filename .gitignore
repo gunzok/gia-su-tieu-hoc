@@ -45,3 +45,6 @@ example
 # generated native folders
 /ios
 /android
+
+# cấu hình Codex trên máy, có chứa khoá
+/.codex/
