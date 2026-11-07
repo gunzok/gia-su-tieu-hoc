@@ -7,18 +7,22 @@
 // grading_usage có "on delete cascade" theo tài khoản nên tự xoá theo.
 // Gói Plus mua qua App Store / Google Play không tự huỷ: ba mẹ huỷ trong cửa hàng.
 
+import { allowedOrigins, corsHeaders, originAllowed } from '../_shared/cors.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const bucket = 'bai-lam';
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
 
 Deno.serve(async (req) => {
+  // Chỉ các địa chỉ web trong ALLOWED_ORIGINS mới được gọi từ trình duyệt (GIA-70).
+  const origin = req.headers.get('Origin');
+  const allowed = allowedOrigins(Deno.env.get('ALLOWED_ORIGINS'));
+  const cors = corsHeaders(origin, allowed);
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  if (!originAllowed(origin, allowed)) return json({ error: 'Địa chỉ này không được phép' }, 403);
   if (req.method !== 'POST') return json({ error: 'Chỉ nhận POST' }, 405);
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {

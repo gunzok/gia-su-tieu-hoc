@@ -7,6 +7,7 @@
 // Đặt khoá:    npx supabase secrets set GOOGLE_TTS_API_KEY=...  (và ELEVENLABS_API_KEY=...)
 // Đổi mức tháng: GOOGLE_TTS_MONTHLY_CHARS (mặc định 900000), ELEVENLABS_MONTHLY_CHARS (mặc định 10000)
 
+import { allowedOrigins, corsHeaders, originAllowed } from '../_shared/cors.ts';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { isBrowserRequest, WEB_DAILY } from '../_shared/gioi-han.ts';
 import { recordUsage } from '../_shared/luot-ngay.ts';
@@ -19,19 +20,6 @@ const maxChars = 1500;
 // Link phát âm thanh hết hạn sau 1 giờ.
 const urlSeconds = 60 * 60;
 
-// Cho phép bản web của app (chạy trên trình duyệt) gọi hàm này.
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...cors, 'Content-Type': 'application/json' },
-  });
-}
 
 async function sha256(text: string) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -99,7 +87,15 @@ async function signedUrl(admin: SupabaseClient, path: string) {
 }
 
 Deno.serve(async (req) => {
+  // Chỉ các địa chỉ web trong ALLOWED_ORIGINS mới được gọi từ trình duyệt (GIA-70).
+  const origin = req.headers.get('Origin');
+  const allowed = allowedOrigins(Deno.env.get('ALLOWED_ORIGINS'));
+  const cors = corsHeaders(origin, allowed);
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  if (!originAllowed(origin, allowed)) return json({ error: 'Địa chỉ này không được phép' }, 403);
   if (req.method !== 'POST') return json({ error: 'Chỉ nhận POST' }, 405);
 
   const url = Deno.env.get('SUPABASE_URL')!;

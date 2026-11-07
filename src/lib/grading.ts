@@ -10,6 +10,7 @@ import {
   type Subject,
   type TeacherVoice,
 } from '../../supabase/functions/_shared/cham-bai';
+import { Platform } from 'react-native';
 import { FunctionsFetchError, FunctionsHttpError } from '@supabase/supabase-js';
 
 import { ensureSession, supabase } from '@/lib/supabase';
@@ -27,7 +28,8 @@ const serverTimeoutMs = 150_000;
 
 // LM Studio chạy trên máy tính ở nhà: dự phòng cuối khi máy chủ không chấm được (GIA-54, như GSTH-003).
 // Ví dụ: http://192.168.1.13:1234 (địa chỉ máy tính trong mạng Wi-Fi nhà). Bật cả ở bản phát hành.
-const lmStudioUrl = process.env.EXPO_PUBLIC_LMSTUDIO_URL?.replace(/\/+$/, '');
+// Bản web không dùng LM Studio: địa chỉ mạng nhà không truy cập được từ trình duyệt của người khác (GIA-70).
+const lmStudioUrl = Platform.OS === 'web' ? undefined : process.env.EXPO_PUBLIC_LMSTUDIO_URL?.replace(/\/+$/, '');
 const lmStudioModel = process.env.EXPO_PUBLIC_LMSTUDIO_MODEL;
 // Chấm 2 bước (chép bài rồi chấm) mất khoảng 3 phút trên máy Mac M-series với AI 8B.
 // Mỗi bước LM Studio có giới hạn riêng: bài 2 trang đo được 3 phút 40 giây chỉ riêng bước chép.

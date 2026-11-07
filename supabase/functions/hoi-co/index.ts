@@ -5,6 +5,7 @@
 // Triển khai:  npx supabase functions deploy hoi-co
 
 import Anthropic from 'npm:@anthropic-ai/sdk@0.135.0';
+import { allowedOrigins, corsHeaders, originAllowed } from '../_shared/cors.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { aiOrder, askGemini } from '../_shared/gemini.ts';
@@ -22,19 +23,6 @@ import {
 
 const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
 
-// Cho phép bản web của app (chạy trên trình duyệt) gọi hàm này.
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...cors, 'Content-Type': 'application/json' },
-  });
-}
 
 function isText(value: unknown, max: number) {
   return typeof value === 'string' && value.trim().length > 0 && value.length <= max;
@@ -52,7 +40,15 @@ function validTurns(value: unknown): value is AskTurn[] {
 }
 
 Deno.serve(async (req) => {
+  // Chỉ các địa chỉ web trong ALLOWED_ORIGINS mới được gọi từ trình duyệt (GIA-70).
+  const origin = req.headers.get('Origin');
+  const allowed = allowedOrigins(Deno.env.get('ALLOWED_ORIGINS'));
+  const cors = corsHeaders(origin, allowed);
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  if (!originAllowed(origin, allowed)) return json({ error: 'Địa chỉ này không được phép' }, 403);
   if (req.method !== 'POST') return json({ error: 'Chỉ nhận POST' }, 405);
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
