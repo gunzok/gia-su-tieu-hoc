@@ -6,6 +6,6 @@ module.exports = defineConfig([
   expoConfig,
   {
     // supabase/functions/cham-bai chạy trên Deno (Supabase), không phải trong app.
-    ignores: ['dist/*', 'supabase/functions/cham-bai/*'],
+    ignores: ['dist/*', 'supabase/functions/cham-bai/*', 'supabase/functions/_shared/plus.ts', 'supabase/functions/_shared/luot-ngay.ts', 'supabase/functions/_shared/moi.ts'],
   },
 ]);

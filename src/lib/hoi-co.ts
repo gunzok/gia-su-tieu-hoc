@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { Platform } from 'react-native';
 
 import { askSystemPrompt, cleanAnswer, type AskItem, type AskRequest } from '../../supabase/functions/_shared/hoi-co';
 import { speakable, type Subject } from '@/lib/grading';
@@ -14,7 +15,8 @@ export {
 // Bé hỏi thêm cô về một câu: gọi hàm "hoi-co" trên Supabase (máy chủ hỏi Gemini rồi Claude).
 // Máy chủ lỗi (AI hết tiền, mất mạng…) thì hỏi LM Studio ở nhà, giống như khi chấm bài (GIA-54).
 const askTimeoutMs = 45_000;
-const lmStudioUrl = process.env.EXPO_PUBLIC_LMSTUDIO_URL?.replace(/\/+$/, '');
+// Bản web không dùng LM Studio: địa chỉ mạng nhà không truy cập được từ trình duyệt của người khác (GIA-70).
+const lmStudioUrl = Platform.OS === 'web' ? undefined : process.env.EXPO_PUBLIC_LMSTUDIO_URL?.replace(/\/+$/, '');
 const lmStudioModel = process.env.EXPO_PUBLIC_LMSTUDIO_MODEL;
 
 /** Lời cô trả lời, đã đổi ký hiệu phép tính sang chữ để đọc thành tiếng. */

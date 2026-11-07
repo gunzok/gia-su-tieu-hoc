@@ -1,6 +1,7 @@
 import { FunctionsHttpError, type User } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
+import { Platform } from 'react-native';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 import { parseOAuthRedirect } from '@/lib/oauth-redirect';
@@ -63,9 +64,27 @@ export async function verifyEmailCode(email: string, code: string) {
 // Trong Expo Go có dạng exp://…/--/dang-nhap; ở bản build là giasutieuhoc://dang-nhap.
 const oauthRedirect = Linking.createURL('dang-nhap');
 
-/** Trả về false nếu ba mẹ đóng trình duyệt giữa chừng. */
+/** Cờ báo "vừa quay lại từ Google" để web làm nốt bước sau đăng nhập (xem web/auth-return.tsx). */
+export const WEB_OAUTH_PENDING_KEY = 'gsth.oauth.pending';
+
+/**
+ * Trả về false nếu ba mẹ đóng trình duyệt giữa chừng.
+ * Trên web: chuyển hẳn sang trang Google rồi Google đưa về /dang-nhap (hàm trả false vì trang sắp rời đi).
+ */
 export async function signInWithGoogle() {
   const client = requireSupabase();
+  if (Platform.OS === 'web') {
+    window.sessionStorage.setItem(WEB_OAUTH_PENDING_KEY, '1');
+    const { error } = await client.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/dang-nhap` },
+    });
+    if (error) {
+      window.sessionStorage.removeItem(WEB_OAUTH_PENDING_KEY);
+      throw error;
+    }
+    return false;
+  }
   const { data, error } = await client.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: oauthRedirect, skipBrowserRedirect: true },

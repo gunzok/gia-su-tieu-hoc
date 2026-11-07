@@ -7,7 +7,12 @@
 // Đặt khoá:    npx supabase secrets set GOOGLE_TTS_API_KEY=...  (và ELEVENLABS_API_KEY=...)
 // Đổi mức tháng: GOOGLE_TTS_MONTHLY_CHARS (mặc định 900000), ELEVENLABS_MONTHLY_CHARS (mặc định 10000)
 
+import { allowedOrigins, corsHeaders, originAllowed } from '../_shared/cors.ts';
+import { inviteProblem } from '../_shared/moi.ts';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import { isBrowserRequest, WEB_DAILY } from '../_shared/gioi-han.ts';
+import { recordUsage } from '../_shared/luot-ngay.ts';
+import { hasPlus } from '../_shared/plus.ts';
 import { audioPath, isQuotaExceeded, usageKey, voiceProviders, type ProviderConfig, type TeacherVoice } from '../_shared/doc-loi.ts';
 
 const BUCKET = 'giong-doc';
@@ -16,19 +21,6 @@ const maxChars = 1500;
 // Link phát âm thanh hết hạn sau 1 giờ.
 const urlSeconds = 60 * 60;
 
-// Cho phép bản web của app (chạy trên trình duyệt) gọi hàm này.
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...cors, 'Content-Type': 'application/json' },
-  });
-}
 
 async function sha256(text: string) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -96,7 +88,15 @@ async function signedUrl(admin: SupabaseClient, path: string) {
 }
 
 Deno.serve(async (req) => {
+  // Chỉ các địa chỉ web trong ALLOWED_ORIGINS mới được gọi từ trình duyệt (GIA-70).
+  const origin = req.headers.get('Origin');
+  const allowed = allowedOrigins(Deno.env.get('ALLOWED_ORIGINS'));
+  const cors = corsHeaders(origin, allowed);
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  if (!originAllowed(origin, allowed)) return json({ error: 'Địa chỉ này không được phép' }, 403);
   if (req.method !== 'POST') return json({ error: 'Chỉ nhận POST' }, 405);
 
   const url = Deno.env.get('SUPABASE_URL')!;
@@ -105,6 +105,13 @@ Deno.serve(async (req) => {
   });
   const { data: userData, error: userError } = await userClient.auth.getUser();
   if (userError || !userData.user) return json({ error: 'Chưa đăng nhập' }, 401);
+  // Bản web dùng thử: chỉ người trong danh sách mời (GIA-69).
+  const notInvited = await inviteProblem(
+    createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!),
+    userData.user,
+    isBrowserRequest(req.headers.get('Origin')),
+  );
+  if (notInvited) return json(notInvited, 403);
 
   const providers = voiceProviders((name) => Deno.env.get(name));
   if (providers.length === 0) return json({ error: 'Chưa cài giọng đọc AI' }, 503);
@@ -133,6 +140,20 @@ Deno.serve(async (req) => {
   for (const target of targets) {
     const cached = await signedUrl(admin, target.path);
     if (cached) return json({ url: cached, cached: true });
+  }
+
+  // Bản web (trình duyệt gửi header Origin): giới hạn số lần tạo giọng đọc mới mỗi ngày (GIA-68).
+  // Câu đã có trong kho ở trên không tính. Tạo không được thì trả lại lượt.
+  let refund: (() => unknown) | null = null;
+  if (isBrowserRequest(req.headers.get('Origin'))) {
+    const plus = await hasPlus(userData.user.id);
+    const used = await recordUsage(admin, userData.user.id, 'doc-loi');
+    if (!used) return json({ error: 'Chưa tạo được giọng đọc' }, 500);
+    refund = used.refund;
+    if (used.count > (plus ? WEB_DAILY.voicePlus : WEB_DAILY.voiceFree)) {
+      await refund();
+      return json({ error: 'Hôm nay giọng đọc AI đã dùng nhiều, app sẽ đọc bằng giọng trên máy.', hetLuot: true }, 429);
+    }
   }
 
   // Đếm theo tháng (giờ UTC), mỗi dịch vụ một dòng trong giong_doc_thang.
@@ -185,7 +206,9 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Không dịch vụ nào đọc được. Hết lượt cả hai thì báo 429 để app thôi gọi tới khi mở lại.
+  // Không dịch vụ nào đọc được: trả lại lượt (web) rồi báo lỗi.
+  await refund?.();
+  // Hết lượt cả hai thì báo 429 để app thôi gọi tới khi mở lại.
   if (!anyFailed) return json({ error: 'Đã hết lượt giọng đọc AI tháng này', hetLuot: true }, 429);
   return json({ error: 'Chưa tạo được giọng đọc' }, 502);
 });
