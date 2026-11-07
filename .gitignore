@@ -48,3 +48,6 @@ example
 
 # cấu hình Codex trên máy, có chứa khoá
 /.codex/
+
+# bản sao skill cho công cụ khác, để ở máy
+/.agents/
