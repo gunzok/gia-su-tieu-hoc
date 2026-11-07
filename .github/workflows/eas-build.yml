@@ -1,4 +1,4 @@
-# Build app bằng EAS (chạy trên máy chủ Expo, không tốn phút runner) và phát hành khi gắn tag vX.Y.Z.
+# Build app bằng EAS (chạy trên máy chủ Expo) và phát hành khi gắn tag vX.Y.Z.
 #  - Chạy tay (Actions > EAS Build > Run workflow): chọn profile và nền tảng.
 #  - Gắn tag v0.5.0: kiểm tra khớp version trong app.json, build Android production, tạo GitHub Release.
 # iOS thật cần tài khoản Apple Developer (chưa có): hiện chỉ build được iOS cho máy giả lập (profile preview-simulator).
@@ -37,7 +37,8 @@ jobs:
     name: Build EAS
     needs: ci
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Chờ build trên hàng đợi EAS khi gắn tag có thể lâu.
+    timeout-minutes: 90
     environment: ${{ github.ref_type == 'tag' && 'production' || 'preview' }}
     steps:
       - uses: actions/checkout@v4
@@ -62,10 +63,14 @@ jobs:
         env:
           PROFILE: ${{ github.ref_type == 'tag' && 'production' || inputs.profile }}
           PLATFORM: ${{ github.ref_type == 'tag' && 'android' || inputs.platform }}
+          IS_TAG: ${{ github.ref_type == 'tag' }}
         run: |
           VERSION=$(node -p "require('./app.json').expo.version")
-          # --no-wait: máy chủ Expo tự build, workflow không đứng chờ. Link bản build có trong log và trên expo.dev.
-          eas build --profile "$PROFILE" --platform "$PLATFORM" --non-interactive --no-wait \
+          # Chạy tay: --no-wait, máy chủ Expo tự build, workflow không đứng chờ (link bản build có trong log và trên expo.dev).
+          # Gắn tag: phải CHỜ build xong, để Release chỉ được tạo khi build production thành công.
+          WAIT_FLAG="--no-wait"
+          if [ "$IS_TAG" = "true" ]; then WAIT_FLAG=""; fi
+          eas build --profile "$PROFILE" --platform "$PLATFORM" --non-interactive $WAIT_FLAG \
             --message "GiaSuTieuHoc_${VERSION} (${PROFILE}, ${GITHUB_SHA::7})"
 
   release:
