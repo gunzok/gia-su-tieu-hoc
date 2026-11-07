@@ -1,0 +1,118 @@
+# CI: kiểm tra chất lượng mã cho mọi Pull Request và mọi lần đẩy lên main.
+# Cũng được gọi lại (workflow_call) bởi cd-app.yml để chặn phát hành khi CI đỏ.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_call:
+
+# Huỷ lượt chạy cũ khi có commit mới trên cùng nhánh/PR.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# Quyền tối thiểu cho mọi job.
+permissions:
+  contents: read
+
+env:
+  CI: "true"
+  EXPO_NO_TELEMETRY: "1"
+
+jobs:
+  quality:
+    name: Chất lượng mã (tsc, lint, test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      # expo-env.d.ts nằm trong .gitignore (do `expo start` tạo); tsc cần file này.
+      - name: Tạo expo-env.d.ts
+        run: printf '/// <reference types="expo/types" />\n' > expo-env.d.ts
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: ESLint
+        run: npx expo lint
+      - name: Unit test (Jest)
+        run: npm test -- --ci
+
+  bundle:
+    name: Đóng gói thử (expo export)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      # Bắt lỗi mà tsc/jest không thấy: import sai, plugin app.json hỏng, bundle Metro lỗi.
+      - name: Export iOS + Android
+        run: npx expo export --platform ios --platform android --output-dir "$RUNNER_TEMP/export"
+      # Chỉ để báo thông tin (lệch phiên bản SDK, cấu hình lạ); không chặn merge vì cần mạng ngoài.
+      - name: Expo Doctor (chỉ cảnh báo)
+        continue-on-error: true
+        run: npx expo-doctor
+
+  edge-functions:
+    name: Edge Functions (deno check)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      # Hàm Supabase chạy bằng Deno và bị loại khỏi tsc của app, nên kiểm kiểu riêng ở đây.
+      # --node-modules-dir=none để Deno không lẫn với package.json của app.
+      - name: Kiểm kiểu các hàm
+        run: deno check --node-modules-dir=none --no-lock supabase/functions/*/index.ts
+
+  security:
+    name: Bảo mật (quét khoá lộ, npm audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # quét cả lịch sử commit
+      # Dự án có luật "không bao giờ để API key trong code/Git": quét tự động để giữ luật đó.
+      - name: Quét khoá bí mật (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      # Chặn khi có lỗ hổng mức critical. Mức high đang có sẵn ở thư viện con của Expo,
+      # nên chỉ cảnh báo để CI không đỏ ngay từ ngày đầu.
+      - name: npm audit (chặn critical)
+        run: npm audit --omit=dev --audit-level=critical
+      - name: npm audit (cảnh báo high)
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
+
+  # Một "cổng" duy nhất để đặt làm required check trong branch protection.
+  ci-ok:
+    name: CI đạt
+    if: always()
+    needs: [quality, bundle, edge-functions, security]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tổng hợp kết quả
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Kết quả các job: $RESULTS"
+          case "$RESULTS" in
+            *failure*|*cancelled*) echo "::error::Có job CI chưa đạt"; exit 1 ;;
+          esac

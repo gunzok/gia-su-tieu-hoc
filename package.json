@@ -60,6 +60,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "typecheck": "tsc --noEmit",
     "build:preview": "node scripts/ban-build.js build preview android",
     "build:dev": "node scripts/ban-build.js build development android",
     "update:preview": "node scripts/ban-build.js update",

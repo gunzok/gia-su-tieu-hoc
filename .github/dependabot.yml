@@ -1,0 +1,36 @@
+version: 2
+updates:
+  # Giữ các action trong workflow luôn mới.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Thư viện npm: gom bản vá/phụ vào một PR mỗi tuần.
+  # Bộ Expo/React/React Native phải nâng cùng nhau theo SDK bằng `npx expo install --fix`,
+  # nên Dependabot không được tự đụng vào.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "@expo/*"
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      - dependency-name: "@react-native-async-storage/async-storage"
+      - dependency-name: "jest"
+      - dependency-name: "jest-expo"
+      - dependency-name: "@types/jest"
+      - dependency-name: "@types/react"
+      - dependency-name: "typescript"
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]

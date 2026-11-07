@@ -27,6 +27,10 @@ Run lint, typecheck and `npm test` before declaring any task done.
 
 Tests live in `__tests__/` folders next to the code (e.g. `src/lib/__tests__/grading.test.ts`), shared test data in `src/test-utils/`. Mock native modules (`expo-speech`, `expo-audio`) and `@/lib/supabase` with `jest.mock` when the file under test imports them. In a fresh worktree, `npx tsc --noEmit` needs `expo-env.d.ts` (gitignored; created by `npx expo start`, or copy it from the main checkout).
 
+## CI/CD
+
+GitHub Actions trong `.github/workflows/` (chi tiết, secrets và cách cài: `docs/ci-cd.md`). CI chạy `tsc`, `expo lint`, `npm test`, `expo export`, `deno check` hàm Supabase, gitleaks và `npm audit` trên mọi PR. Gộp vào `main` thì tự gửi OTA (`preview`) và deploy `supabase/`; gắn tag `vX.Y.Z` (khớp `app.json`) để build production. Đổi mã native thì nâng version, không đi OTA. Không đưa khoá bí mật vào GitHub ngoài danh sách trong `docs/ci-cd.md`.
+
 ## Navigation & Routing
 
 - Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
