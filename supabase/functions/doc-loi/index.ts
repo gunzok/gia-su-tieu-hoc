@@ -8,6 +8,7 @@
 // Đổi mức tháng: GOOGLE_TTS_MONTHLY_CHARS (mặc định 900000), ELEVENLABS_MONTHLY_CHARS (mặc định 10000)
 
 import { allowedOrigins, corsHeaders, originAllowed } from '../_shared/cors.ts';
+import { inviteProblem } from '../_shared/moi.ts';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { isBrowserRequest, WEB_DAILY } from '../_shared/gioi-han.ts';
 import { recordUsage } from '../_shared/luot-ngay.ts';
@@ -104,6 +105,13 @@ Deno.serve(async (req) => {
   });
   const { data: userData, error: userError } = await userClient.auth.getUser();
   if (userError || !userData.user) return json({ error: 'Chưa đăng nhập' }, 401);
+  // Bản web dùng thử: chỉ người trong danh sách mời (GIA-69).
+  const notInvited = await inviteProblem(
+    createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!),
+    userData.user,
+    isBrowserRequest(req.headers.get('Origin')),
+  );
+  if (notInvited) return json(notInvited, 403);
 
   const providers = voiceProviders((name) => Deno.env.get(name));
   if (providers.length === 0) return json({ error: 'Chưa cài giọng đọc AI' }, 503);

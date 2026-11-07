@@ -1,5 +1,6 @@
 import {
   engineOrderFor,
+  inviteDecision,
   isBrowserRequest,
   limitFrom,
 } from '../../../supabase/functions/_shared/gioi-han';
@@ -39,5 +40,29 @@ describe('limitFrom', () => {
     expect(limitFrom('0', 300)).toBe(300);
     expect(limitFrom('-5', 300)).toBe(300);
     expect(limitFrom('2.5', 300)).toBe(300);
+  });
+});
+
+
+describe('inviteDecision (GIA-69)', () => {
+  const base = { enforce: true, browser: true, anonymous: false, email: 'ba.me@gmail.com', invitedEmails: ['ba.me@gmail.com'] };
+
+  it('người trong danh sách (không phân biệt hoa thường) được dùng', () => {
+    expect(inviteDecision(base)).toBeNull();
+    expect(inviteDecision({ ...base, email: ' Ba.Me@Gmail.com ' })).toBeNull();
+  });
+
+  it('email ngoài danh sách bị từ chối lịch sự', () => {
+    expect(inviteDecision({ ...base, email: 'la@gmail.com' })).toBe('chua-duoc-moi');
+  });
+
+  it('tài khoản ẩn danh hoặc không có email phải đăng nhập thật', () => {
+    expect(inviteDecision({ ...base, anonymous: true })).toBe('can-dang-nhap');
+    expect(inviteDecision({ ...base, email: null })).toBe('can-dang-nhap');
+  });
+
+  it('không áp dụng cho app điện thoại hoặc khi chưa bật', () => {
+    expect(inviteDecision({ ...base, browser: false, anonymous: true })).toBeNull();
+    expect(inviteDecision({ ...base, enforce: false, anonymous: true })).toBeNull();
   });
 });

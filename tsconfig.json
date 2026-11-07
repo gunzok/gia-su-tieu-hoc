@@ -26,6 +26,7 @@
     "supabase/functions/doc-loi",
     "supabase/functions/xoa-tai-khoan",
     "supabase/functions/_shared/plus.ts",
-    "supabase/functions/_shared/luot-ngay.ts"
+    "supabase/functions/_shared/luot-ngay.ts",
+    "supabase/functions/_shared/moi.ts"
   ]
 }

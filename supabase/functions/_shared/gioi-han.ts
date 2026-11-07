@@ -34,3 +34,28 @@ export const WEB_DAILY = {
 
 /** Tổng lượt chấm toàn hệ thống mỗi ngày mà bản web còn nhận (cầu dao chống chi phí vượt tầm). */
 export const GLOBAL_GRADING_DAILY_DEFAULT = 300;
+
+/**
+ * Danh sách mời (GIA-69): khi bật (secret WEB_CHI_NGUOI_DUOC_MOI=true), người dùng web phải đăng nhập thật
+ * (không phải ẩn danh) và có email trong bảng moi_dung_thu. App điện thoại không bị ảnh hưởng.
+ * Trả null nếu được dùng, hoặc mã lý do bị từ chối.
+ */
+export type InviteProblem = 'can-dang-nhap' | 'chua-duoc-moi';
+
+export function inviteDecision(input: {
+  enforce: boolean;
+  browser: boolean;
+  anonymous: boolean;
+  email: string | null | undefined;
+  invitedEmails: string[];
+}): InviteProblem | null {
+  if (!input.enforce || !input.browser) return null;
+  const email = input.email?.trim().toLowerCase();
+  if (input.anonymous || !email) return 'can-dang-nhap';
+  return input.invitedEmails.some((invited) => invited.trim().toLowerCase() === email) ? null : 'chua-duoc-moi';
+}
+
+export const INVITE_MESSAGES: Record<InviteProblem, string> = {
+  'can-dang-nhap': 'Ba mẹ hãy đăng nhập bằng tài khoản của mình để dùng bản web nhé.',
+  'chua-duoc-moi': 'Bản web đang dùng thử với một nhóm nhỏ. Tài khoản này chưa được mời, ba mẹ liên hệ để được thêm vào nhé.',
+};

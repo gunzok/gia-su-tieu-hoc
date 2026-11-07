@@ -10,6 +10,7 @@
 
 import Anthropic from 'npm:@anthropic-ai/sdk@0.135.0';
 import { allowedOrigins, corsHeaders, originAllowed } from '../_shared/cors.ts';
+import { inviteProblem } from '../_shared/moi.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import {
@@ -64,6 +65,13 @@ Deno.serve(async (req) => {
   });
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) return json({ error: 'Chưa đăng nhập' }, 401);
+  // Bản web dùng thử: chỉ người trong danh sách mời (GIA-69).
+  const notInvited = await inviteProblem(
+    createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!),
+    userData.user,
+    isBrowserRequest(req.headers.get('Origin')),
+  );
+  if (notInvited) return json(notInvited, 403);
 
   let body: {
     images?: unknown;
