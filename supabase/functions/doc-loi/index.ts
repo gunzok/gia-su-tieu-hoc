@@ -8,6 +8,9 @@
 // Đổi mức tháng: GOOGLE_TTS_MONTHLY_CHARS (mặc định 900000), ELEVENLABS_MONTHLY_CHARS (mặc định 10000)
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import { isBrowserRequest, WEB_DAILY } from '../_shared/gioi-han.ts';
+import { recordUsage } from '../_shared/luot-ngay.ts';
+import { hasPlus } from '../_shared/plus.ts';
 import { audioPath, isQuotaExceeded, usageKey, voiceProviders, type ProviderConfig, type TeacherVoice } from '../_shared/doc-loi.ts';
 
 const BUCKET = 'giong-doc';
@@ -135,6 +138,20 @@ Deno.serve(async (req) => {
     if (cached) return json({ url: cached, cached: true });
   }
 
+  // Bản web (trình duyệt gửi header Origin): giới hạn số lần tạo giọng đọc mới mỗi ngày (GIA-68).
+  // Câu đã có trong kho ở trên không tính. Tạo không được thì trả lại lượt.
+  let refund: (() => unknown) | null = null;
+  if (isBrowserRequest(req.headers.get('Origin'))) {
+    const plus = await hasPlus(userData.user.id);
+    const used = await recordUsage(admin, userData.user.id, 'doc-loi');
+    if (!used) return json({ error: 'Chưa tạo được giọng đọc' }, 500);
+    refund = used.refund;
+    if (used.count > (plus ? WEB_DAILY.voicePlus : WEB_DAILY.voiceFree)) {
+      await refund();
+      return json({ error: 'Hôm nay giọng đọc AI đã dùng nhiều, app sẽ đọc bằng giọng trên máy.', hetLuot: true }, 429);
+    }
+  }
+
   // Đếm theo tháng (giờ UTC), mỗi dịch vụ một dòng trong giong_doc_thang.
   const month = new Date().toISOString().slice(0, 7);
   let anyFailed = false;
@@ -185,7 +202,9 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Không dịch vụ nào đọc được. Hết lượt cả hai thì báo 429 để app thôi gọi tới khi mở lại.
+  // Không dịch vụ nào đọc được: trả lại lượt (web) rồi báo lỗi.
+  await refund?.();
+  // Hết lượt cả hai thì báo 429 để app thôi gọi tới khi mở lại.
   if (!anyFailed) return json({ error: 'Đã hết lượt giọng đọc AI tháng này', hetLuot: true }, 429);
   return json({ error: 'Chưa tạo được giọng đọc' }, 502);
 });

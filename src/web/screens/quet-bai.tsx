@@ -20,6 +20,7 @@ import { STARS_PER_GRADING } from '@/lib/rewards';
 import { Columns } from '@/web/columns';
 import { DropZone } from '@/web/drop-zone';
 import { Screen } from '@/web/screen';
+import { useGradingQuota } from '@/web/use-grading-quota';
 import { useLayout } from '@/web/use-layout';
 
 const gradeOptions = [1, 2, 3, 4, 5].map((g) => ({
@@ -59,6 +60,7 @@ export default function ScanScreen() {
   }
 
   const today = new Date().toDateString();
+  const remaining = useGradingQuota(history.length);
   const doneToday = history.filter((entry) => new Date(entry.createdAt).toDateString() === today).length;
 
   const header = (
@@ -209,6 +211,17 @@ export default function ScanScreen() {
         </View>
       )}
 
+      {remaining !== null && (
+        <View style={[styles.quotaPill, remaining === 0 && styles.quotaPillOut]}>
+          <MaterialIcons name="bolt" size={18} color={remaining === 0 ? Palette.coralDark : Palette.amberInk} />
+          <AppText variant="labelMd" color={remaining === 0 ? Palette.coralDark : Palette.amberInk}>
+            {remaining === 0
+              ? 'Hôm nay con đã chấm đủ rồi, mai mình chấm tiếp nhé!'
+              : `Hôm nay con còn ${remaining} lượt chấm`}
+          </AppText>
+        </View>
+      )}
+
       <BigButton
         label={`${count > 1 ? `${T.Title} chấm ${count} trang nhé!` : `${T.Title} chấm bài ngay!`}  ⭐ +${STARS_PER_GRADING}`}
         icon="auto-fix-high"
@@ -332,6 +345,19 @@ function TipRow({ icon, tint, title, body }: { icon: IconName; tint: string; tit
 const CORNER = 28;
 
 const styles = StyleSheet.create({
+  quotaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one + 2,
+    borderRadius: Radius.full,
+    backgroundColor: Palette.amberSoft,
+  },
+  quotaPillOut: {
+    backgroundColor: Palette.coralSoft,
+  },
   flex: {
     flex: 1,
   },

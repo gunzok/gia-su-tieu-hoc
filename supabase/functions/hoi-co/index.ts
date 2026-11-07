@@ -8,6 +8,9 @@ import Anthropic from 'npm:@anthropic-ai/sdk@0.135.0';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { aiOrder, askGemini } from '../_shared/gemini.ts';
+import { engineOrderFor, isBrowserRequest, WEB_DAILY } from '../_shared/gioi-han.ts';
+import { recordUsage } from '../_shared/luot-ngay.ts';
+import { hasPlus } from '../_shared/plus.ts';
 import {
   ASK_LIMITS,
   askSystemPrompt,
@@ -94,10 +97,36 @@ Deno.serve(async (req) => {
     },
   });
   const geminiKey = Deno.env.get('GEMINI_API_KEY');
-  const order = aiOrder(Deno.env.get('AI_THU_TU'), {
-    gemini: !!geminiKey,
-    claude: !!Deno.env.get('ANTHROPIC_API_KEY'),
-  });
+  // Bản web (trình duyệt gửi header Origin): giới hạn lượt hỏi mỗi ngày; chưa Plus thì chỉ dùng AI miễn phí (GIA-68).
+  const browser = isBrowserRequest(req.headers.get('Origin'));
+  let plus = false;
+  let refund: (() => unknown) | null = null;
+  if (browser) {
+    plus = await hasPlus(userData.user.id);
+    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const used = await recordUsage(admin, userData.user.id, 'hoi-co');
+    if (!used) return json({ error: 'Máy chủ chưa trả lời được' }, 500);
+    refund = used.refund;
+    const limit = plus ? WEB_DAILY.askPlus : WEB_DAILY.askFree;
+    if (used.count > limit) {
+      await refund();
+      return json(
+        {
+          error: `Hôm nay con đã hỏi ${teacher === 'thay' ? 'thầy' : 'cô'} nhiều rồi, mai mình hỏi tiếp nhé!`,
+          code: 'het-luot',
+          limit,
+        },
+        429,
+      );
+    }
+  }
+  const order = engineOrderFor(
+    aiOrder(Deno.env.get('AI_THU_TU'), {
+      gemini: !!geminiKey,
+      claude: !!Deno.env.get('ANTHROPIC_API_KEY'),
+    }),
+    { plus, browser },
+  );
 
   for (const engine of order) {
     try {
@@ -114,6 +143,9 @@ Deno.serve(async (req) => {
       console.error(`Lỗi hỏi ${engine}:`, error);
     }
   }
+  // Chưa trả lời được thì trả lại lượt cho bé.
+  await refund?.();
+  if (browser && !plus) return json({ error: 'Cô đang hơi bận, con thử lại sau ít phút nhé!', code: 'ban' }, 503);
   return json({ error: 'Máy chủ chưa trả lời được' }, 502);
 });
 

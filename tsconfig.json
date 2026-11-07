@@ -24,6 +24,8 @@
     "supabase/functions/cham-bai",
     "supabase/functions/hoi-co",
     "supabase/functions/doc-loi",
-    "supabase/functions/xoa-tai-khoan"
+    "supabase/functions/xoa-tai-khoan",
+    "supabase/functions/_shared/plus.ts",
+    "supabase/functions/_shared/luot-ngay.ts"
   ]
 }
