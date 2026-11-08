@@ -41,7 +41,7 @@ jobs:
     timeout-minutes: 90
     environment: ${{ github.ref_type == 'tag' && 'production' || 'preview' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Tag phải khớp version trong app.json
         if: github.ref_type == 'tag'
         run: |
@@ -50,7 +50,7 @@ jobs:
             echo "::error::Tag ${GITHUB_REF_NAME} không khớp version app.json (${VERSION}). Dùng: npm run version:set -- x.y.z"
             exit 1
           fi
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -82,7 +82,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Tạo release kèm ghi chú tự động
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
