@@ -10,8 +10,8 @@ updates:
         patterns: ["*"]
 
   # Thư viện npm: gom bản vá/phụ vào một PR mỗi tuần.
-  # Bộ Expo/React/React Native phải nâng cùng nhau theo SDK bằng `npx expo install --fix`,
-  # nên Dependabot không được tự đụng vào.
+  # Bộ Expo/React/React Native (kèm eslint và eslint-config-expo, vốn đi theo SDK) phải nâng cùng nhau
+  # bằng `npx expo install --fix`, nên Dependabot không được tự đụng vào.
   - package-ecosystem: npm
     directory: /
     schedule:
@@ -31,6 +31,8 @@ updates:
       - dependency-name: "@types/jest"
       - dependency-name: "@types/react"
       - dependency-name: "typescript"
+      - dependency-name: "eslint"
+      - dependency-name: "eslint-config-expo"
     groups:
       npm-minor-patch:
         update-types: [minor, patch]
