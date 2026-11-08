@@ -76,8 +76,9 @@ jobs:
       - name: Liên kết dự án
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
       - name: Đẩy migration
-        run: supabase db push --remote
+        # --yes: CLI 3.x đòi cờ này khi ghi lên máy chủ thật mà không có người gõ xác nhận. Job này đã có cổng duyệt (production).
+        run: supabase db push --remote --yes
       - name: Deploy Edge Functions
-        run: supabase functions deploy
+        run: supabase functions deploy --yes
       # Khoá bí mật (ANTHROPIC_API_KEY, REVENUECAT_SECRET_KEY, ...) KHÔNG đi qua CI:
       # chủ dự án tự đặt bằng `npx supabase secrets set`.
