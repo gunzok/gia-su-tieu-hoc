@@ -240,7 +240,7 @@ type Graded<T> = { result: T; engine: Engine };
 type AskRequest = {
   text: string;
   images: string[];
-  schema: object;
+  schema: Record<string, unknown>;
   maxTokens: number;
   level: 'low' | 'medium';
   /** Việc phụ, có phương án dự phòng: chỉ thử một model, chờ ngắn. */
