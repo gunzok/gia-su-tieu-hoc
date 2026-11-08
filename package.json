@@ -64,6 +64,7 @@
     "web": "expo start --web",
     "build:web": "EXPO_PUBLIC_LMSTUDIO_URL= EXPO_PUBLIC_LMSTUDIO_MODEL= EXPO_PUBLIC_DEV_PLUS= expo export --platform web --output-dir dist",
     "lint": "expo lint",
+    "typecheck": "tsc --noEmit",
     "build:preview": "node scripts/ban-build.js build preview android",
     "build:dev": "node scripts/ban-build.js build development android",
     "update:preview": "node scripts/ban-build.js update",

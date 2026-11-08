@@ -1,0 +1,59 @@
+# CD cho app: mỗi lần gộp vào main và CI xanh thì gửi cập nhật OTA (EAS Update) lên nhánh `preview`.
+# Chỉ đổi mã JS/TS, ảnh, chữ mới đi OTA được. Thay đổi mã gốc (thư viện native, plugin, quyền, app.json)
+# phải nâng version rồi build lại: xem eas-build.yml và docs/ci-cd.md.
+name: CD - App (OTA)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "supabase/**"
+      - ".claude/**"
+      - ".agent/**"
+      - "**/*.md"
+      - ".github/**"
+  workflow_dispatch:
+
+# Không huỷ lượt đang chạy: để các bản OTA lần lượt theo thứ tự commit.
+concurrency:
+  group: cd-app-ota
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: read # gitleaks đọc danh sách commit của PR
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  ota:
+    name: Gửi cập nhật OTA (preview)
+    needs: ci
+    # Chạy tay trên nhánh khác sẽ không được gửi OTA.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: preview
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: eas update
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          # Lấy dòng đầu của commit làm ghi chú; truyền qua biến môi trường để tránh chèn lệnh.
+          VERSION=$(node -p "require('./app.json').expo.version")
+          NOTE=$(printf '%s' "${COMMIT_MESSAGE:-manual}" | head -n1 | cut -c1-120)
+          eas update --branch preview --environment preview --non-interactive \
+            --message "GiaSuTieuHoc_${VERSION} (${GITHUB_SHA::7}): ${NOTE}"
