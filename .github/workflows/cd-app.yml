@@ -12,6 +12,7 @@ on:
       - ".claude/**"
       - ".agent/**"
       - "**/*.md"
+      - "LICENSE"
       - ".github/**"
   workflow_dispatch:
 
