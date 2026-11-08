@@ -39,16 +39,22 @@ jobs:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 3.0.0 # ghim bản đã thử; đổi bản thì thử lại dry-run (CLI 3.x mặc định nhắm database máy cục bộ)
       - run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-      - name: db push --dry-run (ghi vào Summary)
+      - name: db push --dry-run
+        run: |
+          set -o pipefail
+          # --remote: nhắm dự án đã link (CLI 3.x mặc định là database máy cục bộ). pipefail để lỗi không bị tee che mất.
+          supabase db push --dry-run --remote 2>&1 | tee "$RUNNER_TEMP/plan.txt"
+      - name: Ghi kế hoạch vào Summary
+        if: always()
         run: |
           {
             echo '## Migration sắp đẩy lên production'
             echo '```'
-            supabase db push --dry-run 2>&1
+            cat "$RUNNER_TEMP/plan.txt" 2>/dev/null || echo '(không có kết quả)'
             echo '```'
-          } | tee -a "$GITHUB_STEP_SUMMARY"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
     name: Deploy Supabase
@@ -66,11 +72,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 3.0.0 # ghim bản đã thử; đổi bản thì thử lại dry-run (CLI 3.x mặc định nhắm database máy cục bộ)
       - name: Liên kết dự án
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
       - name: Đẩy migration
-        run: supabase db push
+        run: supabase db push --remote
       - name: Deploy Edge Functions
         run: supabase functions deploy
       # Khoá bí mật (ANTHROPIC_API_KEY, REVENUECAT_SECRET_KEY, ...) KHÔNG đi qua CI:

@@ -72,6 +72,7 @@ Lưu ý: `cd-app.yml` **không tự phân biệt** thay đổi native; bước n
 
 - iOS thật: chưa có tài khoản Apple Developer nên chưa có bước `eas submit`/TestFlight. iOS chỉ build cho máy giả lập
   (Run workflow → platform `ios`, profile `preview-simulator`). Android chưa nộp lên Google Play (`eas submit` thêm sau khi có tài khoản).
+- Supabase CLI được ghim ở bản 3.0.0 trong `cd-supabase.yml`. CLI 3.x mặc định nhắm database máy cục bộ nên lệnh `db push` phải có `--remote`. Đổi bản CLI thì chạy tay `CD - Supabase` để xem dry-run và Reject trước khi tin.
 - `npm audit` chặn ở mức *critical*. Hiện có 3 lỗ hổng *high* nằm ở thư viện con của Expo (vd `zod`); CI chỉ cảnh báo.
   Nâng SDK Expo sẽ xử lý dần.
 - Chưa bật CodeQL / dependency-review vì cần GitHub Advanced Security nếu kho ở chế độ riêng tư. Kho công khai thì thêm được miễn phí.
