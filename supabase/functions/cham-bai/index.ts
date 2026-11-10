@@ -28,7 +28,7 @@ import {
   type Subject,
   type TeacherVoice,
 } from '../_shared/cham-bai.ts';
-import { aiOrder, askGeminiModels, GEMINI_GRADING_MODELS, geminiImages } from '../_shared/gemini.ts';
+import { aiOrder, askGeminiModels, GEMINI_GRADING_MODELS, geminiImages, usableModels } from '../_shared/gemini.ts';
 import { engineOrderFor, GLOBAL_GRADING_DAILY_DEFAULT, isBrowserRequest, limitFrom } from '../_shared/gioi-han.ts';
 import { answerKeyNote, checkPage, safeLines } from '../_shared/kiem-tinh.ts';
 import { startOfTodayInVietnam } from '../_shared/luot-ngay.ts';
@@ -296,7 +296,7 @@ async function askWithGemini(apiKey: string, system: string, request: AskRequest
   };
   // Lời nhận xét chung có bản ghép dự phòng, nên không để nó ăn hết giờ chờ của app.
   const text = request.quick
-    ? await askGeminiModels(apiKey, body, GEMINI_GRADING_MODELS.slice(0, 1), summaryTimeoutMs, [])
+    ? await askGeminiModels(apiKey, body, usableModels(GEMINI_GRADING_MODELS).slice(0, 1), summaryTimeoutMs, [], summaryTimeoutMs)
     : await askGeminiModels(apiKey, body);
   return { result: JSON.parse(text) };
 }

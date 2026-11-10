@@ -51,31 +51,93 @@ export function geminiImages(images: string[]): GeminiInput[] {
   return images.map((data) => ({ type: 'image', data, mime_type: 'image/jpeg' }));
 }
 
+/** Lỗi Gemini trả về, kèm mã HTTP để biết có nên thử lại không. */
+export class GeminiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly body: string,
+  ) {
+    super(`Gemini trả lỗi ${status}: ${body.slice(0, 500)}`);
+  }
+}
+
+/** Đọc "retry in 2h37m19s" / "53s" / "1.5s" trong lời báo lỗi của Google, ra mili giây. */
+export function geminiRetryMs(body: string): number | null {
+  const match = /retry in ((?:\d+(?:\.\d+)?[hms])+)/i.exec(body);
+  if (!match) return null;
+  const units = { h: 3_600_000, m: 60_000, s: 1_000 } as const;
+  let total = 0;
+  for (const [, amount, unit] of match[1].matchAll(/(\d+(?:\.\d+)?)([hms])/gi)) {
+    total += Number(amount) * units[unit.toLowerCase() as keyof typeof units];
+  }
+  return Math.round(total);
+}
+
+/** 429 vì hết lượt cả ngày (không phải giới hạn mỗi phút): đợi cũng vô ích. */
+export function isDailyQuota(body: string) {
+  return /per day/i.test(body);
+}
+
+// Model đã hết lượt trong ngày: bỏ qua tới lúc Google hẹn, khỏi tốn thời gian gọi lại.
+// Chỉ nhớ trong một lần chạy của hàm (máy chủ tắt thì quên), đủ để các trang sau và lời nhận xét chung né.
+const skipUntil = new Map<string, number>();
+
+/** Các model còn dùng được lúc này, giữ thứ tự. */
+export function usableModels(models: string[], now = Date.now()) {
+  return models.filter((model) => (skipUntil.get(model) ?? 0) <= now);
+}
+
+/** Chỉ dùng trong test. */
+export function resetGeminiState() {
+  skipUntil.clear();
+}
+
+/** Đợi giới hạn mỗi phút chỉ khi sau đó còn ít nhất chừng này để chấm. */
+const minCallMs = 40_000;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
- * Gọi Gemini, trả về phần chữ. Quá tải tạm thời (503) thì đợi rồi thử lại; lỗi khác, hết lượt miễn phí,
- * bị chặn… đều ném lỗi để thử AI khác.
+ * Gọi Gemini, trả về phần chữ. Quá tải tạm thời (503) thì đợi rồi thử lại. Bị giới hạn lượt mỗi phút (429)
+ * mà đợi đúng hẹn của Google xong vẫn còn ít nhất minCallMs trước deadline thì đợi rồi thử lại một lần.
+ * Hết lượt cả ngày thì ghi nhớ để lần sau bỏ qua model này. Lỗi khác, bị chặn… đều ném lỗi để thử AI khác.
  */
 export async function askGemini(
   apiKey: string,
   request: GeminiRequest,
   timeoutMs = 120_000,
   retryDelaysMs = [2_000, 5_000],
+  deadline?: number,
 ): Promise<string> {
-  const send = () =>
+  const model = request.model ?? GEMINI_MODEL;
+  const send = (ms = timeoutMs) =>
     fetch(GEMINI_URL, {
       method: 'POST',
       // Gửi khoá qua header, không để trong đường link (tránh lộ trong nhật ký).
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify(geminiBody(request)),
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: AbortSignal.timeout(ms),
     });
   let response = await send();
   for (const delay of retryDelaysMs) {
     if (response.status !== 503) break;
-    await new Promise((resolve) => setTimeout(resolve, delay));
+    await sleep(delay);
     response = await send();
   }
-  if (!response.ok) throw new Error(`Gemini trả lỗi ${response.status}: ${(await response.text()).slice(0, 500)}`);
+  if (response.status === 429) {
+    const body = await response.text();
+    const wait = geminiRetryMs(body);
+    if (isDailyQuota(body)) {
+      skipUntil.set(model, Date.now() + (wait ?? 3_600_000));
+      throw new GeminiError(429, body);
+    }
+    if (wait === null || deadline === undefined || Date.now() + wait + minCallMs > deadline) {
+      throw new GeminiError(429, body);
+    }
+    await sleep(wait + 500);
+    response = await send(Math.min(timeoutMs, deadline - Date.now()));
+  }
+  if (!response.ok) throw new GeminiError(response.status, await response.text());
   const data = await response.json();
   if (data?.status && data.status !== 'completed') throw new Error(`Gemini chưa xong: ${data.status}`);
   const text = geminiText(data);
@@ -89,21 +151,36 @@ export async function askGemini(
  */
 export const GEMINI_GRADING_MODELS = ['gemini-3.6-flash', GEMINI_MODEL];
 
-/** Hai model phải xong trong giờ chờ của app (150 giây), kể cả các lần đợi khi 503. */
+/** Mỗi lần gọi một model chờ tối đa chừng này. */
 const gradingModelTimeoutMs = 60_000;
 
-/** Gọi lần lượt từng model; model nào lỗi thì thử model sau, hết model thì ném lỗi cuối cùng. */
+/**
+ * Tổng giờ cho cả lượt chấm một trang (mọi model, mọi lần đợi). App chờ 150 giây và còn phải chừa
+ * 30 giây cho lời nhận xét chung, nên giữ dưới 110 giây.
+ */
+const gradingBudgetMs = 110_000;
+
+/**
+ * Gọi lần lượt từng model còn lượt; model nào lỗi thì thử model sau, hết model thì ném lỗi cuối cùng.
+ * Mọi lần gọi và lần đợi đều phải xong trong budgetMs.
+ */
 export async function askGeminiModels(
   apiKey: string,
   request: GeminiRequest,
   models = GEMINI_GRADING_MODELS,
   timeoutMs = gradingModelTimeoutMs,
   retryDelaysMs?: number[],
+  budgetMs = gradingBudgetMs,
 ): Promise<string> {
-  let lastError: unknown = new Error('Chưa có model Gemini để gọi.');
-  for (const model of models) {
+  const deadline = Date.now() + budgetMs;
+  const usable = usableModels(models);
+  let lastError: unknown = new Error('Gemini đã hết lượt miễn phí hôm nay.');
+  for (const model of usable) {
+    const left = deadline - Date.now();
+    if (left < 5_000) break;
     try {
-      return await askGemini(apiKey, { ...request, model }, timeoutMs, retryDelaysMs);
+      const callMs = Math.min(timeoutMs, left);
+      return await askGemini(apiKey, { ...request, model }, callMs, retryDelaysMs, deadline);
     } catch (error) {
       console.error(`Lỗi gọi ${model}:`, error);
       lastError = error;
