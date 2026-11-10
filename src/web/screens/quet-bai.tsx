@@ -22,6 +22,8 @@ import { DropZone } from '@/web/drop-zone';
 import { Screen } from '@/web/screen';
 import { useGradingQuota } from '@/web/use-grading-quota';
 import { useLayout } from '@/web/use-layout';
+import { canUseWebcam } from '@/web/webcam';
+import { WebcamCapture } from '@/web/webcam-capture';
 
 const gradeOptions = [1, 2, 3, 4, 5].map((g) => ({
   value: g,
@@ -47,6 +49,9 @@ export default function ScanScreen() {
   // Trang đang xem to ở khung xem trước.
   const [active, setActive] = useState(0);
   const shown = Math.min(active, Math.max(count - 1, 0));
+  // Chụp bằng webcam/camera qua trình duyệt (GIA-62). Cần HTTPS hoặc localhost.
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const webcam = canUseWebcam();
 
   useFocusEffect(
     useCallback(() => {
@@ -187,6 +192,20 @@ export default function ScanScreen() {
         </Pressable>
       )}
 
+      {count === 0 && webcam && (
+        <View style={styles.actionChips}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setCameraOpen(true)}
+            style={({ pressed }) => [styles.actionChip, pressed && styles.pressed]}>
+            <MaterialIcons name="photo-camera" size={20} color={Palette.blue} />
+            <AppText variant="labelMd" color={Palette.blue}>
+              Chụp bằng camera
+            </AppText>
+          </Pressable>
+        </View>
+      )}
+
       {count > 0 && (
         <View style={styles.actionChips}>
           <Pressable
@@ -199,6 +218,18 @@ export default function ScanScreen() {
               Chọn thêm ảnh
             </AppText>
           </Pressable>
+          {webcam && (
+            <Pressable
+              accessibilityRole="button"
+              disabled={full}
+              onPress={() => setCameraOpen(true)}
+              style={({ pressed }) => [styles.actionChip, full && styles.disabled, pressed && styles.pressed]}>
+              <MaterialIcons name="photo-camera" size={20} color={Palette.blue} />
+              <AppText variant="labelMd" color={Palette.blue}>
+                Chụp thêm
+              </AppText>
+            </Pressable>
+          )}
           <Pressable
             accessibilityRole="button"
             onPress={() => removePhoto(shown)}
@@ -228,6 +259,16 @@ export default function ScanScreen() {
         disabled={count === 0}
         onPress={handleGrade}
         loading={grading}
+      />
+      <WebcamCapture
+        visible={cameraOpen}
+        maxPages={MAX_PAGES}
+        alreadyChosen={count}
+        onClose={() => setCameraOpen(false)}
+        onDone={(assets) => {
+          setCameraOpen(false);
+          addPhotos(assets);
+        }}
       />
     </DropZone>
   );
