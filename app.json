@@ -30,7 +30,12 @@
     },
     "web": {
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "Gia sư Tiểu học",
+      "shortName": "Gia sư Tiểu học",
+      "lang": "vi",
+      "description": "Gia sư AI chấm bài tập về nhà cho bé lớp 1–5, nhận xét bằng tiếng Việt và đọc thành tiếng.",
+      "themeColor": "#F9F9FF"
     },
     "plugins": [
       "expo-router",
