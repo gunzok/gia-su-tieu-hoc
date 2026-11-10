@@ -1,4 +1,15 @@
-import { aiOrder, askGemini, askGeminiModels, geminiBody, geminiImages, geminiText } from '../../../supabase/functions/_shared/gemini';
+import {
+  aiOrder,
+  askGemini,
+  askGeminiModels,
+  geminiBody,
+  geminiImages,
+  geminiRetryMs,
+  geminiText,
+  isDailyQuota,
+  resetGeminiState,
+  usableModels,
+} from '../../../supabase/functions/_shared/gemini';
 import { conversationText } from '../../../supabase/functions/_shared/hoi-co';
 
 describe('geminiBody', () => {
@@ -132,5 +143,83 @@ describe('askGeminiModels chuyển model (GIA-19)', () => {
   it('mọi model đều lỗi thì báo lỗi để thử AI khác', async () => {
     fetchMock.mockResolvedValue(busy);
     await expect(askGeminiModels('k', request, ['a', 'b'], 1000, [])).rejects.toThrow('503');
+  });
+});
+
+describe('Gemini hết lượt miễn phí (lỗi chấm bài 10/11)', () => {
+  const ok = { ok: true, status: 200, json: async () => ({ steps: [{ type: 'model_output', content: [{ type: 'text', text: 'xong' }] }] }) };
+  const perDay = {
+    ok: false,
+    status: 429,
+    text: async () => 'Rate limit exceeded for model a (limit: 20 requests per day on Free Tier). Please retry in 2h37m19s',
+  };
+  const perMinute = (seconds: number) => ({
+    ok: false,
+    status: 429,
+    text: async () => `Rate limit exceeded (limit: 5 requests per minute on Free Tier). Please retry in ${seconds}s`,
+  });
+  const request = { system: 's', input: [], maxTokens: 10 };
+  const fetchMock = jest.fn();
+  const modelOf = (call: number) => JSON.parse(fetchMock.mock.calls[call][1].body).model;
+
+  beforeEach(() => {
+    resetGeminiState();
+    fetchMock.mockReset();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  it('đọc thời gian Google hẹn thử lại', () => {
+    expect(geminiRetryMs('Please retry in 53s')).toBe(53_000);
+    expect(geminiRetryMs('Please retry in 2h37m19s')).toBe((2 * 3600 + 37 * 60 + 19) * 1000);
+    expect(geminiRetryMs('Please retry in 1.5s')).toBe(1_500);
+    expect(geminiRetryMs('quota')).toBeNull();
+    expect(isDailyQuota('limit: 20 requests per day')).toBe(true);
+    expect(isDailyQuota('limit: 5 requests per minute')).toBe(false);
+  });
+
+  it('model hết lượt cả ngày thì lần sau bỏ qua, gọi thẳng model kế', async () => {
+    fetchMock.mockResolvedValueOnce(perDay).mockResolvedValue(ok);
+    await askGeminiModels('k', request, ['a', 'b'], 1000, []);
+    expect(usableModels(['a', 'b'])).toEqual(['b']);
+    fetchMock.mockClear();
+    await askGeminiModels('k', request, ['a', 'b'], 1000, []);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(modelOf(0)).toBe('b');
+  });
+
+  it('hết hẹn của Google thì dùng lại model đó', async () => {
+    fetchMock.mockResolvedValueOnce(perDay);
+    await expect(askGeminiModels('k', request, ['a'], 1000, [])).rejects.toThrow('429');
+    expect(usableModels(['a'])).toEqual([]);
+    expect(usableModels(['a'], Date.now() + 3 * 3_600_000)).toEqual(['a']);
+  });
+
+  it('mọi model đều hết lượt ngày thì báo lỗi ngay, không gọi Google', async () => {
+    fetchMock.mockResolvedValue(perDay);
+    await expect(askGeminiModels('k', request, ['a'], 1000, [])).rejects.toThrow('429');
+    fetchMock.mockClear();
+    await expect(askGeminiModels('k', request, ['a'], 1000, [])).rejects.toThrow('hết lượt');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('giới hạn mỗi phút: đợi đúng hẹn rồi thử lại khi còn đủ giờ', async () => {
+    jest.useFakeTimers();
+    fetchMock.mockResolvedValueOnce(perMinute(20)).mockResolvedValueOnce(ok);
+    const result = askGeminiModels('k', request, ['a'], 60_000, [], 110_000);
+    await jest.advanceTimersByTimeAsync(21_000);
+    await expect(result).resolves.toBe('xong');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('giới hạn mỗi phút mà không đủ giờ đợi thì sang model kế', async () => {
+    fetchMock.mockResolvedValueOnce(perMinute(53)).mockResolvedValueOnce(ok);
+    await expect(askGeminiModels('k', request, ['a', 'b'], 1000, [], 30_000)).resolves.toBe('xong');
+    expect([modelOf(0), modelOf(1)]).toEqual(['a', 'b']);
   });
 });
