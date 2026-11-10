@@ -7,7 +7,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { parseOAuthRedirect } from '@/lib/oauth-redirect';
 import { supabase } from '@/lib/supabase';
 
-// Đăng nhập của ba mẹ bằng Supabase Auth: email + mã 6 số, hoặc Google.
+// Đăng nhập của ba mẹ bằng Supabase Auth: email + mã số gửi qua email, hoặc Google.
 // Máy chưa đăng nhập có thể đang dùng tài khoản ẩn danh (xem ensureSession).
 
 type AuthState = {
@@ -46,7 +46,7 @@ function requireSupabase() {
   return supabase;
 }
 
-/** Gửi mã 6 số vào email của ba mẹ (tự tạo tài khoản nếu email chưa có). */
+/** Gửi mã số vào email của ba mẹ (tự tạo tài khoản nếu email chưa có). */
 export async function sendEmailCode(email: string) {
   const { error } = await requireSupabase().auth.signInWithOtp({
     email,
