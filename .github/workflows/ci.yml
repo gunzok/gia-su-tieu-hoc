@@ -59,6 +59,9 @@ jobs:
       # Bắt lỗi mà tsc/jest không thấy: import sai, plugin app.json hỏng, bundle Metro lỗi.
       - name: Export iOS + Android
         run: npx expo export --platform ios --platform android --output-dir "$RUNNER_TEMP/export"
+      # Bản web xuất tĩnh (web.output = "single") để đưa lên Cloudflare Pages.
+      - name: Export web
+        run: npm run build:web
       # Chỉ để báo thông tin (lệch phiên bản SDK, cấu hình lạ); không chặn merge vì cần mạng ngoài.
       - name: Expo Doctor (chỉ cảnh báo)
         continue-on-error: true

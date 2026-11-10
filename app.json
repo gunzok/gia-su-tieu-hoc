@@ -29,7 +29,7 @@
       "package": "vn.giasutieuhoc.app"
     },
     "web": {
-      "output": "server",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [

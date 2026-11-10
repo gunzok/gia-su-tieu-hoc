@@ -1,0 +1,17 @@
+# Cloudflare Pages: header bảo mật + cache.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Strict-Transport-Security: max-age=31536000
+  Permissions-Policy: camera=(self), microphone=(self), geolocation=()
+
+# File có mã băm trong tên: cache lâu.
+/_expo/static/*
+  Cache-Control: public, max-age=31536000, immutable
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# index.html luôn lấy bản mới để nhận phiên bản deploy mới.
+/index.html
+  Cache-Control: no-cache
