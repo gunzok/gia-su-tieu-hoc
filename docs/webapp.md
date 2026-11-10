@@ -63,4 +63,4 @@ delete from public.moi_dung_thu where email = 'ba.me@gmail.com';
 ```
 
 Build để đưa lên hosting: `npm run build:web` (xuất tĩnh, xoá địa chỉ LM Studio khỏi bản build). Kiểm tra `dist/` không chứa khoá bí mật.
-Deploy tự động lên Cloudflare Pages, quay lại bản cũ, Sentry và cảnh báo chi phí: xem `docs/trien-khai-web.md`.
+Deploy tự động lên Cloudflare (Workers, file tĩnh), quay lại bản cũ, Sentry và cảnh báo chi phí: xem `docs/trien-khai-web.md`.
