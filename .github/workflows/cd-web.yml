@@ -1,0 +1,74 @@
+# CD cho bản web: gộp vào main và CI xanh thì build tĩnh (expo export) rồi đưa lên Cloudflare Pages.
+# Cài đặt một lần và cách quay lại bản cũ: docs/trien-khai-web.md.
+name: CD - Web (Cloudflare Pages)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "supabase/**"
+      - ".claude/**"
+      - ".agent/**"
+      - "**/*.md"
+      - "LICENSE"
+      - "eas.json"
+      - "ios/**"
+  workflow_dispatch:
+
+# Bản mới thay bản cũ theo thứ tự commit; không huỷ lượt đang tải lên.
+concurrency:
+  group: cd-web
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: read # gitleaks đọc danh sách commit của PR
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Build và đưa lên Cloudflare Pages
+    needs: ci
+    # Chỉ deploy từ main, và chỉ khi đã cài đặt (có biến tên dự án Pages).
+    if: github.ref == 'refs/heads/main' && vars.CLOUDFLARE_PAGES_PROJECT != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: web-production
+      url: ${{ vars.WEB_URL }}
+    env:
+      EXPO_NO_TELEMETRY: "1"
+      # Chỉ khoá CÔNG KHAI. Không bao giờ đưa ANTHROPIC_API_KEY, service role hay khoá bí mật vào bản web.
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      EXPO_PUBLIC_SUPPORT_EMAIL: ${{ vars.EXPO_PUBLIC_SUPPORT_EMAIL }}
+      EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Kiểm tra biến bắt buộc
+        run: |
+          for v in EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::Thiếu biến $v (Settings → Variables)"; exit 1; fi
+          done
+      - name: Build web (xuất tĩnh)
+        run: npm run build:web
+      - name: Chặn khoá bí mật lọt vào bản build
+        run: |
+          if grep -rlE 'sk-ant-|service_role|ANTHROPIC_API_KEY|192\.168\.' dist; then
+            echo "::error::Bản build có chuỗi nhạy cảm, dừng deploy."; exit 1
+          fi
+      - name: Tải lên Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=main --commit-hash=${{ github.sha }}

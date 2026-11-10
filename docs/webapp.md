@@ -62,4 +62,5 @@ insert into public.moi_dung_thu (email, ghi_chu) values ('ba.me@gmail.com', 'nh�
 delete from public.moi_dung_thu where email = 'ba.me@gmail.com';
 ```
 
-Build để đưa lên hosting: `npm run build:web` (xoá địa chỉ LM Studio khỏi bản build). Kiểm tra `dist/` không chứa khoá bí mật.
+Build để đưa lên hosting: `npm run build:web` (xuất tĩnh, xoá địa chỉ LM Studio khỏi bản build). Kiểm tra `dist/` không chứa khoá bí mật.
+Deploy tự động lên Cloudflare Pages, quay lại bản cũ, Sentry và cảnh báo chi phí: xem `docs/trien-khai-web.md`.
