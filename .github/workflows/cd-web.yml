@@ -1,6 +1,7 @@
-# CD cho bản web: gộp vào main và CI xanh thì build tĩnh (expo export) rồi đưa lên Cloudflare Pages.
+# CD cho bản web: gộp vào main và CI xanh thì build tĩnh (expo export) rồi đưa lên Cloudflare Workers (file tĩnh).
+# Cấu hình ở wrangler.jsonc (tên Worker, thư mục dist/, chế độ SPA).
 # Cài đặt một lần và cách quay lại bản cũ: docs/trien-khai-web.md.
-name: CD - Web (Cloudflare Pages)
+name: CD - Web (Cloudflare)
 
 on:
   push:
@@ -31,10 +32,10 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   deploy:
-    name: Build và đưa lên Cloudflare Pages
+    name: Build và đưa lên Cloudflare
     needs: ci
-    # Chỉ deploy từ main, và chỉ khi đã cài đặt (có biến tên dự án Pages).
-    if: github.ref == 'refs/heads/main' && vars.CLOUDFLARE_PAGES_PROJECT != ''
+    # Chỉ deploy từ main, và chỉ khi đã cài đặt (có biến WEB_URL).
+    if: github.ref == 'refs/heads/main' && vars.WEB_URL != ''
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
@@ -66,9 +67,10 @@ jobs:
           if grep -rlE 'sk-ant-|service_role|ANTHROPIC_API_KEY|192\.168\.' dist; then
             echo "::error::Bản build có chuỗi nhạy cảm, dừng deploy."; exit 1
           fi
-      - name: Tải lên Cloudflare Pages
+      - name: Tải lên Cloudflare (wrangler deploy)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=main --commit-hash=${{ github.sha }}
+          wranglerVersion: "4.159.0"
+          command: deploy --message "${{ github.sha }}"

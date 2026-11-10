@@ -40,9 +40,7 @@
       "runtimeArgs": [
         "--yes",
         "wrangler@4",
-        "pages",
         "dev",
-        "dist",
         "--port",
         "8788"
       ],

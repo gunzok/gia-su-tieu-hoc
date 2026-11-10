@@ -1,4 +1,4 @@
-# Cloudflare Pages: header bảo mật + cache.
+# Header bảo mật + cache cho bản web trên Cloudflare (Workers static assets đọc file này).
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin

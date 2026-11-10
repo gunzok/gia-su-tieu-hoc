@@ -1,0 +1,2 @@
+# Không đưa lên Cloudflare (chỉ dùng cho hosting Apache/Hostinger).
+.htaccess

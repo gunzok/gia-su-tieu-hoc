@@ -1,4 +1,4 @@
-# Dự phòng cho hosting Apache/LiteSpeed (Hostinger). Cloudflare Pages dùng _redirects/_headers.
+# Dự phòng cho hosting Apache/LiteSpeed (Hostinger). Cloudflare dùng wrangler.jsonc + _headers.
 Options -Indexes
 RewriteEngine On
 RewriteCond %{HTTPS} off
