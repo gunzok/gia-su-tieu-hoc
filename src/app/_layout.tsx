@@ -20,10 +20,12 @@ import { ConsentGate } from '@/web/consent-gate';
 import { Palette } from '@/constants/theme';
 import { AuthProvider } from '@/lib/auth';
 import { HomeworkSessionProvider } from '@/lib/homework-session';
+import { initMonitoring } from '@/lib/monitoring';
 import { PremiumProvider } from '@/lib/payments';
 import { ProfileProvider, useProfile } from '@/lib/profile';
 
 SplashScreen.preventAutoHideAsync();
+initMonitoring();
 
 const theme = {
   ...DefaultTheme,

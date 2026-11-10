@@ -51,3 +51,6 @@ example
 
 # bản sao skill cho công cụ khác, để ở máy
 /.agents/
+
+# wrangler pages dev (chạy thử bản web)
+.wrangler/
