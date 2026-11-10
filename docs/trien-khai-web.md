@@ -49,8 +49,10 @@ Environment `web-production` được tạo tự động ở lượt chạy đ�
 Thay `<WEB>` bằng địa chỉ thật (vd `https://gia-su-tieu-hoc.giasutieuhoc.workers.dev`):
 
 - **Auth → URL Configuration**: Site URL = `<WEB>`; Redirect URLs thêm `<WEB>/**`.
-- **Google Cloud Console → OAuth client**: Authorized JavaScript origins thêm `<WEB>`.
-- **Auth → Attack Protection**: bật CAPTCHA (Turnstile của Cloudflare miễn phí) và giới hạn tốc độ đăng ký.
+- Kiểm lại: dashboard → Auth → URL Configuration, hoặc API quản lý `GET /v1/projects/<ref>/config/auth` (trường `site_url`, `uri_allow_list`). Giữ `giasutieuhoc://**` và `exp://**` cho app điện thoại.
+  Chưa có địa chỉ web trong Redirect URLs thì Supabase trả người dùng về Site URL: đăng nhập Google trên web sẽ hỏng.
+- **Google Cloud Console**: không cần sửa. Web dùng luồng chuyển trang qua Supabase, Google chỉ cần `https://<ref>.supabase.co/auth/v1/callback` (đã có cho app điện thoại).
+- **Auth → Attack Protection**: **chưa bật CAPTCHA**. Code app và web chưa gửi mã CAPTCHA, bật lên là đăng nhập email và tài khoản ẩn danh của app điện thoại bị từ chối hết. Muốn bật thì làm ticket riêng (thêm Turnstile vào màn Đăng nhập và `signInAnonymously`) trước. Trong lúc chạy thử, danh sách mời + giới hạn tốc độ gửi email (Auth → Rate Limits) là đủ.
 - Secrets hàm Edge (chủ dự án tự chạy):
 
 ```bash
