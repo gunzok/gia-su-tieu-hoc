@@ -54,7 +54,7 @@ Mỗi giai đoạn làm trên nhánh Git riêng, commit nhỏ; trước mỗi qu
 ## Giai đoạn 5 — Lên store · milestone 5
 - Icon, splash, ảnh chụp màn hình, mô tả tiếng Việt, phân loại độ tuổi.
 - `eas build --profile production` + `eas submit`; cấu hình `eas update` để sửa nhanh sau khi ra mắt.
-- Mở PR gộp `setup/khung-du-an` vào `main` trước khi build production.
+- Build production từ `main` (đã gộp `setup/khung-du-an` vào `main` ngày 07/11, GIA-34).
 
 ## Sau ra mắt (từ `docs/viec-con-lai.md`, ticket nhóm GIA-36)
 Theo thứ tự đề xuất: sao thưởng + chuỗi ngày → nhiệm vụ hôm nay → màn Chữa bài ("Thử lại câu này", "Hỏi Thầy/Cô") → Tiến độ tuần/tháng → đố vui → cửa hàng quà → môn Tiếng Anh → đăng nhập Apple (bắt buộc nếu iOS có Google login — **nên chuyển lên Giai đoạn 3**) → chế độ tối.

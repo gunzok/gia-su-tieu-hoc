@@ -36,9 +36,10 @@ Khi chủ dự án nói "làm GIA-xx" (hoặc "làm GSTH-xxx"):
    - DevOps: expo-deployment, secrets-management · QA: senior-qa, testing-patterns (sau GSTH-033), find-bugs, accessibility-auditor
    - Dùng chung cho mọi role (đồng bộ ngữ cảnh giữa Claude Code & Antigravity): các skill ai-memory (`ai-memory-retrieval`, `ai-memory-handoff`, `ai-memory-durable-pages`, `ai-memory-messaging`, `ai-memory-learning-maintenance`). Bắt đầu phiên đọc `memory_briefing`/`memory_handoff_accept`, kết thúc phiên gọi `memory_handoff_begin` và cập nhật trang `status/hien-trang.md`.
    Chỉ gọi skill có thư mục trong `.claude/skills/`; script đi kèm skill chỉ chạy khi chủ dự án đồng ý.
-3. Việc có sửa code: lấy code mới nhất từ GitHub, tạo nhánh `ticket/<id>` (ví dụ `ticket/GIA-47`) từ nhánh chính đang dùng (`setup/khung-du-an`), commit nhỏ, chạy `npx tsc --noEmit`, `npx expo lint` và `npm test`.
+3. Việc có sửa code: lấy code mới nhất từ GitHub, tạo nhánh từ `main` (nhánh chính duy nhất cho cả app và web, chốt ở GIA-59): `ticket/<id>` cho app/dùng chung (ví dụ `ticket/GIA-47`), `web/<id>` cho web, commit nhỏ, chạy `npx tsc --noEmit`, `npx expo lint` và `npm test`.
 4. Cập nhật Linear trong lúc làm: chuyển `In Progress` khi bắt đầu, comment tiến độ; làm xong chuyển `In Review` kèm comment tóm tắt (nhánh, commit, cách thử, việc còn lại).
-5. GitHub (repo riêng tư) là bản gốc của code. Xong việc hoặc dừng giữa chừng thì đẩy nhánh `ticket/<id>` lên GitHub và mở PR vào `setup/khung-du-an`, để không còn commit chỉ nằm ở máy. KHÔNG tự merge, không force-push: chỉ merge khi chủ dự án đã duyệt (chuyển ticket sang `Done`) hoặc nói rõ là duyệt. Chỉ gộp vào `main` khi chủ dự án yêu cầu.
+5. GitHub (repo riêng tư) là bản gốc của code. Xong việc hoặc dừng giữa chừng thì đẩy nhánh lên GitHub và mở PR vào `main`, để không còn commit chỉ nằm ở máy. KHÔNG tự merge, không force-push: chỉ merge khi CI xanh và chủ dự án đã duyệt (chuyển ticket sang `Done`) hoặc nói rõ là duyệt. Gộp vào `main` là tự deploy (OTA app, Supabase, web), nên đó cũng là bước phát hành.
+   Linear tự chuyển ticket sang `Done` khi gộp PR có mã `GIA-xx` trong tiêu đề: ticket còn việc dở thì kiểm lại và đưa về trạng thái cũ.
    Phiên Claude Code chạy trên cloud (claude.ai/code) chỉ đẩy lên đúng nhánh `claude/...` mà phiên được giao.
    Không đưa lên GitHub: khoá API, `.env.local`, bộ mẫu `mau-bai-tap/` và `mau-giong/` (đã có trong `.gitignore`).
 6. Gặp việc bị chặn (chờ tiền, chờ tài khoản, chờ quyết định): comment lý do bắt đầu bằng "**Bị chặn:**", để ticket ở trạng thái hiện tại, báo chủ dự án.
@@ -54,6 +55,6 @@ Chủ dự án chuyển ticket sang `Todo` hoặc `In Progress` rồi nhắn "ch
    - Đọc ticket và comment trên Linear trước khi làm; làm trong nhánh `ticket/<id>`; commit nhỏ; tsc + lint + test.
    - Không merge, không deploy lên máy chủ hay gửi cập nhật OTA trừ khi ticket là việc
      DevOps đã được chủ dự án cho phép trong ticket.
-   - Xong: đẩy nhánh lên GitHub, mở PR vào `setup/khung-du-an`, chuyển ticket sang `In Review`, comment tóm tắt (nhánh, PR, commit, cách thử, việc còn lại).
+   - Xong: đẩy nhánh lên GitHub, mở PR vào `main`, chuyển ticket sang `In Review`, comment tóm tắt (nhánh, PR, commit, cách thử, việc còn lại).
      Bị chặn giữa chừng: comment "**Bị chặn:** …".
 4. Khi phiên con báo xong: phiên điều phối kiểm tra nhánh/commit thật, rồi báo chủ dự án một dòng cho mỗi ticket.
