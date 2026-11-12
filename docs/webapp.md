@@ -19,7 +19,7 @@ npx expo start --web --port 8090
 
 ## Tách riêng khỏi app mobile
 
-Nhánh `web/giao-dien-desktop` (làm trong thư mục riêng `../gia-su-tieu-hoc-web`, tạo bằng `git worktree`) để phiên làm app mobile
+Code web và app nằm chung nhánh `main` (GIA-59). Việc web làm trên nhánh `web/GIA-xx` trong một `git worktree` riêng, để phiên làm app mobile
 và phiên làm web không giẫm lên nhau.
 
 - **Giao diện web nằm riêng**: thư mục `src/web/` và các file route đuôi `.web.tsx` trong `src/app/`

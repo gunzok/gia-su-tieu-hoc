@@ -43,7 +43,7 @@ Quy trình phát hành riêng của dự án (chỉ làm local, KHÔNG push GitH
 
 Làm theo thứ tự, mỗi bước xong mới sang bước sau:
 
-1. Code đã merge vào `setup/khung-du-an`, GitHub Actions "Kiểm tra" xanh (lint + tsc + test).
+1. Code đã merge vào `main`, GitHub Actions "Kiểm tra" xanh (lint + tsc + test).
 2. `npm run version:set -- x.y.z` (đổi cả `app.json` và `package.json`).
 3. `CHANGELOG.md`: đổi mục "Chưa phát hành" thành `## [x.y.z] - YYYY-MM-DD`, viết cho ba mẹ đọc
    (thấy gì khác, không ghi chi tiết kỹ thuật), giữ mã ticket. Thêm mục "Chưa phát hành" trống ở trên.
