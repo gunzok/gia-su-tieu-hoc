@@ -36,8 +36,8 @@ jobs:
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
+      - uses: actions/checkout@v7
+      - uses: supabase/setup-cli@v3
         with:
           version: 3.0.0 # ghim bản đã thử; đổi bản thì thử lại dry-run (CLI 3.x mặc định nhắm database máy cục bộ)
       - run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
@@ -69,8 +69,8 @@ jobs:
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_PROJECT_ID: ${{ vars.SUPABASE_PROJECT_ID }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
+      - uses: actions/checkout@v7
+      - uses: supabase/setup-cli@v3
         with:
           version: 3.0.0 # ghim bản đã thử; đổi bản thì thử lại dry-run (CLI 3.x mặc định nhắm database máy cục bộ)
       - name: Liên kết dự án
