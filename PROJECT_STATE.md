@@ -15,11 +15,11 @@
 ## Gate
 | Pha | Trạng thái | Ngày duyệt | Ghi chú |
 |---|---|---|---|
-| 0 Khởi tạo | Chờ duyệt | | Hồi tố: Linear team + 2 project, repo, CI/CD có gate (GIA-75) |
-| 1 Khảo sát | Chờ duyệt (hồi tố) | | Phạm vi trong `docs/ke-hoach-ra-mat.md`, `docs/viec-con-lai.md` |
-| 2 BA + stack | Chờ duyệt (hồi tố) | | Stack: [ADR-001](docs/adr/ADR-001-expo-mot-ma-nguon.md), [ADR-002](docs/adr/ADR-002-supabase.md), [ADR-003](docs/adr/ADR-003-ai-cham-bai.md). Chưa có tài liệu use case/NFR riêng |
+| 0 Khởi tạo | Đã duyệt (hồi tố) | 2026-11-13 | Hồi tố: Linear team + 2 project, repo, CI/CD có gate (GIA-75) |
+| 1 Khảo sát | Đã duyệt (hồi tố) | 2026-11-13 | Phạm vi trong `docs/ke-hoach-ra-mat.md`, `docs/viec-con-lai.md` |
+| 2 BA + stack | Đã duyệt (hồi tố) | 2026-11-13 | Stack: [ADR-001](docs/adr/ADR-001-expo-mot-ma-nguon.md), [ADR-002](docs/adr/ADR-002-supabase.md), [ADR-003](docs/adr/ADR-003-ai-cham-bai.md). Chưa có tài liệu use case/NFR riêng |
 | 3 Thiết kế | Cần rà soát | | Thiết kế nằm rải rác: `docs/supabase.md`, `docs/webapp.md`, Stitch. Chưa có threat model, chiến lược test viết thành tài liệu |
-| 4 WBS | Chờ duyệt (hồi tố) | | Milestone + ticket trên Linear (2 project) |
+| 4 WBS | Đã duyệt (hồi tố) | 2026-11-13 | Milestone + ticket trên Linear (2 project) |
 | 5 Phát triển | Đang làm | | Sprint 1 tuần (Cycles) từ 2026-11-16 |
 | 6 Nghiệm thu, bàn giao | Đang làm (web) | | Web: nhóm thử 4 người, GIA-73. App: beta gia đình (milestone 4) |
 Trạng thái: Chưa bắt đầu · Đang làm · Chờ duyệt · Đã duyệt · Cần rà soát.
@@ -68,6 +68,5 @@ Không. `make lint test build security` gọi lệnh thật; CI (`ci.yml`) chạ
 - Bật CAPTCHA khi nào (cần ticket sửa đăng nhập email và ẩn danh trước)?
 
 ## Bước tiếp theo
-1. Chủ dự án duyệt gate Pha 0-4 (hồi tố) và PR GIA-75.
-2. Sprint 1 (16-22/11), chủ dự án xác nhận đầu sprint: PR #26 bố cục web; GIA-72 Sentry + budget; GIA-58 hook dùng chung cho màn điện thoại; GIA-73 thử thật khi chấm bài mở lại (R-007).
-3. Cuối sprint: demo, velocity, retro, status update Linear.
+1. Sprint 1 (16-22/11), chủ dự án xác nhận đầu sprint: PR #26 bố cục web; GIA-72 Sentry + budget; GIA-58 hook dùng chung cho màn điện thoại; GIA-73 thử thật khi chấm bài mở lại (R-007).
+2. Cuối sprint: demo, velocity, retro, status update Linear.
