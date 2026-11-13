@@ -8,6 +8,23 @@ chủ dự án xác nhận; cuối sprint làm gate (demo, velocity tính bằng
 đăng status update lên Project Linear và cập nhật `PROJECT_STATE.md`. Không bao giờ tự duyệt gate thay chủ dự án.
 Nhãn loại việc trên Linear: `Feature`, `Bug`, `Improvement`, `Chore`, `Docs`, `Design`, `Infra`, `Security` (kèm `Mobile` / `Web` / `Dùng chung`).
 
+## Phân vai: điều phối và code (chủ dự án chốt 13/11/2026)
+
+- **Mọi việc code luôn chạy trên Orca, model Opus 5.5.** Gồm: sửa `src/`, `supabase/`, `scripts/`, `.github/workflows/`,
+  `app.json`, test, cấu hình build, và chạy thử/kiểm thử app. Mỗi ticket một worker trong worktree riêng của repo
+  `gia-su-tieu-hoc-gunzok` trên Orca:
+
+  ```bash
+  orca orchestration worker-start --agent claude --model claude-opus-5-5 \
+    --worktree new-child --name GIA-xx --task-title "GIA-xx: <tiêu đề>" --spec-file <brief.md>
+  ```
+
+- **Phiên Claude Code desktop chỉ điều phối dự án**: đọc Linear và `PROJECT_STATE.md`, đề xuất nội dung sprint, viết brief,
+  khởi động và theo dõi worker Orca, trả lời câu hỏi của worker, kiểm tra bằng chứng (PR, CI), xin chủ dự án duyệt gate và PR,
+  squash-merge khi được duyệt, cấu hình GitHub/Linear, cập nhật Linear, `PROJECT_STATE.md`, ADR và ai-memory.
+  Phiên điều phối **không tự sửa code**; chỉ sửa tài liệu quy trình (`CLAUDE.md`, `AGENTS.md`, `PROJECT_STATE.md`, `docs/adr/`).
+- Orca không chạy được (lỗi CLI, Orca chưa mở): báo chủ dự án, không tự chuyển sang tự code hay dùng công cụ khác.
+
 ## Quy trình làm ticket (Linear)
 
 Nơi quản lý việc: **Linear**, team `GIA` (Giasutieuhoc), project "Gia sư Tiểu học — Ra mắt bản đầu"
@@ -52,17 +69,24 @@ Khi chủ dự án nói "làm GIA-xx" (hoặc "làm GSTH-xxx"):
    Không đưa lên GitHub: khoá API, `.env.local`, bộ mẫu `mau-bai-tap/` và `mau-giong/` (đã có trong `.gitignore`).
 6. Gặp việc bị chặn (chờ tiền, chờ tài khoản, chờ quyết định): comment lý do bắt đầu bằng "**Bị chặn:**", để ticket ở trạng thái hiện tại, báo chủ dự án.
 
-### Lệnh "chạy": mỗi ticket một phiên song song
+### Lệnh "chạy": mỗi ticket một worker Orca
 
-Chủ dự án chuyển ticket sang `Todo` hoặc `In Progress` rồi nhắn "chạy". Phiên nhận lệnh (phiên điều phối) làm:
-1. Đọc các ticket `In Progress` của project chưa có comment "Đang chạy ở phiên …" còn hiệu lực.
+Chủ dự án chuyển ticket sang `Todo` hoặc `In Progress` (hoặc xác nhận nội dung Cycle) rồi nhắn "chạy". Phiên điều phối làm:
+1. Đọc các ticket `In Progress` của project chưa có comment "Đang chạy ở worker …" còn hiệu lực.
    Bỏ qua (và báo lại) ticket bị chặn.
-2. Mỗi ticket còn lại: mở một phiên song song (`start_session`, initiation `user_asked`, context `fresh`,
-   `use_worktree: true`, tên `GIA-xx: <tiêu đề>`), rồi comment "Đang chạy ở phiên …" vào ticket.
-3. Brief cho mỗi phiên gồm: link ticket Linear, mã ticket, role, skill của role, tiêu chí nghiệm thu, và quy tắc:
-   - Đọc ticket và comment trên Linear trước khi làm; làm trong nhánh `ticket/<id>`; commit nhỏ; tsc + lint + test.
+2. Mỗi ticket còn lại: khởi động một worker Orca (cách gọi ở mục "Phân vai"), rồi comment
+   "Đang chạy ở worker Orca `<dispatch_id>` (worktree `GIA-xx`)" vào ticket. Khởi động xong thì kết thúc lượt;
+   Orca tự đánh thức phiên điều phối khi worker hỏi (`question`) hoặc báo xong (`worker_done`). Không thăm dò, không gõ
+   vào terminal của worker: nhắn bằng `orca orchestration send`, trả lời bằng `orca orchestration reply`
+   (câu hỏi cần chủ dự án quyết thì hỏi chủ dự án trước).
+3. Brief (`--spec-file`) cho mỗi worker tự đủ, gồm: link ticket Linear, mã ticket, role, skill của role, tiêu chí
+   nghiệm thu, file/vùng được sửa, bằng chứng phải nộp, và quy tắc:
+   - Đọc `PROJECT_STATE.md`, ticket và comment trên Linear trước khi làm; nhánh `ticket/GIA-xx` hoặc `web/GIA-xx` từ `main`;
+     commit nhỏ; `make check` sạch.
    - Không merge, không deploy lên máy chủ hay gửi cập nhật OTA trừ khi ticket là việc
      DevOps đã được chủ dự án cho phép trong ticket.
-   - Xong: đẩy nhánh lên GitHub, mở PR vào `main`, chuyển ticket sang `In Review`, comment tóm tắt (nhánh, PR, commit, cách thử, việc còn lại).
-     Bị chặn giữa chừng: comment "**Bị chặn:** …".
-4. Khi phiên con báo xong: phiên điều phối kiểm tra nhánh/commit thật, rồi báo chủ dự án một dòng cho mỗi ticket.
+   - Xong: đẩy nhánh, mở PR vào `main` (tiêu đề `type(GIA-xx): …`, theo mẫu), chuyển ticket sang `In Review`, comment tóm tắt
+     (nhánh, PR, commit, cách thử, việc còn lại), rồi báo `worker_done` kèm link PR và kết quả `make check`.
+     Bị chặn giữa chừng: comment "**Bị chặn:** …" và hỏi phiên điều phối.
+4. Khi worker báo xong: phiên điều phối kiểm tra PR, CI, commit thật, rồi báo chủ dự án một dòng cho mỗi ticket;
+   chủ dự án duyệt thì phiên điều phối squash-merge và cập nhật Linear, `PROJECT_STATE.md`, ai-memory.

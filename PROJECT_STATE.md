@@ -35,6 +35,7 @@ Trạng thái: Chưa bắt đầu · Đang làm · Chờ duyệt · Đã duyệt
 | Mở web cho người thử | Danh sách mời `moi_dung_thu` + nhận diện web bằng header `Origin` + giới hạn lượt/ngày | ADR-006 |
 | Quy ước đặt tên | Nhánh `ticket/GIA-xx` (app, dùng chung), `web/GIA-xx` (web). Tiêu đề PR và commit: `type(GIA-xx): mô tả tiếng Việt` (`feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`) | ADR-005 |
 | Màu, phong cách | `src/constants/theme.ts`; web theo bộ Stitch "Web App … Đa thiết bị" | `docs/webapp.md` |
+| Phân vai | Code luôn chạy trên Orca (agent `claude`, model Opus 5.5, mỗi ticket một worktree); phiên Claude Code desktop chỉ điều phối | `CLAUDE.md` (13/11) |
 | Thang ước lượng, độ dài sprint | Điểm Fibonacci 1-2-3-5-8; sprint 1 tuần (Cycles Linear) | GIA-75 |
 
 ## Rủi ro
