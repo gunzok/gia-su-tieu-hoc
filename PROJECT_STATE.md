@@ -45,6 +45,7 @@ Trạng thái: Chưa bắt đầu · Đang làm · Chờ duyệt · Đã duyệt
 | R-003 | OTA kênh `preview` tự gửi khi gộp, không có cổng duyệt | Trung bình | Trung bình | Chỉ máy thử nhận kênh preview; kênh production đi theo tag | Chấp nhận |
 | R-004 | Chưa có Sentry DSN và cảnh báo ngân sách AI | Trung bình | Trung bình | Code sẵn; chủ dự án tạo DSN + budget alert (GIA-72) | Mở |
 | R-005 | Một người duyệt duy nhất (0 approval bắt buộc) | Trung bình | Cao | CI là cổng chính; thay đổi nhạy cảm (đăng nhập, thanh toán, dữ liệu trẻ em) mời chủ dự án review | Chấp nhận |
+| R-007 | Gemini gói miễn phí chỉ 5 lượt/phút và hay quá tải (503); chưa nạp được thanh toán. Chấm bài **tạm hoãn** từ 12/11 | Cao | Cao | Nạp thanh toán Gemini hoặc chuyển Claude rồi thử chấm thật (GIA-19, GIA-20, GIA-73) | Mở |
 | R-006 | Nhiều agent (Claude Code, Codex, Antigravity) cùng một thư mục, đổi nhánh của nhau | Trung bình | Trung bình | Mỗi phiên một worktree riêng; không đổi nhánh ở thư mục chính | Đang theo dõi |
 
 ## UI/UX
@@ -55,7 +56,7 @@ Trạng thái: Chưa bắt đầu · Đang làm · Chờ duyệt · Đã duyệt
 | App mobile: các màn chính | `src/constants/theme.ts` | Đang dùng (hồi tố) | |
 
 ## Hạn chế đã biết
-- Bật Cycles trên Linear chưa có công cụ API: bật tay trong Team settings nếu trình duyệt không làm được.
+- Linear tự chuyển ticket sang Done khi gộp PR có `GIA-xx` trong tiêu đề: ticket còn việc dở phải đưa về trạng thái cũ.
 - Repo public: tài liệu và mã nguồn ai cũng đọc được (đã "bảo lưu mọi quyền" trong `LICENSE`).
 - Một số tài liệu cũ còn nhắc nhánh `setup/khung-du-an` (đã ngừng dùng, GIA-59) và mã `GSTH-xxx` (bảng cũ).
 
@@ -68,5 +69,5 @@ Không. `make lint test build security` gọi lệnh thật; CI (`ci.yml`) chạ
 
 ## Bước tiếp theo
 1. Chủ dự án duyệt gate Pha 0-4 (hồi tố) và PR GIA-75.
-2. Sprint 1 (16-22/11): GIA-73 thử thật với nhóm thử; GIA-72 Sentry + budget; PR #26 bố cục web.
+2. Sprint 1 (16-22/11), chủ dự án xác nhận đầu sprint: PR #26 bố cục web; GIA-72 Sentry + budget; GIA-58 hook dùng chung cho màn điện thoại; GIA-73 thử thật khi chấm bài mở lại (R-007).
 3. Cuối sprint: demo, velocity, retro, status update Linear.
