@@ -1,0 +1,11 @@
+// Bản web chạy trên Cloudflare Workers (file tĩnh trong dist/, không có mã máy chủ).
+// Build: npm run build:web · Deploy: npx wrangler@4 deploy (CD - Web tự chạy khi gộp vào main).
+{
+  "name": "gia-su-tieu-hoc",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    // Đường dẫn của app (/quet-bai, /chua-bai…) không có file riêng: trả về index.html.
+    "not_found_handling": "single-page-application"
+  }
+}

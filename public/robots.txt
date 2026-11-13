@@ -1,0 +1,3 @@
+# Bản web đang chạy thử cho người được mời: không cho máy tìm kiếm thu thập.
+User-agent: *
+Disallow: /

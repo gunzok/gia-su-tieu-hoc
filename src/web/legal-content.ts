@@ -1,8 +1,9 @@
 // Nội dung Chính sách quyền riêng tư và Điều khoản cho BẢN WEB (GIA-71).
 // Dựa trên chính sách trong app (src/app/chinh-sach-rieng-tu.tsx), thêm phần riêng của web.
-// BẢN NHÁP: cần chủ dự án duyệt và nhờ người am hiểu pháp lý xem lại rồi mới đặt LEGAL_DRAFT = false.
+// Chủ dự án đã duyệt nội dung ngày 12/11/2026 (GIA-74). Sửa nội dung thì cập nhật LEGAL_UPDATED_AT;
+// cần đánh dấu lại là bản nháp thì đặt LEGAL_DRAFT = true.
 
-export const LEGAL_DRAFT = true;
+export const LEGAL_DRAFT = false;
 export const LEGAL_UPDATED_AT = '07/11/2026';
 // Email hỗ trợ: đặt EXPO_PUBLIC_SUPPORT_EMAIL khi build (GIA-72). Chưa có thì ghi hướng dẫn chung.
 export const SUPPORT_EMAIL = process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? '';

@@ -12,6 +12,7 @@ import { OnboardingHeader } from '@/components/onboarding-header';
 import { Screen } from '@/components/screen';
 import { FontFamily, Palette, Radius, Spacing } from '@/constants/theme';
 import { sendEmailCode, signInWithGoogle, useAuth, verifyEmailCode } from '@/lib/auth';
+import { cleanEmailCode, EMAIL_CODE_MAX, isValidEmailCode } from '@/lib/email-code';
 import { useProfile } from '@/lib/profile';
 import { APP_NAME } from '@/lib/teacher';
 
@@ -72,7 +73,7 @@ export default function ParentLoginScreen() {
 
   const confirmCode = () =>
     guard(async () => {
-      if (!/^\d{6}$/.test(code)) throw new Error('Mã gồm 6 chữ số trong email ba mẹ vừa nhận.');
+      if (!isValidEmailCode(code)) throw new Error('Ba mẹ nhập đủ các chữ số trong email vừa nhận nhé.');
       await verifyEmailCode(email, code);
       await afterSignIn();
     }, 'code');
@@ -126,17 +127,17 @@ export default function ParentLoginScreen() {
         {codeSent ? (
           <>
             <AppText variant="bodySm" color={Palette.inkSoft}>
-              Mã 6 số đã được gửi tới {email}. Ba mẹ mở hộp thư (cả mục Spam) rồi nhập mã vào đây.
+              Mã số đã được gửi tới {email}. Ba mẹ mở hộp thư (cả mục Spam) rồi nhập mã vào đây.
             </AppText>
             <TextInput
               value={code}
-              onChangeText={(text) => setCode(text.replace(/\D/g, '').slice(0, 6))}
-              placeholder="••••••"
+              onChangeText={(text) => setCode(cleanEmailCode(text))}
+              placeholder="••••••••"
               placeholderTextColor={Palette.inkSoft}
               keyboardType="number-pad"
               textContentType="oneTimeCode"
               autoComplete="one-time-code"
-              maxLength={6}
+              maxLength={EMAIL_CODE_MAX}
               style={[styles.input, styles.codeInput]}
             />
             <BigButton label="Xác nhận" icon="check" onPress={confirmCode} loading={busy === 'code'} />
