@@ -12,7 +12,7 @@ Nhánh ticket ──PR──▶ main ──▶ phát hành
 
 | Workflow | Khi nào chạy | Làm gì |
 |---|---|---|
-| `ci.yml` | Mọi PR vào `main`, mọi lần đẩy lên `main` | tsc, lint, Jest, `expo export` thử, `deno check` hàm Supabase, quét khoá lộ (gitleaks), `npm audit` |
+| `ci.yml` | Mọi PR vào `main`, mọi lần đẩy lên `main` (`kiem-tra.yml` cũ đã bỏ vì trùng, GIA-75) | tsc, lint, Jest, `expo export` thử, `deno check` hàm Supabase, quét khoá lộ (gitleaks), `npm audit` |
 | `cd-app.yml` | Đẩy lên `main` (trừ khi chỉ đổi docs/supabase/.github) | Chạy lại CI, xanh thì `eas update --branch preview` |
 | `cd-supabase.yml` | Đẩy lên `main` có đổi `supabase/**` | CI xanh → `db push --dry-run` (kế hoạch hiện trong Summary của lượt chạy) → chờ duyệt → `db push` → `functions deploy`. Chỉ chạy từ `main` |
 | `eas-build.yml` | Chạy tay, hoặc gắn tag `vX.Y.Z` | Kiểm tra tag khớp `app.json`, `eas build` (chạy trên máy chủ Expo), tạo GitHub Release |
@@ -51,9 +51,23 @@ Thiếu bước này thì CI chỉ báo chứ không chặn được ai gộp m�
 
 ## Quy trình hằng ngày
 
-1. Làm trên nhánh `ticket/GSTH-xxx`, đẩy lên GitHub, mở PR vào `main` (mẫu PR có sẵn checklist).
-2. CI xanh + duyệt → gộp. `CD - App` tự gửi bản OTA lên nhánh `preview`; điện thoại tắt hẳn app rồi mở lại 1-2 lần để nhận.
-3. Có đổi `supabase/`: sau khi gộp, vào tab Actions, mở **Summary** của lượt chạy để đọc danh sách migration sắp đẩy, rồi bấm **Review deployments** để duyệt.
+Chi tiết quyết định: [ADR-005](adr/ADR-005-nhanh-main-squash.md). Trạng thái dự án, gate, rủi ro: `PROJECT_STATE.md`.
+
+1. Nhánh từ `main`: `ticket/GIA-xx-ten-ngan` (app, dùng chung) hoặc `web/GIA-xx-ten-ngan` (web). Commit nhỏ.
+2. `make check` sạch (lint, typecheck, test), đẩy nhánh, mở PR vào `main` theo mẫu.
+   Tiêu đề PR: `type(GIA-xx): mô tả tiếng Việt` (`feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`, `perf`).
+3. Ruleset `bao-ve-main` chặn gộp cho tới khi: check **CI đạt** xanh, nhánh cập nhật theo `main`, mọi comment đã giải quyết.
+   Gộp **chỉ bằng Squash**: tiêu đề PR thành commit trên `main`; nhánh tự xoá sau khi gộp.
+4. Sau khi gộp:
+   - `CD - App` tự gửi OTA kênh `preview` (chỉ máy thử nhận); điện thoại tắt hẳn app rồi mở lại 1-2 lần để nhận.
+   - `CD - Web (Cloudflare)` build xong thì **chờ duyệt** environment `web-production`: Actions → lượt chạy → **Review deployments** → Approve.
+   - Có đổi `supabase/`: đọc **Summary** (danh sách migration sắp đẩy) rồi duyệt environment `Production` như trên.
+
+| Environment | Dùng cho | Cổng duyệt |
+|---|---|---|
+| `preview` | OTA kênh preview, build thử | Không |
+| `web-production` | Deploy web lên Cloudflare | Chủ dự án duyệt, chỉ từ `main` |
+| `Production` | Migration + hàm Supabase, build theo tag | Chủ dự án duyệt |
 
 ## Khi nào KHÔNG đi OTA mà phải build lại
 
