@@ -1,5 +1,13 @@
 @AGENTS.md
 
+## Quy trình dự án (có gate, theo ISO/IEC/IEEE 12207)
+
+Áp từ 13/11/2026 (GIA-75). Đầu mỗi phiên đọc `PROJECT_STATE.md` (pha hiện tại, gate, quyết định, rủi ro, bước tiếp theo).
+Quyết định kỹ thuật lớn ghi ADR trong `docs/adr/`. Sprint 1 tuần (Cycles Linear): đầu sprint đề xuất nội dung Cycle để
+chủ dự án xác nhận; cuối sprint làm gate (demo, velocity tính bằng code, retro giữ/bỏ/thử, việc dở chuyển sprint sau),
+đăng status update lên Project Linear và cập nhật `PROJECT_STATE.md`. Không bao giờ tự duyệt gate thay chủ dự án.
+Nhãn loại việc trên Linear: `Feature`, `Bug`, `Improvement`, `Chore`, `Docs`, `Design`, `Infra`, `Security` (kèm `Mobile` / `Web` / `Dùng chung`).
+
 ## Quy trình làm ticket (Linear)
 
 Nơi quản lý việc: **Linear**, team `GIA` (Giasutieuhoc), project "Gia sư Tiểu học — Ra mắt bản đầu"
@@ -36,9 +44,9 @@ Khi chủ dự án nói "làm GIA-xx" (hoặc "làm GSTH-xxx"):
    - DevOps: expo-deployment, secrets-management · QA: senior-qa, testing-patterns (sau GSTH-033), find-bugs, accessibility-auditor
    - Dùng chung cho mọi role (đồng bộ ngữ cảnh giữa Claude Code & Antigravity): các skill ai-memory (`ai-memory-retrieval`, `ai-memory-handoff`, `ai-memory-durable-pages`, `ai-memory-messaging`, `ai-memory-learning-maintenance`). Bắt đầu phiên đọc `memory_briefing`/`memory_handoff_accept`, kết thúc phiên gọi `memory_handoff_begin` và cập nhật trang `status/hien-trang.md`.
    Chỉ gọi skill có thư mục trong `.claude/skills/`; script đi kèm skill chỉ chạy khi chủ dự án đồng ý.
-3. Việc có sửa code: lấy code mới nhất từ GitHub, tạo nhánh từ `main` (nhánh chính duy nhất cho cả app và web, chốt ở GIA-59): `ticket/<id>` cho app/dùng chung (ví dụ `ticket/GIA-47`), `web/<id>` cho web, commit nhỏ, chạy `npx tsc --noEmit`, `npx expo lint` và `npm test`.
+3. Việc có sửa code: lấy code mới nhất từ GitHub, tạo nhánh từ `main` (nhánh chính duy nhất cho cả app và web, chốt ở GIA-59) **trong worktree riêng** (không đổi nhánh ở thư mục chính, nơi agent khác có thể đang làm): `ticket/<id>` cho app/dùng chung (ví dụ `ticket/GIA-47`), `web/<id>` cho web, commit nhỏ, chạy `make check` (= `npx expo lint`, `npx tsc --noEmit`, `npm test`).
 4. Cập nhật Linear trong lúc làm: chuyển `In Progress` khi bắt đầu, comment tiến độ; làm xong chuyển `In Review` kèm comment tóm tắt (nhánh, commit, cách thử, việc còn lại).
-5. GitHub (repo riêng tư) là bản gốc của code. Xong việc hoặc dừng giữa chừng thì đẩy nhánh lên GitHub và mở PR vào `main`, để không còn commit chỉ nằm ở máy. KHÔNG tự merge, không force-push: chỉ merge khi CI xanh và chủ dự án đã duyệt (chuyển ticket sang `Done`) hoặc nói rõ là duyệt. Gộp vào `main` là tự deploy (OTA app, Supabase, web), nên đó cũng là bước phát hành.
+5. GitHub (repo public) là bản gốc của code. Xong việc hoặc dừng giữa chừng thì đẩy nhánh lên GitHub và mở PR vào `main` theo mẫu, tiêu đề `type(GIA-xx): mô tả tiếng Việt` (Conventional Commits, ADR-005), để không còn commit chỉ nằm ở máy. KHÔNG tự merge, không force-push: chỉ merge (chỉ **squash**) khi CI xanh và chủ dự án đã duyệt (chuyển ticket sang `Done`) hoặc nói rõ là duyệt. Gộp vào `main` là phát hành: OTA kênh preview tự gửi; web và Supabase chờ chủ dự án duyệt environment (`web-production`, `Production`).
    Linear tự chuyển ticket sang `Done` khi gộp PR có mã `GIA-xx` trong tiêu đề: ticket còn việc dở thì kiểm lại và đưa về trạng thái cũ.
    Phiên Claude Code chạy trên cloud (claude.ai/code) chỉ đẩy lên đúng nhánh `claude/...` mà phiên được giao.
    Không đưa lên GitHub: khoá API, `.env.local`, bộ mẫu `mau-bai-tap/` và `mau-giong/` (đã có trong `.gitignore`).

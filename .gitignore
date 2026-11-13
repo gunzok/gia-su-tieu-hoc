@@ -54,3 +54,6 @@ example
 
 # wrangler pages dev (chạy thử bản web)
 .wrangler/
+
+# make build (thử đóng gói iOS/Android)
+/build/
