@@ -44,7 +44,8 @@ export const privacySections: LegalSection[] = [
     title: 'Chia sẻ với ai',
     body: [
       'Ảnh bài làm được gửi tới AI để chấm, chỉ cho việc chấm bài đó. Người dùng bản web hiện được chấm bằng Gemini (Google).',
-      'Trong giai đoạn dùng thử, chúng tôi dùng gói miễn phí của Gemini: theo điều khoản của Google, nội dung gửi lên có thể được Google dùng để cải thiện sản phẩm. Ba mẹ nên che tên, địa chỉ hoặc ảnh người trên bài trước khi tải lên.',
+      'Tài khoản gói miễn phí được chấm bằng gói miễn phí của Gemini: theo điều khoản của Google, nội dung gửi lên có thể được Google dùng để cải thiện sản phẩm và có thể được người của Google xem. Ba mẹ nên che tên, địa chỉ hoặc ảnh người trên bài trước khi tải lên.',
+      'Tài khoản gói Plus được chấm bằng gói trả phí của Gemini: theo điều khoản của Google, nội dung gửi lên không được dùng để cải thiện sản phẩm, Google chỉ lưu nhật ký trong thời gian giới hạn để phát hiện vi phạm chính sách sử dụng.',
       'Khi bé bấm "Hỏi cô", câu bé hỏi và nội dung câu đó trong bài được gửi tới AI để trả lời.',
       'Lời nhận xét (chỉ phần chữ, không có ảnh) được gửi tới dịch vụ giọng đọc (Google Cloud hoặc ElevenLabs) để đọc thành tiếng.',
       'Dữ liệu được lưu trên máy chủ Supabase, trong kho riêng: chỉ tài khoản của ba mẹ xem được.',
