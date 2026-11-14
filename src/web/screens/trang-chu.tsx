@@ -302,6 +302,26 @@ export default function HomeScreen() {
     </Pressable>
   );
 
+  // Liên kết tới trang tải app Android (GIA-79).
+  const appRow = (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel="Tải app Gia sư Tiểu học cho điện thoại Android"
+      onPress={() => router.navigate('/tai-app')}
+      style={({ pressed }) => [styles.parentRow, pressed && styles.pressed]}>
+      <View style={styles.parentIcon}>
+        <MaterialIcons name="android" size={24} color={Palette.blue} />
+      </View>
+      <View style={styles.flex}>
+        <AppText variant="labelLg">Tải app Android</AppText>
+        <AppText variant="bodySm" color={Palette.inkSoft}>
+          Cài app lên điện thoại để bé chụp bài tiện hơn
+        </AppText>
+      </View>
+      <MaterialIcons name="chevron-right" size={28} color={Palette.inkSoft} />
+    </Pressable>
+  );
+
   return (
     <Screen>
       {heroCard}
@@ -318,6 +338,7 @@ export default function HomeScreen() {
             {latestCard}
             {streakCard}
             {parentRow}
+            {appRow}
           </>
         }
       />
