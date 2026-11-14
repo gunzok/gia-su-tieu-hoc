@@ -51,10 +51,15 @@ Máy chủ nhận biết bản web qua header `Origin` (trình duyệt tự gắ
 |---|---|
 | `ALLOWED_ORIGINS` | Địa chỉ web được gọi hàm, cách nhau dấu phẩy (vd `https://gia-su.example.com`). Chưa đặt = cho mọi nguồn. **Phải đặt.** |
 | `WEB_CHI_NGUOI_DUOC_MOI` | `false` hoặc không đặt = ai cũng dùng được web (hiện tại). `true` = chỉ người đăng nhập thật có email trong bảng `moi_dung_thu` (bật lại khi bị lạm dụng). |
-| `GIOI_HAN_CHUNG_NGAY` | Tổng lượt chấm toàn hệ thống mỗi ngày mà bản web còn nhận (mặc định 300). Cầu dao chống chi phí vượt tầm. |
+| `GIOI_HAN_CHUNG_NGAY` | Tổng lượt chấm toàn hệ thống mỗi ngày mà bản web còn nhận (mặc định 300). Không vượt `GIOI_HAN_TONG_NGAY`. |
+| `GIOI_HAN_TONG_NGAY` | Cầu dao tổng lượt chấm mỗi ngày cho **mọi** yêu cầu, web lẫn app (mặc định 600, GIA-84). |
+| `GIOI_HAN_HOI_CO_NGAY` | Cầu dao tổng lượt "Hỏi cô" mỗi ngày cho mọi yêu cầu (mặc định 1000, GIA-84). |
 
-Giới hạn mỗi ngày (giờ Việt Nam): chấm bài 3 lượt (Miễn phí) / 50 (Plus); Hỏi cô 10 / 100; giọng đọc mới 30 / 200.
-Người dùng web chưa có Plus chỉ dùng AI miễn phí (Gemini), không bao giờ rơi sang Claude.
+Giới hạn mỗi ngày (giờ Việt Nam): chấm bài 3 lượt (Miễn phí) / 50 (Plus); Hỏi cô 10 / 100 (web và app, từ GIA-84);
+giọng đọc mới 30 / 200 (chỉ web; giọng đọc đã có trần ký tự mỗi tháng cho mọi yêu cầu).
+Người chưa có Plus (web **và app**) chỉ dùng AI miễn phí (Gemini), không bao giờ rơi sang Claude; Gemini lỗi thì báo bận
+(mã 503, `code: 'ban'`). Luật chi phí không dựa vào header `Origin`, vì script tự viết bỏ `Origin` được (GIA-84).
+Cầu dao không đếm được tổng lượt (lỗi máy chủ) thì tạm nghỉ cho an toàn.
 CAPTCHA Supabase **chưa bật** (bật lên là app điện thoại gãy, xem ADR-007); Supabase Auth giới hạn 30 lần đăng nhập ẩn danh/giờ/IP.
 
 Muốn quay về chế độ chỉ người được mời: đặt `WEB_CHI_NGUOI_DUOC_MOI=true`, rồi thêm/bớt người (Supabase → SQL Editor, email chữ thường):
