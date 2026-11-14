@@ -3,7 +3,7 @@
 // Tài liệu: https://ai.google.dev/gemini-api/docs/text-generation và .../structured-output
 //
 // Gói miễn phí: Google có thể dùng nội dung gửi lên để cải thiện sản phẩm, nên chỉ dùng khi thử
-// nội bộ (GSTH-039). Khi có người dùng thật thì dùng gói trả phí hoặc Claude.
+// nội bộ (GSTH-039). Gói Plus dùng khoá trả phí (GIA-77), chọn khoá ở gemini-key.ts.
 
 export const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 export const GEMINI_MODEL = 'gemini-3.8-flash';
@@ -18,6 +18,11 @@ export type GeminiRequest = {
   maxTokens: number;
   thinking?: 'minimal' | 'low' | 'medium' | 'high';
   model?: string;
+  /**
+   * Khoá trả phí (gói Plus, GIA-77): không có hạn mức theo ngày như gói miễn phí, nên không nhớ
+   * "hết lượt ngày" và không né model. Cờ này không gửi lên Google.
+   */
+  paid?: boolean;
 };
 
 /** Thân yêu cầu gửi Gemini. store: false để Google không lưu cuộc trò chuyện trên máy chủ. */
@@ -128,7 +133,8 @@ export async function askGemini(
     const body = await response.text();
     const wait = geminiRetryMs(body);
     if (isDailyQuota(body)) {
-      skipUntil.set(model, Date.now() + (wait ?? 3_600_000));
+      // Chỉ khoá miễn phí mới bị né cả ngày; khoá trả phí có bảng nhớ riêng (không nhớ gì).
+      if (!request.paid) skipUntil.set(model, Date.now() + (wait ?? 3_600_000));
       throw new GeminiError(429, body);
     }
     if (wait === null || deadline === undefined || Date.now() + wait + minCallMs > deadline) {
@@ -173,7 +179,8 @@ export async function askGeminiModels(
   budgetMs = gradingBudgetMs,
 ): Promise<string> {
   const deadline = Date.now() + budgetMs;
-  const usable = usableModels(models);
+  // Khoá trả phí dùng mọi model; khoá miễn phí bỏ các model đã hết lượt ngày.
+  const usable = request.paid ? models : usableModels(models);
   let lastError: unknown = new Error('Gemini đã hết lượt miễn phí hôm nay.');
   for (const model of usable) {
     const left = deadline - Date.now();

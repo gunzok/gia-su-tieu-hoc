@@ -1,6 +1,10 @@
 # Build app bằng EAS (chạy trên máy chủ Expo) và phát hành khi gắn tag vX.Y.Z.
 #  - Chạy tay (Actions > EAS Build > Run workflow): chọn profile và nền tảng.
-#  - Gắn tag v0.5.0: kiểm tra khớp version trong app.json, build Android production, tạo GitHub Release.
+#  - Gắn tag v0.5.0: kiểm tra khớp version trong app.json, chờ chủ dự án duyệt environment `production`,
+#    build APK Android (profile `apk`, kênh OTA `production`), tải file APK về rồi đính vào GitHub Release
+#    với tên cố định `GiaSuTieuHoc.apk`. Link luôn trỏ bản mới nhất (trang "Tải app Android" trên web dùng link này):
+#    https://github.com/gunzok/gia-su-tieu-hoc/releases/latest/download/GiaSuTieuHoc.apk
+# Profile `production` (AAB) để dành cho Google Play, chạy tay khi có tài khoản store (GIA-79).
 # iOS thật cần tài khoản Apple Developer (chưa có): hiện chỉ build được iOS cho máy giả lập (profile preview-simulator).
 name: EAS Build
 
@@ -8,12 +12,12 @@ on:
   workflow_dispatch:
     inputs:
       profile:
-        description: "Profile trong eas.json"
+        description: "Profile trong eas.json (apk = bản phát hành cài trực tiếp; production = AAB cho store)"
         type: choice
         default: preview
-        options: [preview, development, production, preview-simulator]
+        options: [preview, development, apk, production, preview-simulator]
       platform:
-        description: "Nền tảng (preview-simulator chỉ dùng được với ios)"
+        description: "Nền tảng (preview-simulator chỉ dùng được với ios; apk chỉ dùng được với android)"
         type: choice
         default: android
         options: [android, ios]
@@ -28,6 +32,9 @@ permissions:
   contents: read
   pull-requests: read # gitleaks đọc danh sách commit của PR
 
+env:
+  APK_NAME: GiaSuTieuHoc.apk
+
 jobs:
   ci:
     name: CI
@@ -39,7 +46,10 @@ jobs:
     runs-on: ubuntu-latest
     # Chờ build trên hàng đợi EAS khi gắn tag có thể lâu.
     timeout-minutes: 90
-    environment: ${{ github.ref_type == 'tag' && 'production' || 'preview' }}
+    # Bản phát hành (tag) và các profile kênh production chạy tay đều phải qua cổng duyệt.
+    environment: ${{ (github.ref_type == 'tag' || inputs.profile == 'apk' || inputs.profile == 'production') && 'production' || 'preview' }}
+    outputs:
+      apk_url: ${{ steps.build.outputs.apk_url }}
     steps:
       - uses: actions/checkout@v7
       - name: Tag phải khớp version trong app.json
@@ -60,30 +70,69 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
       - name: eas build
+        id: build
         env:
-          PROFILE: ${{ github.ref_type == 'tag' && 'production' || inputs.profile }}
+          PROFILE: ${{ github.ref_type == 'tag' && 'apk' || inputs.profile }}
           PLATFORM: ${{ github.ref_type == 'tag' && 'android' || inputs.platform }}
           IS_TAG: ${{ github.ref_type == 'tag' }}
         run: |
           VERSION=$(node -p "require('./app.json').expo.version")
-          # Chạy tay: --no-wait, máy chủ Expo tự build, workflow không đứng chờ (link bản build có trong log và trên expo.dev).
-          # Gắn tag: phải CHỜ build xong, để Release chỉ được tạo khi build production thành công.
-          WAIT_FLAG="--no-wait"
-          if [ "$IS_TAG" = "true" ]; then WAIT_FLAG=""; fi
-          eas build --profile "$PROFILE" --platform "$PLATFORM" --non-interactive $WAIT_FLAG \
-            --message "GiaSuTieuHoc_${VERSION} (${PROFILE}, ${GITHUB_SHA::7})"
+          MESSAGE="GiaSuTieuHoc_${VERSION} (${PROFILE}, ${GITHUB_SHA::7})"
+          if [ "$IS_TAG" != "true" ]; then
+            # Chạy tay: --no-wait, máy chủ Expo tự build, workflow không đứng chờ (link bản build có trong log và trên expo.dev).
+            eas build --profile "$PROFILE" --platform "$PLATFORM" --non-interactive --no-wait --message "$MESSAGE"
+            exit 0
+          fi
+          # Gắn tag: CHỜ build xong (build lỗi thì dừng, không có Release). --json in kết quả ra stdout, log ra stderr.
+          eas build --profile "$PROFILE" --platform "$PLATFORM" --non-interactive --wait --json \
+            --message "$MESSAGE" > eas-build.json
+          APK_URL=$(node -e '
+            const builds = JSON.parse(require("fs").readFileSync("eas-build.json", "utf8"));
+            const build = Array.isArray(builds) ? builds[0] : builds;
+            const a = (build && build.artifacts) || {};
+            process.stdout.write(a.applicationArchiveUrl || a.buildUrl || "");
+          ')
+          case "$APK_URL" in
+            https://*) ;;
+            *) echo "::error::Không đọc được link file APK từ kết quả eas build."; cat eas-build.json; exit 1 ;;
+          esac
+          echo "Link APK trên EAS: $APK_URL"
+          echo "apk_url=$APK_URL" >> "$GITHUB_OUTPUT"
 
   release:
-    name: GitHub Release
+    name: GitHub Release (đính APK)
     if: github.ref_type == 'tag'
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v7
-      - name: Tạo release kèm ghi chú tự động
+      - name: Tải file APK từ EAS
+        env:
+          APK_URL: ${{ needs.build.outputs.apk_url }}
+        run: |
+          curl -fsSL --retry 3 -o "$APK_NAME" "$APK_URL"
+          # File APK là tệp zip: phải bắt đầu bằng "PK" và không quá nhỏ.
+          SIZE=$(stat -c %s "$APK_NAME")
+          MAGIC=$(head -c 2 "$APK_NAME")
+          if [ "$MAGIC" != "PK" ] || [ "$SIZE" -lt 1000000 ]; then
+            echo "::error::File tải về không phải APK hợp lệ (${SIZE} byte)."
+            exit 1
+          fi
+          sha256sum "$APK_NAME" | tee "$APK_NAME.sha256"
+      - name: Tạo release kèm file APK
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$GITHUB_REF_NAME" --generate-notes --title "$GITHUB_REF_NAME"
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          SHA=$(cut -d' ' -f1 "$APK_NAME.sha256")
+          cat > release-notes.md <<EOF
+          **Gia sư Tiểu học ${VERSION} cho Android.** Ba mẹ tải file \`${APK_NAME}\` ở mục Assets bên dưới rồi cài
+          theo hướng dẫn ở trang "Tải app Android" trên web. Những gì mới: xem \`CHANGELOG.md\`.
+
+          SHA-256 của file APK: \`${SHA}\`
+          EOF
+          gh release create "$GITHUB_REF_NAME" "$APK_NAME" "$APK_NAME.sha256" \
+            --title "Gia sư Tiểu học ${VERSION}" --notes-file release-notes.md --generate-notes --latest

@@ -7,10 +7,14 @@ Mỗi bản có một tag Git `vX.Y.Z`. Mã ticket: `GSTH-xxx` (bảng cũ) ho�
 
 ## [Chưa phát hành]
 
-Dự kiến là bản 0.5.0. Cần cài bản build mới mới có trình quét trang và đọc chữ; máy đang cài 0.4.0 nhận
-cập nhật OTA vẫn chạy, chỉ không có hai phần đó. Cách thử từng mục: [docs/kiem-thu-0.5.0.md](docs/kiem-thu-0.5.0.md).
+## [0.5.0] - 2026-11-14
+
+Bản build mới (có thư viện mã gốc): máy đang cài 0.4.0 phải cài file APK 0.5.0 mới có trình quét trang và đọc chữ.
+Từ bản này app Android phát hành bằng **file APK cài trực tiếp**, tải ở trang "Tải app Android" trên web
+(chưa lên Google Play). Cách thử từng mục: [docs/kiem-thu-0.5.0.md](docs/kiem-thu-0.5.0.md).
 
 ### Thêm
+- Trang "Tải app Android" trên web: nút tải bản mới nhất và hướng dẫn ba mẹ cài từng bước (GIA-79).
 - Nút Chụp mở trình quét trang: tự tìm mép giấy, cắt phần thừa, làm thẳng trang (GIA-47).
 - Ảnh mờ, tối hoặc lóa đèn được nhắc chụp lại ngay, không mất lượt. Ba mẹ vẫn chọn "Vẫn dùng ảnh này" được (GIA-48).
 - Môn Toán: máy đọc đề và tự tính đáp án các phép tính một dòng, gửi kèm cho cô để cô đỡ tính nhầm (GIA-53).
@@ -37,6 +41,8 @@ cập nhật OTA vẫn chạy, chỉ không có hai phần đó. Cách thử t�
 - Việc chuyển từ bảng Kanban sang Linear; `package.json` dùng cùng version với `app.json` (GIA-35).
 - GitHub Actions chạy lint, typecheck và test mỗi lần đẩy code (GIA-29).
 - Có thêm 2 thư viện mã gốc (`react-native-document-scanner-plugin`, `expo-text-extractor`) và `jpeg-js`.
+- Phát hành Android bằng APK: profile `apk` (kênh `production`), gắn tag `vX.Y.Z` thì build APK và đính vào
+  GitHub Release; cập nhật OTA kênh `production` phải được chủ dự án duyệt (GIA-79).
 
 ## [0.4.0] - 2026-10-20
 
