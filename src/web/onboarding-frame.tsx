@@ -1,5 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
+import Head from 'expo-router/head';
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -20,17 +21,29 @@ type Props = {
   onSkip?: () => void;
   /** Nút phụ bên phải thanh trên, ví dụ "Đăng nhập" ở màn Khởi động. */
   action?: { label: string; onPress: () => void };
+  /**
+   * Tiêu đề thẻ trình duyệt và mô tả khi chia sẻ link (bản web mở công khai, GIA-78). Thẻ `description` cho máy tìm kiếm
+   * đã có sẵn trong index.html (lấy từ app.json) nên ở đây chỉ thêm `og:*`, tránh hai thẻ description.
+   */
+  head?: { title: string; description?: string };
 };
 
 // Khung các màn trước khi vào app trên web (Khởi động, Đăng nhập Ba Mẹ, Hồ sơ của bé), theo Stitch
 // "Web App v2": thanh trên có logo, nội dung nhiều cột giới hạn bề ngang, chân trang có link pháp lý.
 // Chưa có hồ sơ bé nên không có thanh bên như các màn trong app (web/shell.tsx).
-export function OnboardingFrame({ children, title, back, onSkip, action }: Props) {
+export function OnboardingFrame({ children, title, back, onSkip, action, head }: Props) {
   const { narrow } = useLayout();
   const canGoBack = back && router.canGoBack();
 
   return (
     <View style={styles.page}>
+      {head && (
+        <Head>
+          <title>{head.title}</title>
+          <meta property="og:title" content={head.title} />
+          {head.description && <meta property="og:description" content={head.description} />}
+        </Head>
+      )}
       <View style={[styles.topBar, narrow && styles.topBarNarrow]}>
         <View style={styles.brand}>
           <View style={styles.logo}>
@@ -65,6 +78,7 @@ export function OnboardingFrame({ children, title, back, onSkip, action }: Props
           {onSkip && (
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="Bỏ qua"
               onPress={onSkip}
               style={({ pressed }) => [styles.pill, pressed && styles.pressed]}>
               <AppText variant="labelMd">Bỏ qua</AppText>
@@ -153,8 +167,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Vùng bấm tối thiểu 44 x 44 (GIA-78, đo bằng Playwright trên /dang-nhap).
   pill: {
     minHeight: 44,
+    minWidth: 44,
     paddingHorizontal: Spacing.three,
     borderRadius: 22,
     borderWidth: 1,

@@ -233,7 +233,11 @@ export default function WebProfileScreen() {
   );
 
   return (
-    <OnboardingFrame title={form.editing ? 'Sửa hồ sơ của bé' : 'Hồ sơ của bé'} back onSkip={form.skip}>
+    <OnboardingFrame
+      title={form.editing ? 'Sửa hồ sơ của bé' : 'Hồ sơ của bé'}
+      head={{ title: `Hồ sơ của bé · ${APP_NAME}` }}
+      back
+      onSkip={form.skip}>
       {/* Máy tính: cột xem trước 4 phần (trái, dính khi cuộn), các bước chọn 8 phần. Hẹp hơn: xếp dọc. */}
       {wide ? (
         <View style={styles.row}>
