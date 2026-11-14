@@ -6,6 +6,8 @@ name: CD - Web (Cloudflare)
 on:
   push:
     branches: [main]
+    # Chỉ ghi file KHÔNG vào bản build web. Thêm file vào đây thì kiểm lại bảng trigger ở docs/ci-cd.md.
+    # Đổi riêng workflow (.github/**) không tự deploy: cần thì Actions → CD - Web (Cloudflare) → Run workflow.
     paths-ignore:
       - "docs/**"
       - "supabase/**"
@@ -15,6 +17,9 @@ on:
       - "LICENSE"
       - "eas.json"
       - "ios/**"
+      - ".github/**"
+      - "Makefile"
+      - ".gitignore"
   workflow_dispatch:
 
 # Bản mới thay bản cũ theo thứ tự commit; không huỷ lượt đang tải lên.
