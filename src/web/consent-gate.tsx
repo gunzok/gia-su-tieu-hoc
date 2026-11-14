@@ -11,8 +11,12 @@ import { supabase } from '@/lib/supabase';
 // Phiên bản điều khoản; đổi số này khi sửa điều khoản để hỏi lại ba mẹ.
 export const CONSENT_VERSION = 'v1';
 const STORAGE_KEY = `gsth.consent.${CONSENT_VERSION}`;
-// Hai trang để ba mẹ đọc, không bị hộp xác nhận che.
-const READING_PATHS = ['/chinh-sach', '/dieu-khoan'];
+// Trang để ba mẹ đọc trước khi đồng ý, không bị hộp xác nhận che (GIA-82: thêm trang tải app gửi cho phụ huynh).
+const READING_PATHS = ['/chinh-sach', '/dieu-khoan', '/tai-app'];
+
+export function isReadingPath(pathname: string) {
+  return READING_PATHS.includes(pathname);
+}
 
 function readConsent() {
   try {
@@ -51,7 +55,7 @@ export function ConsentGate() {
     });
   }, [agreed, signedIn]);
 
-  if (Platform.OS !== 'web' || agreed || READING_PATHS.includes(pathname)) return null;
+  if (Platform.OS !== 'web' || agreed || isReadingPath(pathname)) return null;
 
   function accept() {
     try {
