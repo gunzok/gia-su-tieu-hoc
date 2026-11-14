@@ -20,27 +20,27 @@ const installSteps: Step[] = [
   {
     icon: 'smartphone',
     title: 'Mở trang này trên điện thoại Android',
-    body: 'Dùng trình duyệt Chrome trên chính chiếc điện thoại bé sẽ học, rồi bấm nút "Tải app".',
+    body: 'Dùng trình duyệt Chrome trên chính chiếc điện thoại bé sẽ học, rồi bấm nút “Tải app”.',
   },
   {
     icon: 'file-download',
     title: 'Cho phép tải file',
-    body: 'Chrome có thể hỏi "File này có thể gây hại". Ba mẹ bấm "Vẫn tải xuống".',
+    body: 'Chrome có thể hỏi “File này có thể gây hại”. Ba mẹ bấm “Vẫn tải xuống”.',
   },
   {
     icon: 'folder-open',
     title: 'Mở file vừa tải',
-    body: 'Bấm "Mở" ở thông báo tải xong, hoặc vào ứng dụng Tệp (Files) → Tải xuống → GiaSuTieuHoc.apk.',
+    body: 'Bấm “Mở” ở thông báo tải xong, hoặc vào ứng dụng Tệp (Files) → Tải xuống → GiaSuTieuHoc.apk.',
   },
   {
     icon: 'verified-user',
     title: 'Cho phép cài từ Chrome (chỉ lần đầu)',
-    body: 'Máy báo chưa cho cài ứng dụng không rõ nguồn: bấm "Cài đặt", bật "Cho phép từ nguồn này", rồi bấm quay lại.',
+    body: 'Máy báo chưa cho cài ứng dụng không rõ nguồn: bấm “Cài đặt”, bật “Cho phép từ nguồn này”, rồi bấm quay lại.',
   },
   {
     icon: 'install-mobile',
-    title: 'Bấm "Cài đặt"',
-    body: 'Nếu Google Play Protect hỏi, chọn "Thông tin chi tiết" → "Vẫn cài đặt". Chờ vài giây là xong.',
+    title: 'Bấm “Cài đặt”',
+    body: 'Nếu Google Play Protect hỏi, chọn “Thông tin chi tiết” → “Vẫn cài đặt”. Chờ vài giây là xong.',
   },
   {
     icon: 'celebration',
