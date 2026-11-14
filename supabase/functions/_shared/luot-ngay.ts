@@ -32,5 +32,13 @@ export async function recordUsage(admin: SupabaseClient, userId: string, kind: '
     return null;
   }
   const id = inserted.data.id as number;
-  return { count: counted.count, refund: () => admin.from('ai_usage_log').delete().eq('id', id) };
+  return {
+    count: counted.count,
+    refund: () => admin.from('ai_usage_log').delete().eq('id', id),
+    /** Ghi loại khoá Gemini đã dùng (GIA-77) để theo dõi chi phí; lỗi chỉ ghi nhật ký. */
+    markGeminiKey: async (tier: 'free' | 'paid') => {
+      const { error } = await admin.from('ai_usage_log').update({ gemini_key: tier }).eq('id', id);
+      if (error) console.error('Lỗi ghi loại khoá Gemini:', error);
+    },
+  };
 }
