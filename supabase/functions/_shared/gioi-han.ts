@@ -1,7 +1,7 @@
-// Luật chọn AI và giới hạn cho bản web. Không import gì để cả Deno (Supabase) lẫn jest (app) đọc được.
+// Luật chọn AI và giới hạn lượt. Không import gì để cả Deno (Supabase) lẫn jest (app) đọc được.
 //
-// Người dùng bản web (trình duyệt luôn gửi header Origin; app điện thoại thì không) chưa có gói Plus
-// chỉ được dùng AI miễn phí (Gemini). Claude và mọi AI trả phí chỉ dành cho Plus (GIA-68).
+// Claude (trả phí) chỉ dành cho người có gói Plus, dù gọi từ web hay app (GIA-68, GIA-84). Header Origin
+// chỉ nói yêu cầu đến từ trình duyệt; script tự viết bỏ Origin được, nên luật chi phí không dựa vào nó.
 
 export type Engine = 'gemini' | 'claude';
 
@@ -10,9 +10,12 @@ export function isBrowserRequest(origin: string | null | undefined) {
   return !!origin;
 }
 
-/** Thứ tự AI cho người này: người dùng web chưa Plus chỉ còn AI miễn phí. */
-export function engineOrderFor(order: Engine[], who: { plus: boolean; browser: boolean }): Engine[] {
-  if (who.browser && !who.plus) return order.filter((engine) => engine === 'gemini');
+/**
+ * Thứ tự AI cho người này: chưa Plus thì chỉ còn AI miễn phí (Gemini), không bao giờ rơi sang Claude,
+ * kể cả khi gọi từ app (không có Origin). Plus giữ nguyên thứ tự (Claude dự phòng khi Gemini lỗi).
+ */
+export function engineOrderFor(order: Engine[], who: { plus: boolean }): Engine[] {
+  if (!who.plus) return order.filter((engine) => engine === 'gemini');
   return order;
 }
 
@@ -22,7 +25,7 @@ export function limitFrom(value: string | undefined, fallback: number) {
   return Number.isInteger(number) && number > 0 ? number : fallback;
 }
 
-/** Số lượt mỗi ngày cho một loại yêu cầu của người dùng web. */
+/** Số lượt mỗi ngày cho một người. Lượt "Hỏi cô" áp cho mọi yêu cầu (GIA-84); giọng đọc chỉ áp cho web. */
 export const WEB_DAILY = {
   // Lượt "Hỏi cô"
   askFree: 10,
@@ -32,8 +35,38 @@ export const WEB_DAILY = {
   voicePlus: 200,
 } as const;
 
-/** Tổng lượt chấm toàn hệ thống mỗi ngày mà bản web còn nhận (cầu dao chống chi phí vượt tầm). */
+/** Tổng lượt chấm toàn hệ thống mỗi ngày mà bản web còn nhận (secret GIOI_HAN_CHUNG_NGAY). */
 export const GLOBAL_GRADING_DAILY_DEFAULT = 300;
+
+/**
+ * Cầu dao tổng cho MỌI yêu cầu, web lẫn app (GIA-84). Yêu cầu không có Origin (app hoặc script tự viết)
+ * không còn thoát cầu dao. Đổi bằng secret; sai hoặc thiếu thì dùng mặc định.
+ */
+export const GLOBAL_DAILY_DEFAULTS = {
+  /** Tổng lượt chấm mỗi ngày cho mọi yêu cầu (secret GIOI_HAN_TONG_NGAY). */
+  gradingAll: 600,
+  /** Tổng lượt "Hỏi cô" mỗi ngày cho mọi yêu cầu (secret GIOI_HAN_HOI_CO_NGAY). */
+  askAll: 1000,
+} as const;
+
+/** Ngưỡng cầu dao cho một yêu cầu: web dùng ngưỡng web nhưng không bao giờ vượt ngưỡng tổng. */
+export function globalLimitFor(input: { browser: boolean; webLimit?: number; allLimit: number }) {
+  if (input.browser && input.webLimit !== undefined) return Math.min(input.webLimit, input.allLimit);
+  return input.allLimit;
+}
+
+/** Cầu dao đã nhảy chưa. Không đếm được (lỗi máy chủ) thì coi như đã nhảy cho an toàn chi phí. */
+export function globalBreakerTripped(totalToday: number | null | undefined, limit: number) {
+  if (typeof totalToday !== 'number') return true;
+  return totalToday >= limit;
+}
+
+/** Lời báo khi cầu dao nhảy hoặc AI miễn phí bận; app và web đều hiện được (mã 503). */
+export const BUSY_MESSAGES = {
+  quaTai: 'Hôm nay cô đang rất đông bạn nhỏ, con quay lại chấm vào ngày mai nhé!',
+  quaTaiHoi: 'Hôm nay cô đang rất đông bạn nhỏ, con quay lại hỏi vào ngày mai nhé!',
+  ban: 'Cô đang hơi bận, con thử lại sau ít phút nhé!',
+} as const;
 
 /**
  * Danh sách mời (GIA-69): khi bật (secret WEB_CHI_NGUOI_DUOC_MOI=true), người dùng web phải đăng nhập thật
