@@ -176,7 +176,7 @@ export default function WebParentLoginScreen() {
   );
 
   return (
-    <OnboardingFrame back onSkip={login.leave}>
+    <OnboardingFrame head={{ title: `Ba Mẹ đăng nhập · ${APP_NAME}` }} back onSkip={login.leave}>
       {/* Máy tính: lời chào 5 phần, thẻ đăng nhập 7 phần. Cửa sổ hẹp hơn: xếp dọc như app điện thoại. */}
       <Columns main={welcome} aside={form} ratio={5 / 7} />
     </OnboardingFrame>

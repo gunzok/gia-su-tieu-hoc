@@ -11,7 +11,8 @@ muốn đổi thì viết ADR mới và ghi "Đã thay thế bởi ADR-yyy" ở 
 | [003](ADR-003-ai-cham-bai.md) | Gemini làm AI chính cho bản thử, Claude dự phòng | Đã chấp nhận (có điều kiện) |
 | [004](ADR-004-cloudflare-workers.md) | Web tĩnh trên Cloudflare Workers | Đã chấp nhận |
 | [005](ADR-005-nhanh-main-squash.md) | `main` duy nhất, PR + CI, squash, Conventional Commits | Đã chấp nhận |
-| [006](ADR-006-moi-dung-thu.md) | Web chỉ cho người được mời, nhận diện bằng `Origin`, giới hạn lượt | Đã chấp nhận |
+| [006](ADR-006-moi-dung-thu.md) | Web chỉ cho người được mời, nhận diện bằng `Origin`, giới hạn lượt | Đã chấp nhận (danh sách mời thay bởi ADR-007 khi được duyệt) |
+| [007](ADR-007-mo-web-cong-khai.md) | Mở web công khai: giữ CAPTCHA tắt, dựa vào giới hạn tốc độ + lượt + cầu dao; Turnstile khi app có build mới | Đề xuất |
 | [008](ADR-008-lm-studio-qua-internet.md) | Chấm bài bằng LM Studio ở nhà qua internet: máy Mac tự lấy việc từ hàng đợi, không mở đường hầm | Đề xuất |
 
 ## Mẫu
