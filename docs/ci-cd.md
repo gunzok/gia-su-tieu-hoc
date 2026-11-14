@@ -101,8 +101,8 @@ Hai profile `apk` và `production` cùng tên gói `vn.giasutieuhoc.app` và cù
 1. Gộp PR chỉ đổi JS/TS/ảnh/chữ vào `main` (bản này tự tới máy thử qua `preview` trước: thử ở đó trước).
 2. Actions → **CD - App (OTA)** → Run workflow → nhánh `main`, `kenh` = `production`, ghi chú ngắn.
 3. Duyệt environment `production`. Người dùng tắt hẳn app rồi mở lại 1-2 lần để nhận.
-   Chỉ máy đang cài APK **cùng version** nhận được (vd 0.5.0); bản OTA sai thì gửi lại bản trước bằng cách chạy lại
-   workflow trên commit cũ, hoặc `eas update:rollback`.
+   Chỉ máy đang cài APK **cùng version** nhận được (vd 0.5.0). Bản OTA lỗi: gửi lại bản tốt trước đó lên kênh
+   `production` bằng `eas update:republish` (xem `eas update:republish --help`), hoặc gộp PR sửa rồi chạy lại bước 2.
 
 ## Khi nào KHÔNG đi OTA mà phải build lại
 
