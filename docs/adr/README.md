@@ -14,6 +14,7 @@ muốn đổi thì viết ADR mới và ghi "Đã thay thế bởi ADR-yyy" ở 
 | [006](ADR-006-moi-dung-thu.md) | Web chỉ cho người được mời, nhận diện bằng `Origin`, giới hạn lượt | Đã chấp nhận (danh sách mời thay bởi ADR-007 khi được duyệt) |
 | [007](ADR-007-mo-web-cong-khai.md) | Mở web công khai: giữ CAPTCHA tắt, dựa vào giới hạn tốc độ + lượt + cầu dao; Turnstile khi app có build mới | Đề xuất |
 | [008](ADR-008-lm-studio-qua-internet.md) | Chấm bài bằng LM Studio ở nhà qua internet: máy Mac tự lấy việc từ hàng đợi, không mở đường hầm | Đề xuất |
+| [009](ADR-009-ai-ca-nhan-qua-oauth.md) | Không làm đăng nhập bằng tài khoản AI cá nhân lúc này (Google, Anthropic cấm dùng gói tiêu dùng qua app khác); theo dõi OpenAI Sign in with ChatGPT; OpenRouter/tự dán khoá chỉ là tuỳ chọn nâng cao sau này | Đề xuất |
 
 ## Mẫu
 
