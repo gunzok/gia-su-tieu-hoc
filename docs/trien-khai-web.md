@@ -37,7 +37,7 @@ Workflow: `.github/workflows/cd-web.yml`. Chưa có biến `WEB_URL` thì job de
 | `WEB_URL` | Variable | địa chỉ web, vd `https://gia-su-tieu-hoc.giasutieuhoc.workers.dev` (bật deploy) |
 | `EXPO_PUBLIC_SUPABASE_URL` | Variable | đã đặt 10/11 |
 | `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Variable | đã đặt 10/11 (khoá **publishable**, công khai) |
-| `EXPO_PUBLIC_SUPPORT_EMAIL` | Variable | email hỗ trợ cho người dùng thử |
+| `EXPO_PUBLIC_SUPPORT_EMAIL` | Variable | email hỗ trợ cho người dùng |
 | `EXPO_PUBLIC_SENTRY_DSN` | Variable | (tuỳ chọn) DSN Sentry, xem phần Theo dõi lỗi |
 
 Không bao giờ đặt `ANTHROPIC_API_KEY`, service role hay khoá Google vào đây. Workflow dừng deploy nếu thấy chuỗi nhạy cảm trong `dist/`.
@@ -52,14 +52,14 @@ Thay `<WEB>` bằng địa chỉ thật (vd `https://gia-su-tieu-hoc.giasutieuho
 - Kiểm lại: dashboard → Auth → URL Configuration, hoặc API quản lý `GET /v1/projects/<ref>/config/auth` (trường `site_url`, `uri_allow_list`). Giữ `giasutieuhoc://**` và `exp://**` cho app điện thoại.
   Chưa có địa chỉ web trong Redirect URLs thì Supabase trả người dùng về Site URL: đăng nhập Google trên web sẽ hỏng.
 - **Google Cloud Console**: không cần sửa. Web dùng luồng chuyển trang qua Supabase, Google chỉ cần `https://<ref>.supabase.co/auth/v1/callback` (đã có cho app điện thoại).
-- **Auth → Attack Protection**: **chưa bật CAPTCHA**. Code app và web chưa gửi mã CAPTCHA, bật lên là đăng nhập email và tài khoản ẩn danh của app điện thoại bị từ chối hết. Muốn bật thì làm ticket riêng (thêm Turnstile vào màn Đăng nhập và `signInAnonymously`) trước. Trong lúc chạy thử, danh sách mời + giới hạn tốc độ gửi email (Auth → Rate Limits) là đủ.
+- **Auth → Attack Protection**: **giữ tắt CAPTCHA** ([ADR-007](adr/ADR-007-mo-web-cong-khai.md)). Code app và web chưa gửi mã CAPTCHA, bật lên là đăng nhập email và tài khoản ẩn danh của app điện thoại bị từ chối hết. Chỉ bật sau khi có bản build app gửi Turnstile và đa số máy đã cập nhật. Web mở công khai dựa vào: giới hạn tốc độ Auth (Auth → Rate Limits; ẩn danh mặc định 30/giờ/IP, giữ nguyên), giới hạn lượt theo người, cầu dao `GIOI_HAN_CHUNG_NGAY`, và cảnh báo ngân sách AI.
 - Secrets hàm Edge (chủ dự án tự chạy):
 
 ```bash
-npx supabase secrets set ALLOWED_ORIGINS=<WEB> WEB_CHI_NGUOI_DUOC_MOI=true GIOI_HAN_CHUNG_NGAY=300
+npx supabase secrets set ALLOWED_ORIGINS=<WEB> WEB_CHI_NGUOI_DUOC_MOI=false GIOI_HAN_CHUNG_NGAY=300
 ```
 
-- Thêm người được mời (SQL Editor, email chữ thường):
+- Web mở cho mọi người (GIA-78) nên không cần thêm người. Chỉ khi bật lại `WEB_CHI_NGUOI_DUOC_MOI=true` mới thêm người được mời (SQL Editor, email chữ thường):
 
 ```sql
 insert into public.moi_dung_thu (email, ghi_chu) values ('ba.me@gmail.com', 'nhà bạn A');

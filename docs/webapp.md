@@ -41,26 +41,32 @@ và phiên làm web không giẫm lên nhau.
 - Các màn ngoài 4 tab (Khởi động, Hồ sơ, Đăng nhập, Hỏi cô, Xem bài đã chấm) vẫn dùng giao diện mobile, căn giữa cột 600px.
 - Nhiệm vụ hôm nay, đố vui, cửa hàng đổi quà, Tiếng Anh, biểu đồ tuần/tháng: app chưa làm (GIA-37…41) nên web cũng chưa có.
 
-## Mở cho người dùng thử (golive)
+## Mở cho mọi người (công khai, GIA-78)
 
+Từ 14/11/2026 web mở cho mọi người, không cần danh sách mời ([ADR-007](adr/ADR-007-mo-web-cong-khai.md)).
 Máy chủ nhận biết bản web qua header `Origin` (trình duyệt tự gắn). Các secret Supabase cho bản web
 (đặt bằng `npx supabase secrets set …`, deploy hàm bằng `npx supabase functions deploy <tên>` — chỉ làm khi chủ dự án đồng ý):
 
 | Secret | Ý nghĩa |
 |---|---|
-| `ALLOWED_ORIGINS` | Địa chỉ web được gọi hàm, cách nhau dấu phẩy (vd `https://gia-su.example.com`). Chưa đặt = cho mọi nguồn. **Phải đặt trước khi mở.** |
-| `WEB_CHI_NGUOI_DUOC_MOI` | `true` = người dùng web phải đăng nhập thật và có email trong bảng `moi_dung_thu`. **Đặt `true` trước khi mở cho người ngoài.** |
-| `GIOI_HAN_CHUNG_NGAY` | Tổng lượt chấm toàn hệ thống mỗi ngày mà bản web còn nhận (mặc định 300). |
+| `ALLOWED_ORIGINS` | Địa chỉ web được gọi hàm, cách nhau dấu phẩy (vd `https://gia-su.example.com`). Chưa đặt = cho mọi nguồn. **Phải đặt.** |
+| `WEB_CHI_NGUOI_DUOC_MOI` | `false` hoặc không đặt = ai cũng dùng được web (hiện tại). `true` = chỉ người đăng nhập thật có email trong bảng `moi_dung_thu` (bật lại khi bị lạm dụng). |
+| `GIOI_HAN_CHUNG_NGAY` | Tổng lượt chấm toàn hệ thống mỗi ngày mà bản web còn nhận (mặc định 300). Cầu dao chống chi phí vượt tầm. |
 
 Giới hạn mỗi ngày (giờ Việt Nam): chấm bài 3 lượt (Miễn phí) / 50 (Plus); Hỏi cô 10 / 100; giọng đọc mới 30 / 200.
 Người dùng web chưa có Plus chỉ dùng AI miễn phí (Gemini), không bao giờ rơi sang Claude.
+CAPTCHA Supabase **chưa bật** (bật lên là app điện thoại gãy, xem ADR-007); Supabase Auth giới hạn 30 lần đăng nhập ẩn danh/giờ/IP.
 
-Thêm/bớt người được mời (Supabase → SQL Editor, email chữ thường):
+Muốn quay về chế độ chỉ người được mời: đặt `WEB_CHI_NGUOI_DUOC_MOI=true`, rồi thêm/bớt người (Supabase → SQL Editor, email chữ thường):
 
 ```sql
 insert into public.moi_dung_thu (email, ghi_chu) values ('ba.me@gmail.com', 'nhà bạn A');
 delete from public.moi_dung_thu where email = 'ba.me@gmail.com';
 ```
+
+Máy tìm kiếm: `public/robots.txt` cho phép thu thập, `public/_headers` không gắn `X-Robots-Tag: noindex`. Tiêu đề và mô tả trang
+đặt bằng `head` của `OnboardingFrame` (`src/web/onboarding-frame.tsx`, dùng `expo-router/head`); mô tả mặc định trong
+`index.html` lấy từ `web.description` của `app.json`.
 
 Build để đưa lên hosting: `npm run build:web` (xuất tĩnh, xoá địa chỉ LM Studio khỏi bản build). Kiểm tra `dist/` không chứa khoá bí mật.
 Deploy tự động lên Cloudflare (Workers, file tĩnh), quay lại bản cũ, Sentry và cảnh báo chi phí: xem `docs/trien-khai-web.md`.
