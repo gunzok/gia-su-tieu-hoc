@@ -9,7 +9,7 @@ import { APP_NAME } from '@/lib/teacher';
 
 // Chính sách quyền riêng tư hiển thị ngay trong app (không mở trang web bên ngoài, vì app dành cho
 // trẻ em). Sửa nội dung ở đây thì nhớ cập nhật bản đăng trên App Store / Google Play.
-const updatedAt = '20/10/2026';
+const updatedAt = '15/11/2026';
 
 const sections: { title: string; body: string[] }[] = [
   {
@@ -34,11 +34,12 @@ const sections: { title: string; body: string[] }[] = [
   {
     title: 'Chia sẻ với ai',
     body: [
-      'Ảnh bài làm được gửi tới AI để chấm, chỉ cho việc chấm bài đó: Gemini (Google) hoặc Claude (công ty Anthropic).',
-      'Trong giai đoạn thử nghiệm, app dùng gói miễn phí của Gemini: theo điều khoản của Google, nội dung gửi lên có thể được Google dùng để cải thiện sản phẩm. Khi mở cho nhiều gia đình dùng, app sẽ chuyển sang gói trả phí không dùng dữ liệu như vậy.',
-      'Khi bé bấm "Hỏi cô", câu bé hỏi và nội dung câu đó trong bài được gửi tới AI (Gemini hoặc Claude) để trả lời.',
+      'Ảnh bài làm được gửi tới AI để chấm, chỉ cho việc chấm bài đó. App chấm chủ yếu bằng Gemini (Google). Khi Gemini lỗi hoặc quá tải, app dùng Claude (công ty Anthropic) để dự phòng.',
+      'Tài khoản gói miễn phí được chấm bằng gói miễn phí của Gemini: theo điều khoản của Google, nội dung gửi lên có thể được Google dùng để cải thiện sản phẩm và có thể được người của Google xem. Ba mẹ nên che tên, địa chỉ hoặc ảnh người trên bài trước khi chụp.',
+      'Tài khoản gói Plus được chấm bằng gói trả phí của Gemini: theo điều khoản của Google, nội dung gửi lên không được dùng để cải thiện sản phẩm, Google chỉ lưu nhật ký trong thời gian giới hạn để phát hiện vi phạm chính sách sử dụng.',
+      'Khi bé bấm "Hỏi cô", câu bé hỏi và nội dung câu đó trong bài được gửi tới AI (Gemini, hoặc Claude để dự phòng) để trả lời.',
       'Nếu bố mẹ cài AI trên máy tính ở nhà (LM Studio) và máy chủ không chấm được, ảnh bài làm và câu hỏi được gửi tới máy tính đó qua mạng Wi-Fi nhà, không đi ra Internet.',
-      'Lời nhận xét (chỉ phần chữ, không có ảnh) được gửi tới Google Cloud để đọc bằng giọng cô/thầy.',
+      'Lời nhận xét (chỉ phần chữ, không có ảnh) được gửi tới dịch vụ giọng đọc (Google Cloud hoặc ElevenLabs) để đọc bằng giọng cô/thầy.',
       'Khi bé bấm nút mic ở "Hỏi cô", giọng bé được nhận thành chữ bằng tính năng nhận giọng có sẵn của điện thoại, do Apple (iPhone) hoặc Google (Android) xử lý. App không lưu bản ghi âm; chỉ phần chữ bé xem lại và bấm gửi mới được gửi tới AI.',
       'Dữ liệu được lưu trên máy chủ Supabase, trong kho riêng: chỉ tài khoản của ba mẹ xem được.',
       'RevenueCat nhận mã tài khoản (không có tên bé) để xác nhận gói Plus.',
