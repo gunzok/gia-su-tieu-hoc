@@ -8,6 +8,8 @@ name: CD - App (OTA)
 on:
   push:
     branches: [main]
+    # Chỉ ghi file KHÔNG vào bundle OTA. Thêm file vào đây thì kiểm lại bảng trigger ở docs/ci-cd.md.
+    # Đổi riêng workflow (.github/**) không tự gửi OTA: cần thì Actions → CD - App (OTA) → Run workflow.
     paths-ignore:
       - "docs/**"
       - "supabase/**"
@@ -16,6 +18,8 @@ on:
       - "**/*.md"
       - "LICENSE"
       - ".github/**"
+      - "Makefile"
+      - ".gitignore"
   workflow_dispatch:
     inputs:
       kenh:

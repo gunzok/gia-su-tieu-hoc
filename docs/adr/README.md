@@ -12,6 +12,7 @@ muốn đổi thì viết ADR mới và ghi "Đã thay thế bởi ADR-yyy" ở 
 | [004](ADR-004-cloudflare-workers.md) | Web tĩnh trên Cloudflare Workers | Đã chấp nhận |
 | [005](ADR-005-nhanh-main-squash.md) | `main` duy nhất, PR + CI, squash, Conventional Commits | Đã chấp nhận |
 | [006](ADR-006-moi-dung-thu.md) | Web chỉ cho người được mời, nhận diện bằng `Origin`, giới hạn lượt | Đã chấp nhận |
+| [008](ADR-008-lm-studio-qua-internet.md) | Chấm bài bằng LM Studio ở nhà qua internet: máy Mac tự lấy việc từ hàng đợi, không mở đường hầm | Đề xuất |
 
 ## Mẫu
 

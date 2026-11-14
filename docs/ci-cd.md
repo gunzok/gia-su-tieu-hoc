@@ -14,10 +14,26 @@ Nhánh ticket ──PR──▶ main ──▶ phát hành
 | Workflow | Khi nào chạy | Làm gì |
 |---|---|---|
 | `ci.yml` | Mọi PR vào `main`, mọi lần đẩy lên `main` (`kiem-tra.yml` cũ đã bỏ vì trùng, GIA-75) | tsc, lint, Jest, `expo export` thử, `deno check` hàm Supabase, quét khoá lộ (gitleaks), `npm audit` |
-| `cd-app.yml` | Đẩy lên `main` (trừ khi chỉ đổi docs/supabase/.github); chạy tay | Đẩy lên `main`: chạy lại CI, xanh thì `eas update --branch preview`. Chạy tay chọn `kenh = production`: chờ duyệt environment `production` rồi `eas update --channel production` |
+| `cd-app.yml` | Đẩy lên `main` (trừ khi chỉ đổi file không vào bundle OTA, xem dưới bảng); chạy tay | Đẩy lên `main`: chạy lại CI, xanh thì `eas update --branch preview`. Chạy tay chọn `kenh = production`: chờ duyệt environment `production` rồi `eas update --channel production` |
+| `cd-web.yml` | Đẩy lên `main` (trừ khi chỉ đổi file không vào bản build web, xem dưới bảng) | Chạy lại CI, xanh thì chờ duyệt `web-production` rồi `wrangler deploy` lên Cloudflare |
 | `cd-supabase.yml` | Đẩy lên `main` có đổi `supabase/**` | CI xanh → `db push --dry-run` (kế hoạch hiện trong Summary của lượt chạy) → chờ duyệt → `db push` → `functions deploy`. Chỉ chạy từ `main` |
 | `eas-build.yml` | Chạy tay, hoặc gắn tag `vX.Y.Z` | Kiểm tra tag khớp `app.json`, chờ duyệt, `eas build --profile apk` (chạy trên máy chủ Expo), tải APK về, tạo GitHub Release kèm `GiaSuTieuHoc.apk` |
 | `dependabot.yml` | Hằng tuần | PR cập nhật GitHub Actions và thư viện npm (không đụng bộ Expo/React Native) |
+
+**File không kích hoạt CD** (`paths-ignore`; lượt đẩy chỉ gồm các file này thì không deploy web, không gửi OTA; GIA-76):
+
+| Mẫu | `cd-web.yml` | `cd-app.yml` |
+|---|---|---|
+| `docs/**`, `**/*.md`, `LICENSE`, `.claude/**`, `.agent/**`, `supabase/**` | bỏ qua | bỏ qua |
+| `.github/**` (workflow, CODEOWNERS, dependabot, mẫu PR), `Makefile`, `.gitignore` | bỏ qua | bỏ qua |
+| `eas.json`, `ios/**` | bỏ qua | **chạy** |
+
+Mọi file khác (`src/**`, `assets/**`, `public/**`, `app.json`, `wrangler.jsonc`, `package*.json`, `metro.config.js`,
+`tsconfig.json`, `plugins/**`, `scripts/**`, `.nvmrc`…) vẫn kích hoạt. Chỉ cần **một** file ngoài danh sách là workflow chạy.
+
+Đổi riêng workflow (`.github/workflows/cd-web.yml`, `cd-app.yml`) **không** tự deploy. Muốn chạy thử bản workflow mới
+sau khi gộp: Actions → chọn workflow → **Run workflow** (nhánh `main`). GitHub không cho dùng `paths` và `paths-ignore`
+cùng lúc, còn mẫu phủ định `!` chỉ có ở `paths`; dự án giữ `paths-ignore` để file mới thêm vào repo mặc định vẫn kích hoạt deploy.
 
 Job `CI đạt` là "cổng" duy nhất gom kết quả; dùng nó làm required check.
 
