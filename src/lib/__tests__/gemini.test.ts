@@ -223,3 +223,50 @@ describe('Gemini hết lượt miễn phí (lỗi chấm bài 10/11)', () => {
     expect([modelOf(0), modelOf(1)]).toEqual(['a', 'b']);
   });
 });
+
+describe('Khoá Gemini trả phí (GIA-77)', () => {
+  const ok = { ok: true, status: 200, json: async () => ({ steps: [{ type: 'model_output', content: [{ type: 'text', text: 'xong' }] }] }) };
+  const busy = { ok: false, status: 503, text: async () => 'high demand' };
+  const perDay = {
+    ok: false,
+    status: 429,
+    text: async () => 'Rate limit exceeded for model a (limit: 20 requests per day on Free Tier). Please retry in 2h37m19s',
+  };
+  const request = { system: 's', input: [], maxTokens: 10 };
+  const fetchMock = jest.fn();
+  const modelOf = (call: number) => JSON.parse(fetchMock.mock.calls[call][1].body).model;
+
+  beforeEach(() => {
+    resetGeminiState();
+    fetchMock.mockReset();
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it('không gửi cờ paid lên Google', () => {
+    expect(geminiBody({ ...request, paid: true })).not.toHaveProperty('paid');
+  });
+
+  it('khoá trả phí không né model mà khoá miễn phí đã hết lượt ngày', async () => {
+    fetchMock.mockResolvedValueOnce(perDay).mockResolvedValue(ok);
+    await askGeminiModels('mien-phi', request, ['a', 'b'], 1000, []);
+    expect(usableModels(['a', 'b'])).toEqual(['b']);
+    fetchMock.mockClear();
+    await askGeminiModels('tra-phi', { ...request, paid: true }, ['a', 'b'], 1000, []);
+    expect(modelOf(0)).toBe('a');
+  });
+
+  it('khoá trả phí bị 429 theo ngày cũng không làm khoá miễn phí bỏ qua model', async () => {
+    fetchMock.mockResolvedValueOnce(perDay).mockResolvedValue(ok);
+    await askGeminiModels('tra-phi', { ...request, paid: true }, ['a', 'b'], 1000, []);
+    expect(usableModels(['a', 'b'])).toEqual(['a', 'b']);
+  });
+
+  it('khoá trả phí vẫn thử lại khi 503', async () => {
+    fetchMock.mockResolvedValueOnce(busy).mockResolvedValueOnce(ok);
+    await expect(askGemini('tra-phi', { ...request, paid: true }, 1000, [0])).resolves.toBe('xong');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});

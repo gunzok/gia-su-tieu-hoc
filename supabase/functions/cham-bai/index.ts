@@ -5,7 +5,8 @@
 //
 // Triển khai:  npx supabase functions deploy cham-bai
 // Đặt key:     npx supabase secrets set ANTHROPIC_API_KEY=...
-//              npx supabase secrets set GEMINI_API_KEY=...
+//              npx supabase secrets set GEMINI_API_KEY=...          (gói miễn phí)
+//              npx supabase secrets set GEMINI_API_KEY_TRA_PHI=...  (gói Plus, GIA-77; thiếu thì dùng khoá trên)
 //              npx supabase secrets set REVENUECAT_SECRET_KEY=...  (để biết ai có gói Plus)
 
 import Anthropic from 'npm:@anthropic-ai/sdk@0.135.0';
@@ -29,6 +30,7 @@ import {
   type TeacherVoice,
 } from '../_shared/cham-bai.ts';
 import { aiOrder, askGeminiModels, GEMINI_GRADING_MODELS, geminiImages, usableModels } from '../_shared/gemini.ts';
+import { geminiKeyFor, readGeminiKeys, type GeminiKey } from '../_shared/gemini-key.ts';
 import { engineOrderFor, GLOBAL_GRADING_DAILY_DEFAULT, isBrowserRequest, limitFrom } from '../_shared/gioi-han.ts';
 import { answerKeyNote, checkPage, safeLines } from '../_shared/kiem-tinh.ts';
 import { startOfTodayInVietnam } from '../_shared/luot-ngay.ts';
@@ -146,9 +148,11 @@ Deno.serve(async (req) => {
     await refundUsage();
     return json({ error: 'Máy chủ chưa chấm được bài' }, 500);
   }
-  // Điện thoại: chỉ hỏi RevenueCat khi đã dùng hết lượt miễn phí. Web: luôn hỏi để chọn AI đúng gói.
+  // Điện thoại: chỉ hỏi RevenueCat khi đã dùng hết lượt miễn phí, hoặc khi đã có khoá Gemini trả phí
+  // (phải biết gói để chọn khoá, GIA-77). Web: luôn hỏi để chọn AI đúng gói.
+  const geminiKeys = readGeminiKeys((name) => Deno.env.get(name));
   let plus = false;
-  if (browser || count > freeDailyLimit) plus = await hasPlus(userId);
+  if (browser || count > freeDailyLimit || geminiKeys.paid) plus = await hasPlus(userId);
   if (count > freeDailyLimit) {
     const limit = plus ? plusDailyLimit : freeDailyLimit;
     if (count > limit) {
@@ -168,7 +172,8 @@ Deno.serve(async (req) => {
   }
 
   const system = systemPrompt(subject as Subject, grade, teacher);
-  const geminiKey = Deno.env.get('GEMINI_API_KEY');
+  // Plus dùng khoá trả phí, miễn phí dùng khoá miễn phí (GIA-77).
+  const geminiKey = geminiKeyFor(plus, geminiKeys);
   const order = engineOrderFor(
     aiOrder(Deno.env.get('AI_THU_TU'), {
       gemini: !!geminiKey,
@@ -178,6 +183,12 @@ Deno.serve(async (req) => {
   );
   const ask = (engine: Engine, request: AskRequest) =>
     engine === 'gemini' ? askWithGemini(geminiKey!, system, request) : askWithClaude(system, request);
+  // Ghi loại khoá Gemini vào lượt chấm để theo dõi chi phí; lỗi ghi không làm hỏng kết quả chấm.
+  const markGeminiKey = async (engines: Engine[]) => {
+    if (!geminiKey || !engines.includes('gemini')) return;
+    const { error } = await admin.from('grading_usage').update({ gemini_key: geminiKey.tier }).eq('id', usage.id);
+    if (error) console.error('Lỗi ghi loại khoá Gemini:', error);
+  };
 
   // Mỗi trang một lần gọi AI, chạy song song (GIA-49). Trang nào lỗi ở mọi AI thì cả bài lỗi,
   // để không trả về kết quả thiếu trang.
@@ -209,6 +220,7 @@ Deno.serve(async (req) => {
     return json({ error: failure.message }, failure.status);
   }
   const done = graded as Graded<GradingResult>[];
+  await markGeminiKey(done.map((page) => page.engine));
   if (pages.length === 1) return json({ ...done[0].result, engine: done[0].engine });
 
   // Trang bé chụp trùng (cùng đề, cùng bài làm) chỉ chấm một lần (GIA-50).
@@ -285,7 +297,8 @@ async function gradePage(
   return { ...graded, result: labelPageItems(graded.result, page) };
 }
 
-async function askWithGemini(apiKey: string, system: string, request: AskRequest): Promise<Outcome<unknown>> {
+async function askWithGemini(geminiKey: GeminiKey, system: string, request: AskRequest): Promise<Outcome<unknown>> {
+  const paid = geminiKey.tier === 'paid';
   // Luôn suy luận mức thấp: mức trung bình làm Gemini quá giờ ngay cả với bài 1 trang.
   const body = {
     system,
@@ -293,11 +306,14 @@ async function askWithGemini(apiKey: string, system: string, request: AskRequest
     schema: request.schema,
     maxTokens: request.maxTokens,
     thinking: 'low' as const,
+    paid,
   };
+  // Khoá trả phí không có hạn mức ngày nên không cần né model đã hết lượt (GIA-77).
+  const firstModel = (paid ? GEMINI_GRADING_MODELS : usableModels(GEMINI_GRADING_MODELS)).slice(0, 1);
   // Lời nhận xét chung có bản ghép dự phòng, nên không để nó ăn hết giờ chờ của app.
   const text = request.quick
-    ? await askGeminiModels(apiKey, body, usableModels(GEMINI_GRADING_MODELS).slice(0, 1), summaryTimeoutMs, [], summaryTimeoutMs)
-    : await askGeminiModels(apiKey, body);
+    ? await askGeminiModels(geminiKey.key, body, firstModel, summaryTimeoutMs, [], summaryTimeoutMs)
+    : await askGeminiModels(geminiKey.key, body);
   return { result: JSON.parse(text) };
 }
 

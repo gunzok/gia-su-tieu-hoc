@@ -13,6 +13,7 @@ import { aiOrder, askGemini } from '../_shared/gemini.ts';
 import { engineOrderFor, isBrowserRequest, WEB_DAILY } from '../_shared/gioi-han.ts';
 import { recordUsage } from '../_shared/luot-ngay.ts';
 import { hasPlus } from '../_shared/plus.ts';
+import { geminiKeyFor, readGeminiKeys, type GeminiKeyTier } from '../_shared/gemini-key.ts';
 import {
   ASK_LIMITS,
   askSystemPrompt,
@@ -100,17 +101,19 @@ Deno.serve(async (req) => {
       explanation: item.explanation.slice(0, 2000),
     },
   });
-  const geminiKey = Deno.env.get('GEMINI_API_KEY');
+  const geminiKeys = readGeminiKeys((name) => Deno.env.get(name));
   // Bản web (trình duyệt gửi header Origin): giới hạn lượt hỏi mỗi ngày; chưa Plus thì chỉ dùng AI miễn phí (GIA-68).
   const browser = isBrowserRequest(req.headers.get('Origin'));
-  let plus = false;
+  // Cần biết gói khi ở web, hoặc khi đã có khoá Gemini trả phí để chọn khoá (GIA-77).
+  const plus = browser || geminiKeys.paid ? await hasPlus(userData.user.id) : false;
   let refund: (() => unknown) | null = null;
+  let markGeminiKey: ((tier: GeminiKeyTier) => unknown) | null = null;
   if (browser) {
-    plus = await hasPlus(userData.user.id);
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const used = await recordUsage(admin, userData.user.id, 'hoi-co');
     if (!used) return json({ error: 'Máy chủ chưa trả lời được' }, 500);
     refund = used.refund;
+    markGeminiKey = used.markGeminiKey;
     const limit = plus ? WEB_DAILY.askPlus : WEB_DAILY.askFree;
     if (used.count > limit) {
       await refund();
@@ -124,6 +127,8 @@ Deno.serve(async (req) => {
       );
     }
   }
+  // Plus dùng khoá trả phí, miễn phí dùng khoá miễn phí (GIA-77).
+  const geminiKey = geminiKeyFor(plus, geminiKeys);
   const order = engineOrderFor(
     aiOrder(Deno.env.get('AI_THU_TU'), {
       gemini: !!geminiKey,
@@ -136,13 +141,26 @@ Deno.serve(async (req) => {
     try {
       const answer =
         engine === 'gemini'
-          ? await askGemini(geminiKey!, { system, input: [{ type: 'text', text: conversationText(turns) }], maxTokens: 2000, thinking: 'low' }, 45_000)
+          ? await askGemini(
+              geminiKey!.key,
+              {
+                system,
+                input: [{ type: 'text', text: conversationText(turns) }],
+                maxTokens: 2000,
+                thinking: 'low',
+                paid: geminiKey!.tier === 'paid',
+              },
+              45_000,
+            )
           : await askClaude(system, turns);
       if (answer === null) {
         return json({ answer: `Câu này ${teacher === 'thay' ? 'thầy' : 'cô'} chưa trả lời được. Con hỏi bố mẹ giúp nhé!` });
       }
       const cleaned = cleanAnswer(answer);
-      if (cleaned) return json({ answer: cleaned, engine });
+      if (cleaned) {
+        if (engine === 'gemini') await markGeminiKey?.(geminiKey!.tier);
+        return json({ answer: cleaned, engine });
+      }
     } catch (error) {
       console.error(`Lỗi hỏi ${engine}:`, error);
     }
