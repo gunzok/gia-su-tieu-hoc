@@ -1,3 +1,4 @@
-# Bản web đang chạy thử cho người được mời: không cho máy tìm kiếm thu thập.
+# Bản web mở cho mọi người (GIA-78): cho máy tìm kiếm thu thập trang giới thiệu.
+# Trang trong app (sau đăng nhập) không có nội dung riêng của bé trên địa chỉ, dữ liệu nằm sau tài khoản.
 User-agent: *
-Disallow: /
+Allow: /

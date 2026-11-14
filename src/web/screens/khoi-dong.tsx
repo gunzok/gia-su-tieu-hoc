@@ -25,7 +25,13 @@ export default function WebWelcomeScreen() {
   const goLogin = () => router.push('/dang-nhap');
 
   return (
-    <OnboardingFrame action={split ? { label: 'Đăng nhập', onPress: goLogin } : undefined}>
+    <OnboardingFrame
+      head={{
+        title: `${APP_NAME}: gia sư AI chấm bài tập về nhà lớp 1–5`,
+        description:
+          'Bé chụp bài tập, gia sư AI chấm và nhận xét bằng tiếng Việt rồi đọc thành tiếng. Ba mẹ theo dõi tiến độ của con mỗi ngày.',
+      }}
+      action={split ? { label: 'Đăng nhập', onPress: goLogin } : undefined}>
       <View style={[styles.hero, split && styles.heroSplit]}>
         <Card style={[styles.heroCard, split && styles.heroCardSplit]} borderColor={Palette.mint}>
           <View style={styles.tags}>
