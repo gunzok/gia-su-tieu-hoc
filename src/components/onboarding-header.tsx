@@ -1,5 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
@@ -10,18 +10,30 @@ type Props = {
   title: string;
   /** Bấm "Bỏ qua"; không truyền thì không hiện nút. */
   onSkip?: () => void;
+  /**
+   * Màn cần về khi không có màn trước (mở thẳng bằng đường dẫn). Có truyền thì nút quay lại luôn hiện;
+   * không truyền thì nút ẩn khi không quay lại được (màn mở app lần đầu).
+   */
+  fallbackHref?: Href;
 };
 
 // Thanh đầu trang của các màn mở app lần đầu: nút quay lại, tiêu đề, nút "Bỏ qua".
-export function OnboardingHeader({ title, onSkip }: Props) {
+export function OnboardingHeader({ title, onSkip, fallbackHref }: Props) {
+  const showBack = fallbackHref !== undefined || router.canGoBack();
+
+  function goBack() {
+    if (router.canGoBack()) router.back();
+    else if (fallbackHref !== undefined) router.replace(fallbackHref);
+  }
+
   return (
     <View style={styles.row}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Quay lại"
-        disabled={!router.canGoBack()}
-        onPress={() => router.back()}
-        style={[styles.back, !router.canGoBack() && styles.hidden]}>
+        disabled={!showBack}
+        onPress={goBack}
+        style={[styles.back, !showBack && styles.hidden]}>
         <MaterialIcons name="arrow-back" size={24} color={Palette.ink} />
       </Pressable>
       <View style={styles.titles}>
