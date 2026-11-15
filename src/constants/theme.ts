@@ -56,7 +56,8 @@ export const Colors = {
 // Màu nhấn theo ý nghĩa: đúng / sai / chính.
 export const Accent = {
   primary: Palette.blue,
-  primarySoft: Palette.blueSoft,
+  // Nền nhạt của màu chính (xanh lá): viên chọn tab, ô số câu đúng.
+  primarySoft: Palette.mintSoft,
   correct: Palette.mint,
   wrong: Palette.coralDark,
   onAccent: Palette.white,

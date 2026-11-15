@@ -62,7 +62,8 @@ const sections: { title: string; body: string[] }[] = [
 export default function PrivacyPolicyScreen() {
   return (
     <Screen>
-      <OnboardingHeader title="Chính sách quyền riêng tư" />
+      {/* Mở thẳng bằng đường dẫn (không có màn trước) thì nút quay lại đưa về tab Tiến độ, nơi có mục này. */}
+      <OnboardingHeader title="Chính sách quyền riêng tư" fallbackHref="/tien-do" />
       <AppText variant="bodyMd" color={Palette.inkSoft}>
         {APP_NAME} giúp bé làm bài tập về nhà. Chúng tôi chỉ dùng dữ liệu của bé để chấm bài và giúp ba mẹ
         theo dõi việc học. Cập nhật ngày {updatedAt}.
