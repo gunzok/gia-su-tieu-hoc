@@ -1,5 +1,6 @@
 // Supabase Edge Function "cham-bai": nhận ảnh bài làm từ app, gọi AI để chấm.
 // Thứ tự AI: Gemini (gói miễn phí, để thử) rồi Claude; đổi bằng secret AI_THU_TU (vd "claude,gemini").
+// Claude chỉ dùng cho người có gói Plus (GIA-84); chưa Plus mà Gemini lỗi thì báo bận.
 // Bài nhiều trang: mỗi trang một lần gọi AI song song, gộp lại rồi nhờ AI viết lời nhận xét chung.
 // Khoá AI chỉ nằm ở đây (Supabase secret GEMINI_API_KEY, ANTHROPIC_API_KEY), không nằm trong app.
 //
@@ -31,7 +32,16 @@ import {
 } from '../_shared/cham-bai.ts';
 import { aiOrder, askGeminiModels, GEMINI_GRADING_MODELS, geminiImages, usableModels } from '../_shared/gemini.ts';
 import { geminiKeyFor, readGeminiKeys, type GeminiKey } from '../_shared/gemini-key.ts';
-import { engineOrderFor, GLOBAL_GRADING_DAILY_DEFAULT, isBrowserRequest, limitFrom } from '../_shared/gioi-han.ts';
+import {
+  BUSY_MESSAGES,
+  engineOrderFor,
+  GLOBAL_DAILY_DEFAULTS,
+  GLOBAL_GRADING_DAILY_DEFAULT,
+  globalBreakerTripped,
+  globalLimitFor,
+  isBrowserRequest,
+  limitFrom,
+} from '../_shared/gioi-han.ts';
 import { answerKeyNote, checkPage, safeLines } from '../_shared/kiem-tinh.ts';
 import { startOfTodayInVietnam } from '../_shared/luot-ngay.ts';
 import { hasPlus } from '../_shared/plus.ts';
@@ -61,7 +71,7 @@ Deno.serve(async (req) => {
   if (!originAllowed(origin, allowed)) return json({ error: 'Địa chỉ này không được phép' }, 403);
   if (req.method !== 'POST') return json({ error: 'Chỉ nhận POST' }, 405);
 
-  // Chỉ người dùng đã đăng nhập (kể cả đăng nhập ẩn danh) mới được gọi Claude.
+  // Chỉ người dùng đã đăng nhập (kể cả ẩn danh) mới được chấm; Claude chỉ cho Plus (xem engineOrderFor).
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
     global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
   });
@@ -109,23 +119,23 @@ Deno.serve(async (req) => {
   // Ghi lượt trước rồi mới đếm, để hai lần gửi cùng lúc không lọt quá giới hạn.
   const userId = userData.user.id;
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  // Bản web (trình duyệt gửi header Origin): người chưa Plus chỉ dùng AI miễn phí (GIA-68).
+  // Bản web gửi header Origin; app điện thoại (và script tự viết) thì không.
   const browser = isBrowserRequest(req.headers.get('Origin'));
 
-  // Cầu dao chung: tổng lượt chấm trong ngày đã vượt mức thì bản web tạm nghỉ, tránh chi phí vượt tầm.
-  if (browser) {
-    const globalLimit = limitFrom(Deno.env.get('GIOI_HAN_CHUNG_NGAY'), GLOBAL_GRADING_DAILY_DEFAULT);
-    const { count: total, error: totalError } = await admin
-      .from('grading_usage')
-      .select('id', { count: 'exact', head: true })
-      .gte('created_at', startOfTodayInVietnam().toISOString());
-    if (totalError) console.error('Lỗi đếm tổng lượt chấm:', totalError);
-    if ((total ?? 0) >= globalLimit) {
-      return json(
-        { error: 'Hôm nay cô đang rất đông bạn nhỏ, con quay lại chấm vào ngày mai nhé!', code: 'qua-tai' },
-        503,
-      );
-    }
+  // Cầu dao tổng cho MỌI yêu cầu (GIA-84): tổng lượt chấm trong ngày vượt mức thì tạm nghỉ, tránh chi phí vượt tầm.
+  // Web dùng ngưỡng riêng GIOI_HAN_CHUNG_NGAY (thấp hơn), không bao giờ vượt ngưỡng tổng GIOI_HAN_TONG_NGAY.
+  const globalLimit = globalLimitFor({
+    browser,
+    webLimit: limitFrom(Deno.env.get('GIOI_HAN_CHUNG_NGAY'), GLOBAL_GRADING_DAILY_DEFAULT),
+    allLimit: limitFrom(Deno.env.get('GIOI_HAN_TONG_NGAY'), GLOBAL_DAILY_DEFAULTS.gradingAll),
+  });
+  const { count: total, error: totalError } = await admin
+    .from('grading_usage')
+    .select('id', { count: 'exact', head: true })
+    .gte('created_at', startOfTodayInVietnam().toISOString());
+  if (totalError) console.error('Lỗi đếm tổng lượt chấm:', totalError);
+  if (globalBreakerTripped(totalError ? null : total, globalLimit)) {
+    return json({ error: BUSY_MESSAGES.quaTai, code: 'qua-tai' }, 503);
   }
   const { data: usage, error: usageError } = await admin
     .from('grading_usage')
@@ -148,11 +158,9 @@ Deno.serve(async (req) => {
     await refundUsage();
     return json({ error: 'Máy chủ chưa chấm được bài' }, 500);
   }
-  // Điện thoại: chỉ hỏi RevenueCat khi đã dùng hết lượt miễn phí, hoặc khi đã có khoá Gemini trả phí
-  // (phải biết gói để chọn khoá, GIA-77). Web: luôn hỏi để chọn AI đúng gói.
+  // Hỏi RevenueCat để biết gói: chọn khoá Gemini (GIA-77), giới hạn lượt, và chỉ Plus mới được Claude (GIA-84).
   const geminiKeys = readGeminiKeys((name) => Deno.env.get(name));
-  let plus = false;
-  if (browser || count > freeDailyLimit || geminiKeys.paid) plus = await hasPlus(userId);
+  const plus = await hasPlus(userId);
   if (count > freeDailyLimit) {
     const limit = plus ? plusDailyLimit : freeDailyLimit;
     if (count > limit) {
@@ -179,7 +187,7 @@ Deno.serve(async (req) => {
       gemini: !!geminiKey,
       claude: !!Deno.env.get('ANTHROPIC_API_KEY'),
     }),
-    { plus, browser },
+    { plus },
   );
   const ask = (engine: Engine, request: AskRequest) =>
     engine === 'gemini' ? askWithGemini(geminiKey!, system, request) : askWithClaude(system, request);
@@ -213,10 +221,8 @@ Deno.serve(async (req) => {
   if (failure) {
     // Chưa chấm được thì trả lại lượt cho bé.
     await refundUsage();
-    // Web chưa Plus chỉ có AI miễn phí: lỗi hay quá tải thì hẹn thử lại, không đẩy sang AI trả phí.
-    if (browser && !plus) {
-      return json({ error: 'Cô đang hơi bận, con thử lại sau ít phút nhé!', code: 'ban' }, 503);
-    }
+    // Chưa Plus chỉ có AI miễn phí (web và app): lỗi hay quá tải thì hẹn thử lại, không đẩy sang AI trả phí.
+    if (!plus) return json({ error: BUSY_MESSAGES.ban, code: 'ban' }, 503);
     return json({ error: failure.message }, failure.status);
   }
   const done = graded as Graded<GradingResult>[];

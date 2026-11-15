@@ -1,5 +1,6 @@
 // Supabase Edge Function "hoi-co": bé hỏi thêm cô về một câu trong bài vừa chấm.
 // Thứ tự AI giống cham-bai: Gemini (miễn phí, để thử) rồi Claude; đổi bằng secret AI_THU_TU.
+// Claude chỉ dùng cho người có gói Plus (GIA-84). Mọi yêu cầu (web và app) đều tính lượt và cầu dao tổng.
 // Khoá AI chỉ nằm ở đây (Supabase secret GEMINI_API_KEY, ANTHROPIC_API_KEY), không nằm trong app.
 //
 // Triển khai:  npx supabase functions deploy hoi-co
@@ -10,10 +11,18 @@ import { inviteProblem } from '../_shared/moi.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { aiOrder, askGemini } from '../_shared/gemini.ts';
-import { engineOrderFor, isBrowserRequest, WEB_DAILY } from '../_shared/gioi-han.ts';
-import { recordUsage } from '../_shared/luot-ngay.ts';
+import {
+  BUSY_MESSAGES,
+  engineOrderFor,
+  GLOBAL_DAILY_DEFAULTS,
+  globalBreakerTripped,
+  isBrowserRequest,
+  limitFrom,
+  WEB_DAILY,
+} from '../_shared/gioi-han.ts';
+import { recordUsage, startOfTodayInVietnam } from '../_shared/luot-ngay.ts';
 import { hasPlus } from '../_shared/plus.ts';
-import { geminiKeyFor, readGeminiKeys, type GeminiKeyTier } from '../_shared/gemini-key.ts';
+import { geminiKeyFor, readGeminiKeys } from '../_shared/gemini-key.ts';
 import {
   ASK_LIMITS,
   askSystemPrompt,
@@ -102,30 +111,38 @@ Deno.serve(async (req) => {
     },
   });
   const geminiKeys = readGeminiKeys((name) => Deno.env.get(name));
-  // Bản web (trình duyệt gửi header Origin): giới hạn lượt hỏi mỗi ngày; chưa Plus thì chỉ dùng AI miễn phí (GIA-68).
-  const browser = isBrowserRequest(req.headers.get('Origin'));
-  // Cần biết gói khi ở web, hoặc khi đã có khoá Gemini trả phí để chọn khoá (GIA-77).
-  const plus = browser || geminiKeys.paid ? await hasPlus(userData.user.id) : false;
-  let refund: (() => unknown) | null = null;
-  let markGeminiKey: ((tier: GeminiKeyTier) => unknown) | null = null;
-  if (browser) {
-    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-    const used = await recordUsage(admin, userData.user.id, 'hoi-co');
-    if (!used) return json({ error: 'Máy chủ chưa trả lời được' }, 500);
-    refund = used.refund;
-    markGeminiKey = used.markGeminiKey;
-    const limit = plus ? WEB_DAILY.askPlus : WEB_DAILY.askFree;
-    if (used.count > limit) {
-      await refund();
-      return json(
-        {
-          error: `Hôm nay con đã hỏi ${teacher === 'thay' ? 'thầy' : 'cô'} nhiều rồi, mai mình hỏi tiếp nhé!`,
-          code: 'het-luot',
-          limit,
-        },
-        429,
-      );
-    }
+  // Luật chi phí không dựa vào header Origin: app và script tự viết không gửi Origin (GIA-84).
+  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+  // Cầu dao tổng cho mọi yêu cầu: tổng lượt "Hỏi cô" trong ngày vượt mức thì tạm nghỉ.
+  const globalLimit = limitFrom(Deno.env.get('GIOI_HAN_HOI_CO_NGAY'), GLOBAL_DAILY_DEFAULTS.askAll);
+  const { count: total, error: totalError } = await admin
+    .from('ai_usage_log')
+    .select('id', { count: 'exact', head: true })
+    .eq('kind', 'hoi-co')
+    .gte('created_at', startOfTodayInVietnam().toISOString());
+  if (totalError) console.error('Lỗi đếm tổng lượt hỏi:', totalError);
+  if (globalBreakerTripped(totalError ? null : total, globalLimit)) {
+    return json({ error: BUSY_MESSAGES.quaTaiHoi, code: 'qua-tai' }, 503);
+  }
+
+  // Cần biết gói để chọn khoá Gemini (GIA-77), giới hạn lượt, và chỉ Plus mới được Claude (GIA-84).
+  const plus = await hasPlus(userData.user.id);
+  // Ghi lượt cho mọi yêu cầu (trước đây chỉ web), để script bỏ Origin không hỏi được vô hạn.
+  const used = await recordUsage(admin, userData.user.id, 'hoi-co');
+  if (!used) return json({ error: 'Máy chủ chưa trả lời được' }, 500);
+  const { refund, markGeminiKey } = used;
+  const limit = plus ? WEB_DAILY.askPlus : WEB_DAILY.askFree;
+  if (used.count > limit) {
+    await refund();
+    return json(
+      {
+        error: `Hôm nay con đã hỏi ${teacher === 'thay' ? 'thầy' : 'cô'} nhiều rồi, mai mình hỏi tiếp nhé!`,
+        code: 'het-luot',
+        limit,
+      },
+      429,
+    );
   }
   // Plus dùng khoá trả phí, miễn phí dùng khoá miễn phí (GIA-77).
   const geminiKey = geminiKeyFor(plus, geminiKeys);
@@ -134,7 +151,7 @@ Deno.serve(async (req) => {
       gemini: !!geminiKey,
       claude: !!Deno.env.get('ANTHROPIC_API_KEY'),
     }),
-    { plus, browser },
+    { plus },
   );
 
   for (const engine of order) {
@@ -158,7 +175,7 @@ Deno.serve(async (req) => {
       }
       const cleaned = cleanAnswer(answer);
       if (cleaned) {
-        if (engine === 'gemini') await markGeminiKey?.(geminiKey!.tier);
+        if (engine === 'gemini') await markGeminiKey(geminiKey!.tier);
         return json({ answer: cleaned, engine });
       }
     } catch (error) {
@@ -166,8 +183,9 @@ Deno.serve(async (req) => {
     }
   }
   // Chưa trả lời được thì trả lại lượt cho bé.
-  await refund?.();
-  if (browser && !plus) return json({ error: 'Cô đang hơi bận, con thử lại sau ít phút nhé!', code: 'ban' }, 503);
+  await refund();
+  // Chưa Plus chỉ có AI miễn phí (web và app): hẹn thử lại, không đẩy sang AI trả phí.
+  if (!plus) return json({ error: BUSY_MESSAGES.ban, code: 'ban' }, 503);
   return json({ error: 'Máy chủ chưa trả lời được' }, 502);
 });
 

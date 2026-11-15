@@ -58,14 +58,16 @@ Chọn **(b) ngay bây giờ**, lên lộ trình **(a) khi app có bản build m
 - Khó hơn: số tài khoản ẩn danh tăng; cần theo dõi chi phí và số lượt hằng ngày (Sentry, budget alert).
 - Bảng `moi_dung_thu` và code danh sách mời giữ nguyên để bật lại nhanh khi bị lạm dụng (`WEB_CHI_NGUOI_DUOC_MOI=true`).
 
-## Rủi ro còn lại (đề xuất ticket riêng, sửa `supabase/functions/**`)
+## Rủi ro còn lại
 - **Bỏ qua nhận diện web bằng cách không gửi `Origin`.** `Origin` đáng tin với trình duyệt, nhưng script tự viết gọi thẳng hàm
-  Edge (khoá publishable nằm công khai trong bản web) mà không gửi `Origin` sẽ được coi như app: không bị cầu dao tổng
-  `GIOI_HAN_CHUNG_NGAY`, và có thể rơi sang Claude (trả phí) khi Gemini lỗi. Rủi ro này **đã có từ trước** (đăng nhập ẩn danh đã
-  mở cho app), mở web làm link dễ tìm hơn. Đề xuất: áp cầu dao tổng cho mọi yêu cầu (không chỉ web) và chỉ cho Claude với
-  người có Plus hoặc tài khoản không ẩn danh; thêm cảnh báo ngân sách Anthropic.
+  Edge (khoá publishable nằm công khai trong bản web) mà không gửi `Origin` sẽ được coi như app. **Đã xử lý ở GIA-84**:
+  cầu dao tổng áp cho mọi yêu cầu (`GIOI_HAN_TONG_NGAY` cho chấm bài, `GIOI_HAN_HOI_CO_NGAY` cho "Hỏi cô"; web vẫn có ngưỡng
+  thấp hơn `GIOI_HAN_CHUNG_NGAY`), "Hỏi cô" tính lượt theo người cho cả app, và Claude chỉ dùng cho người có Plus (web lẫn app);
+  chưa Plus mà Gemini lỗi thì báo bận. Không chặn thêm tài khoản ẩn danh có Plus: Plus phải trả tiền nên không phải đường lạm dụng.
+  Còn lại: script bỏ `Origin` vẫn dùng được phần cầu dao tổng của app, nên cầu dao có thể nhảy sớm làm app nghỉ trong ngày
+  (chỉ mất dịch vụ, không mất tiền Claude). Vẫn nên thêm cảnh báo ngân sách Anthropic (GIA-72).
 - Robot tạo nhiều tài khoản ẩn danh để lấy 3 lượt/ngày mỗi tài khoản: bị chặn trên bởi 30 tài khoản/giờ/IP và cầu dao tổng
-  (với yêu cầu web).
+  (mọi yêu cầu, từ GIA-84).
 
 ## Điều kiện xem xét lại
 - Số tài khoản ẩn danh mới/ngày tăng bất thường, hoặc cầu dao tổng chạm trần nhiều ngày liền → bật lại danh sách mời hoặc
