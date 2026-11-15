@@ -27,7 +27,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
-    minHeight: 40,
+    minHeight: 44, // vùng bấm tối thiểu 44pt cho ngón tay bé
     backgroundColor: Palette.white,
     borderWidth: 2,
     borderColor: Palette.mint,
