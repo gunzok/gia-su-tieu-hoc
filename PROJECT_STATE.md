@@ -8,9 +8,10 @@
 | Slug / Team key | `gia-su-tieu-hoc` / `GIA` |
 | Linear | Team [Giasutieuhoc](https://linear.app/justintran/team/GIA) · Project [App mobile (P-GIA-2)](https://linear.app/justintran/project/gia-su-tieu-hoc-app-mobile-iosandroid-401c1c7f181e) · Project [Web app (P-GIA-4)](https://linear.app/justintran/project/gia-su-tieu-hoc-web-app-5c5fa409f986) |
 | Repo | [gunzok/gia-su-tieu-hoc](https://github.com/gunzok/gia-su-tieu-hoc) (public, nhánh chính `main`) |
-| Web production | https://gia-su-tieu-hoc.giasutieuhoc.workers.dev (chỉ người được mời) |
+| Web production | https://gia-su-tieu-hoc.giasutieuhoc.workers.dev (mở công khai từ 14/11, GIA-78; máy chủ còn danh sách mời tới khi tắt `WEB_CHI_NGUOI_DUOC_MOI`) |
+| App Android | 0.5.0 APK cài trực tiếp: https://github.com/gunzok/gia-su-tieu-hoc/releases/latest (trang web `/tai-app`), phát hành 15/11 (GIA-79) |
 | Ngày khởi tạo | 2026-10-18 (migration đầu tiên) · áp quy trình: 2026-11-13 |
-| Pha hiện tại | **5 Phát triển** (app mobile) · **6 Nghiệm thu** (web: nhóm thử từ 10/11) |
+| Pha hiện tại | **6 Nghiệm thu, vận hành** (web công khai + app Android APK 0.5.0 từ 15/11) · **5 Phát triển** cho việc sau ra mắt |
 
 ## Gate
 | Pha | Trạng thái | Ngày duyệt | Ghi chú |
@@ -41,12 +42,13 @@ Trạng thái: Chưa bắt đầu · Đang làm · Chờ duyệt · Đã duyệt
 ## Rủi ro
 | Mã | Mô tả | Xác suất | Ảnh hưởng | Xử lý | Trạng thái |
 |---|---|---|---|---|---|
-| R-001 | Điều khoản Gemini API không cho app hướng tới người dưới 18 tuổi; gói miễn phí dùng dữ liệu gửi lên | Cao | Cao | Chỉ dùng cho nhóm thử; chuyển gói trả phí hoặc Claude trước khi mở rộng (GIA-21) | Đang theo dõi |
-| R-002 | Chưa bật CAPTCHA đăng ký; đăng nhập ẩn danh vẫn bật (app cần) | Trung bình | Trung bình | Web chặn bằng danh sách mời; CAPTCHA cần sửa code đăng nhập trước | Mở |
+| R-001 | Điều khoản Gemini API không cho app hướng tới người dưới 18 tuổi; gói miễn phí dùng dữ liệu gửi lên | Cao | Cao | Chủ dự án chấp nhận 14/11: miễn phí dùng Gemini miễn phí, Plus dùng Gemini trả phí (GIA-77); chính sách ghi rõ. Cần rà pháp lý | Chấp nhận có điều kiện |
+| R-002 | Chưa bật CAPTCHA đăng ký; đăng nhập ẩn danh vẫn bật (app cần) | Trung bình | Trung bình | ADR-007: giữ CAPTCHA tắt, dựa vào rate limit Auth + giới hạn lượt + cầu dao tổng cho mọi yêu cầu (GIA-84); Turnstile khi có bản app mới | Đang theo dõi |
 | R-003 | OTA kênh `preview` tự gửi khi gộp, không có cổng duyệt | Trung bình | Trung bình | Chỉ máy thử nhận kênh preview; kênh production đi theo tag | Chấp nhận |
 | R-004 | Chưa có Sentry DSN và cảnh báo ngân sách AI | Trung bình | Trung bình | Code sẵn; chủ dự án tạo DSN + budget alert (GIA-72) | Mở |
 | R-005 | Một người duyệt duy nhất (0 approval bắt buộc) | Trung bình | Cao | CI là cổng chính; thay đổi nhạy cảm (đăng nhập, thanh toán, dữ liệu trẻ em) mời chủ dự án review | Chấp nhận |
-| R-007 | Gemini gói miễn phí chỉ 5 lượt/phút và hay quá tải (503); chưa nạp được thanh toán. Chấm bài **tạm hoãn** từ 12/11 | Cao | Cao | Nạp thanh toán Gemini hoặc chuyển Claude rồi thử chấm thật (GIA-19, GIA-20, GIA-73) | Mở |
+| R-007 | Gemini gói miễn phí chỉ 5 lượt/phút và hay quá tải (503) | Cao | Cao | Plus dùng khoá Gemini trả phí khi chủ dự án đặt `GEMINI_API_KEY_TRA_PHI` (GIA-77); miễn phí báo bận thân thiện, cầu dao tổng (GIA-84); LM Studio qua hàng đợi (ADR-008, đề xuất) | Mở |
+| R-008 | Tích hợp GitHub của Supabase tự deploy migration + hàm lên production ~40 giây sau khi gộp vào `main`, đi vòng qua cổng duyệt `Production` của `CD - Supabase` (phát hiện 15/11) | Cao | Cao | Chủ dự án tắt deploy tự động của tích hợp (Dashboard → Project Settings → Integrations → GitHub) hoặc bỏ `cd-supabase.yml`; tới lúc đó coi gộp PR đổi `supabase/` = deploy thật | Mở |
 | R-006 | Nhiều agent (Claude Code, Codex, Antigravity) cùng một thư mục, đổi nhánh của nhau | Trung bình | Trung bình | Mỗi phiên một worktree riêng; không đổi nhánh ở thư mục chính | Đang theo dõi |
 
 ## UI/UX
@@ -66,8 +68,9 @@ Không. `make lint test build security` gọi lệnh thật; CI (`ci.yml`) chạ
 
 ## Câu hỏi mở
 - Có viết bù tài liệu thiết kế (threat model, chiến lược test) để đóng gate Pha 3 không?
-- Bật CAPTCHA khi nào (cần ticket sửa đăng nhập email và ẩn danh trước)?
+- Duyệt ADR-007 (mở web, CAPTCHA tắt), ADR-008 (LM Studio qua hàng đợi, cần đo model 27B trước), ADR-009 (chưa làm đăng nhập bằng tài khoản AI cá nhân)?
 
 ## Bước tiếp theo
-1. Sprint 1 (16-22/11), chủ dự án xác nhận đầu sprint: PR #26 bố cục web; GIA-72 Sentry + budget; GIA-58 hook dùng chung cho màn điện thoại; GIA-73 thử thật khi chấm bài mở lại (R-007).
-2. Cuối sprint: demo, velocity, retro, status update Linear.
+1. Chủ dự án: tắt `WEB_CHI_NGUOI_DUOC_MOI` (mở web thật sự), đặt `GEMINI_API_KEY_TRA_PHI`, tắt deploy tự động của tích hợp GitHub Supabase (R-008), budget alert Google Cloud + Anthropic, thử cài APK 0.5.0 trên máy Android thật.
+2. Sprint 1 (16-22/11): xác nhận nội dung Cycle đầu sprint (GIA-73 thử thật, GIA-72 Sentry, GIA-58, quyết định ADR-008/009).
+3. Cuối sprint: demo, velocity, retro, status update Linear.
