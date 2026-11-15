@@ -12,7 +12,7 @@ import { ItemSpeakButton } from '@/components/item-speak-button';
 import { Mascot } from '@/components/mascot';
 import { RetryQuestion } from '@/components/retry-question';
 import { Screen } from '@/components/screen';
-import { FontFamily, Palette, Radius, Spacing } from '@/constants/theme';
+import { Accent, FontFamily, Palette, Radius, Spacing } from '@/constants/theme';
 import { essayWords, itemParts, tallyParts } from '../../../supabase/functions/_shared/cham-bai';
 import { SubjectNames, type GradedItem, type Subject } from '@/lib/grading';
 import { loadHistory, type HistoryEntry } from '@/lib/history';
@@ -269,7 +269,7 @@ function CorrectRow({ item, number, speakingNow, onSpeak, onAsk }: RowProps) {
   return (
     <View style={[styles.row, { backgroundColor: Palette.surfaceMuted }]}>
       <View style={styles.rowHeader}>
-        <NumberBubble number={number} tint={Palette.blueSoft} ink={Palette.blue} />
+        <NumberBubble number={number} tint={Accent.primarySoft} ink={Accent.primary} />
         <View style={styles.flex}>
           <AppText variant="labelLg">{item.question}</AppText>
           <AppText variant="bodySm" color={Palette.inkSoft}>
