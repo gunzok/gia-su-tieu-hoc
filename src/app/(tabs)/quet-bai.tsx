@@ -203,7 +203,8 @@ const styles = StyleSheet.create({
   },
   frame: {
     width: '100%',
-    aspectRatio: 0.95,
+    // Khung thấp vừa đủ để hàng nút chụp và ảnh đã chụp nằm trên nút "Cô chấm" dính đáy, không phải cuộn.
+    aspectRatio: 1.2,
     borderRadius: Radius.lg,
     backgroundColor: Palette.ink,
     alignItems: 'center',
@@ -257,12 +258,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one + 2,
   },
   paper: {
-    width: '78%',
-    aspectRatio: 1.15,
+    width: '62%',
+    aspectRatio: 1.3,
     backgroundColor: Palette.amberSoft,
     borderRadius: Radius.md,
-    padding: Spacing.three + 4,
-    gap: Spacing.three,
+    padding: Spacing.three,
+    gap: Spacing.two + 4,
     transform: [{ rotate: '-3deg' }],
   },
   placeholderLineShort: {
@@ -285,7 +286,7 @@ const styles = StyleSheet.create({
   },
   tips: {
     position: 'absolute',
-    bottom: Spacing.five + 4,
+    bottom: Spacing.four + 4,
     flexDirection: 'row',
     gap: Spacing.two,
   },
@@ -293,7 +294,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one + 2,
-    backgroundColor: 'rgba(17,28,45,0.8)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     borderRadius: Radius.full,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
@@ -304,7 +305,7 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   sideControl: {
-    width: 84,
+    flex: 1,
     alignItems: 'center',
     gap: Spacing.one + 2,
   },
