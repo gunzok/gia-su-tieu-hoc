@@ -3,33 +3,26 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppHeader, HeaderPill } from '@/components/app-header';
 import { AppText } from '@/components/app-text';
 import { BigButton, type IconName } from '@/components/big-button';
 import { Card } from '@/components/card';
+import { ItemSpeakButton } from '@/components/item-speak-button';
 import { Mascot } from '@/components/mascot';
 import { Screen } from '@/components/screen';
-import { PulseRing, SoundWave } from '@/components/sound-wave';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 import { SubjectNames, type Subject } from '@/lib/grading';
 import { useGreeting } from '@/lib/greetings';
 import { loadHistory, type HistoryEntry } from '@/lib/history';
 import { useHomeworkSession } from '@/lib/homework-session';
 import { avatarEmoji, useProfile, useTeacher } from '@/lib/profile';
-import { allSubjects, averageScore } from '@/lib/progress';
+import { allSubjects } from '@/lib/progress';
 import { currentStreak, streakMessage } from '@/lib/rewards';
 import { speakVietnamese, stopSpeaking } from '@/lib/speech';
 
 
-const subjectStyles: Record<Subject, { tint: string; dot: string; ink: string; icon: IconName; hint: string }> = {
-  toan: { tint: Palette.mintSoft, dot: Palette.blue, ink: Palette.blueDark, icon: 'calculate', hint: 'Số & Hình' },
-  'tieng-viet': {
-    tint: Palette.coralSoft,
-    dot: Palette.coralInk,
-    ink: Palette.coralInk,
-    icon: 'spellcheck',
-    hint: 'Đọc & Viết',
-  },
+const subjectStyles: Record<Subject, { tint: string; dot: string; ink: string; icon: IconName }> = {
+  toan: { tint: Palette.mintSoft, dot: Palette.blue, ink: Palette.blueDark, icon: 'calculate' },
+  'tieng-viet': { tint: Palette.coralSoft, dot: Palette.coralInk, ink: Palette.coralInk, icon: 'spellcheck' },
 };
 
 export default function HomeScreen() {
@@ -72,120 +65,90 @@ export default function HomeScreen() {
 
   return (
     <Screen>
-      <AppHeader
-        subtitle={`Lớp ${grade}`}
-        right={
-          <View style={styles.headerRight}>
-            <HeaderPill
-              icon="⭐"
-              label={String(rewards.stars)}
-              accessibilityLabel={`Con có ${rewards.stars} ngôi sao`}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Hồ sơ của bé"
-              onPress={() => router.push('/sua-ho-so')}
-              style={({ pressed }) => [styles.avatarButton, pressed && styles.pressed]}>
-              <AppText style={styles.avatarEmoji}>{avatarEmoji(profile?.avatar ?? '')}</AppText>
-            </Pressable>
-          </View>
-        }
-      />
-
-      <View accessible accessibilityLabel={`Chuỗi ${streak} ngày học. ${streakMessage(rewards, now)}`} style={styles.streakRow}>
-        <View style={styles.streakBadge}>
-          <AppText style={styles.streakIcon}>🔥</AppText>
-          <AppText variant="headlineSm" color={Palette.coralInk}>
+      <View style={styles.header}>
+        <View style={styles.flex}>
+          <AppText variant="headlineMd">{profile?.name ? `Chào ${profile.name}! 🌟` : 'Chào con! 🌟'}</AppText>
+          <AppText variant="bodyMd" color={Palette.inkSoft}>
+            Lớp {grade}
+          </AppText>
+        </View>
+        <View
+          accessible
+          accessibilityLabel={`Con có ${rewards.stars} ngôi sao. Chuỗi ${streak} ngày học`}
+          style={styles.statsPill}>
+          <AppText style={styles.pillIcon}>⭐</AppText>
+          <AppText variant="labelLg" color={Palette.amberInk}>
+            {rewards.stars}
+          </AppText>
+          <AppText variant="labelLg" color={Palette.amberInk}>
+            ·
+          </AppText>
+          <AppText style={styles.pillIcon}>🔥</AppText>
+          <AppText variant="labelLg" color={Palette.amberInk}>
             {streak}
           </AppText>
         </View>
-        <View style={styles.flex}>
-          <AppText variant="labelLg" color={Palette.coralInk}>
-            Chuỗi {streak} ngày học
-          </AppText>
-          <AppText variant="bodySm" color={Palette.coralInk}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Hồ sơ của bé"
+          onPress={() => router.push('/sua-ho-so')}
+          style={({ pressed }) => [styles.avatarButton, pressed && styles.pressed]}>
+          <AppText style={styles.avatarEmoji}>{avatarEmoji(profile?.avatar ?? '')}</AppText>
+        </Pressable>
+      </View>
+
+      <Card style={styles.subjectCard}>
+        <View style={styles.subjectIntro}>
+          <AppText variant="headlineMd">Hôm nay con làm bài môn nào?</AppText>
+          <AppText variant="bodySm" color={Palette.inkSoft}>
             {streakMessage(rewards, now)}
           </AppText>
         </View>
-      </View>
-
-      <Card style={styles.greetingCard}>
-        <View style={styles.greetingRow}>
-          <Mascot variant="full" size={96} />
-          <View style={styles.bubble}>
-            <AppText variant="labelLg" color={Palette.blueDark}>
-              {greeting.title}
-            </AppText>
-            <AppText variant="bodyMd">{greeting.body}</AppText>
-          </View>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={speaking ? 'Dừng đọc' : `Nghe ${T.word} dặn hôm nay`}
-          onPress={toggleGreeting}
-          style={({ pressed }) => [styles.listenButton, speaking && styles.listenActive, pressed && styles.pressed]}>
-          <View style={styles.listenIcon}>
-            <PulseRing active={speaking} size={30} color={Palette.blueDark} />
-            <MaterialIcons name={speaking ? 'stop' : 'volume-up'} size={22} color={Palette.blueDark} />
-          </View>
-          <AppText variant="labelLg" color={Palette.blueDark} style={styles.flex}>
-            {speaking ? `${T.Title} đang nói…` : `Nghe ${T.Title} dặn hôm nay`}
-          </AppText>
-          <SoundWave
-            active={speaking}
-            heights={[10, 18, 12, 22, 14]}
-            colors={[Palette.blueDark]}
-            barWidth={4}
-            gap={4}
-            restHeight={10}
-          />
-        </Pressable>
-      </Card>
-
-      <View style={styles.hero}>
-        <View style={styles.heroIcon}>
-          <MaterialIcons name="photo-camera" size={30} color={Palette.blue} />
-        </View>
-        <View style={styles.heroTag}>
-          <AppText variant="labelSm" color={Palette.ink}>
-            TRỢ THỦ AI THÔNG MINH
-          </AppText>
-        </View>
-        <AppText variant="headlineLg" style={styles.center}>
-          Chấm bài cùng {T.Title} ngay!
-        </AppText>
-        <AppText variant="bodyMd" color={Palette.inkSoft} style={styles.center}>
-          Chỉ 1 bức ảnh, {T.Title} sẽ sửa lỗi sai và giảng lại cho con nghe ngay.
-        </AppText>
-        <BigButton label="Chụp bài tập 📸" icon="camera" onPress={() => router.navigate('/quet-bai')} />
-      </View>
-
-      <View style={styles.section}>
-        <AppText variant="headlineSm">Môn học vui vẻ</AppText>
         <View style={styles.subjectRow}>
           {allSubjects.map((subject) => {
             const look = subjectStyles[subject];
-            const average = averageScore(history.filter((entry) => entry.subject === subject));
             return (
               <Pressable
                 key={subject}
                 accessibilityRole="button"
+                accessibilityLabel={`Chụp bài ${SubjectNames[subject]} lớp ${grade}`}
                 onPress={() => startSubject(subject)}
                 style={({ pressed }) => [styles.subjectTile, { backgroundColor: look.tint }, pressed && styles.pressed]}>
                 <View style={[styles.subjectIcon, { backgroundColor: look.dot }]}>
                   <MaterialIcons name={look.icon} size={28} color={Palette.white} />
                 </View>
-                <AppText variant="labelLg" color={look.ink}>
+                <AppText variant="headlineSm" color={look.ink}>
                   {SubjectNames[subject]} {grade}
                 </AppText>
-                <AppText variant="bodySm" color={look.ink}>
-                  {average === null ? look.hint : `Điểm TB ${average.toFixed(1)}`}
-                </AppText>
+                <View style={styles.subjectAction}>
+                  <MaterialIcons name="photo-camera" size={20} color={look.ink} />
+                  <AppText variant="labelLg" color={look.ink}>
+                    Chụp bài
+                  </AppText>
+                </View>
               </Pressable>
             );
           })}
         </View>
-      </View>
+      </Card>
+
+      <Card style={styles.greetingCard}>
+        <Mascot size={52} />
+        <View style={styles.flex}>
+          <AppText variant="labelLg" color={Palette.blueDark}>
+            {speaking ? `${T.Title} đang nói…` : `${T.Title} dặn hôm nay`}
+          </AppText>
+          <AppText variant="bodySm" color={Palette.inkSoft}>
+            {greeting.body}
+          </AppText>
+        </View>
+        <ItemSpeakButton
+          number={0}
+          speakingNow={speaking}
+          onSpeak={toggleGreeting}
+          label={`Nghe ${T.word} dặn hôm nay`}
+        />
+      </Card>
 
       {history[0] && (
         <Card tint={Palette.amberSoft} borderColor={Palette.amberSoft} style={styles.latestCard}>
@@ -199,7 +162,7 @@ export default function HomeScreen() {
           </View>
           <View style={styles.flex}>
             <AppText variant="labelSm" color={Palette.amberInk}>
-              BÀI GẦN NHẤT
+              Bài gần nhất
             </AppText>
             <AppText variant="labelLg">
               {SubjectNames[history[0].subject]} lớp {history[0].grade}
@@ -232,109 +195,45 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  center: {
-    textAlign: 'center',
-  },
   pressed: {
     opacity: 0.85,
     transform: [{ scale: 0.98 }],
   },
-  headerRight: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
   },
+  statsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    backgroundColor: Palette.amber,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.three,
+    minHeight: 44,
+  },
+  pillIcon: {
+    fontSize: 16,
+    lineHeight: 22,
+  },
   avatarButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: Palette.mintSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarEmoji: {
-    fontSize: 24,
-    lineHeight: 30,
+    fontSize: 26,
+    lineHeight: 32,
   },
-  streakRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    backgroundColor: Palette.coralSoft,
-    borderRadius: Radius.lg,
-    paddingVertical: Spacing.two + 4,
-    paddingHorizontal: Spacing.three,
+  subjectCard: {
+    gap: Spacing.three + 4,
   },
-  streakBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  subjectIntro: {
     gap: Spacing.one,
-    backgroundColor: Palette.white,
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.three,
-    minHeight: 48,
-  },
-  streakIcon: {
-    fontSize: 22,
-    lineHeight: 28,
-  },
-  greetingCard: {
-    gap: Spacing.three,
-  },
-  greetingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  bubble: {
-    flex: 1,
-    backgroundColor: Palette.surfaceMuted,
-    borderRadius: Radius.md + 4,
-    borderTopLeftRadius: 4,
-    padding: Spacing.three,
-    gap: Spacing.one,
-  },
-  listenButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    backgroundColor: Palette.mint,
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.four,
-    minHeight: 52,
-  },
-  listenActive: {
-    backgroundColor: Palette.mintSoft,
-  },
-  listenIcon: {
-    width: 30,
-    height: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hero: {
-    backgroundColor: Palette.surfaceStrong,
-    borderRadius: Radius.lg,
-    padding: Spacing.four,
-    gap: Spacing.two + 2,
-    alignItems: 'center',
-  },
-  heroIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: Palette.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroTag: {
-    backgroundColor: Palette.white,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-    borderRadius: Radius.full,
-  },
-  section: {
-    gap: Spacing.three,
   },
   subjectRow: {
     flexDirection: 'row',
@@ -343,7 +242,7 @@ const styles = StyleSheet.create({
   subjectTile: {
     flex: 1,
     alignItems: 'center',
-    gap: Spacing.one + 2,
+    gap: Spacing.two,
     borderRadius: Radius.lg,
     paddingVertical: Spacing.four,
     paddingHorizontal: Spacing.two,
@@ -354,7 +253,16 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.one,
+  },
+  subjectAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  greetingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
   },
   latestCard: {
     flexDirection: 'row',

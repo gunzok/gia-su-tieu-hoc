@@ -3,26 +3,21 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { AppHeader } from '@/components/app-header';
 import { AppText } from '@/components/app-text';
 import { BigButton, type IconName } from '@/components/big-button';
 import { ChoiceChips } from '@/components/choice-chips';
 import { GradingOverlay } from '@/components/grading-overlay';
-import { Mascot } from '@/components/mascot';
 import { Screen } from '@/components/screen';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 import { SubjectNames } from '@/lib/grading';
 import { MAX_PAGES, useHomeworkSession } from '@/lib/homework-session';
 import { useTeacher } from '@/lib/profile';
-import { allSubjects, SubjectIcons } from '@/lib/progress';
+import { allSubjects } from '@/lib/progress';
 
-const gradeOptions = [1, 2, 3, 4, 5].map((g) => ({
-  value: g,
-  label: `Lớp ${g}`,
-}));
+const grades = [1, 2, 3, 4, 5];
 const subjectOptions = allSubjects.map((s) => ({
   value: s,
-  label: `${SubjectIcons[s]} ${SubjectNames[s]}`,
+  label: SubjectNames[s],
 }));
 
 export default function ScanScreen() {
@@ -38,119 +33,116 @@ export default function ScanScreen() {
   }
 
   return (
-    <Screen>
-      <AppHeader subtitle="Quét bài" />
+    <Screen
+      footer={
+        count > 0 ? (
+          <BigButton
+            label={count > 1 ? `${T.Title} chấm ${count} trang nhé!` : `${T.Title} chấm bài nhé!`}
+            icon="auto-fix-high"
+            onPress={handleGrade}
+            loading={grading}
+          />
+        ) : null
+      }>
+      <AppText variant="headlineLg">Chụp bài</AppText>
 
       <View style={styles.pickers}>
         <ChoiceChips options={subjectOptions} value={subject} onChange={setSubject} />
-        <ChoiceChips options={gradeOptions} value={grade} onChange={setGrade} />
+        <View style={styles.gradeRow}>
+          <AppText variant="labelLg" color={Palette.inkSoft}>
+            Lớp
+          </AppText>
+          {grades.map((g) => {
+            const selected = g === grade;
+            return (
+              <Pressable
+                key={g}
+                accessibilityRole="button"
+                accessibilityLabel={`Lớp ${g}`}
+                accessibilityState={{ selected }}
+                onPress={() => setGrade(g)}
+                style={({ pressed }) => [
+                  styles.gradeButton,
+                  { backgroundColor: selected ? Palette.mint : Palette.surfaceMuted },
+                  pressed && styles.pressed,
+                ]}>
+                <AppText variant="headlineSm" color={selected ? Palette.blueDark : Palette.ink}>
+                  {g}
+                </AppText>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
-      <View style={styles.stage}>
+      <View style={styles.frame}>
+        <View style={[styles.corner, styles.cornerTopLeft]} />
+        <View style={[styles.corner, styles.cornerTopRight]} />
+        <View style={[styles.corner, styles.cornerBottomLeft]} />
+        <View style={[styles.corner, styles.cornerBottomRight]} />
+
         <View style={styles.statusPill}>
-          <MaterialIcons
-            name={count ? 'check-circle-outline' : 'center-focus-weak'}
-            size={18}
-            color={Palette.blue}
-          />
-          <AppText variant="labelMd">
-            {count ? `Đã có ${count}/${MAX_PAGES} trang vở 📸` : 'Đặt vở vào khung nhé'}
+          <MaterialIcons name={count ? 'check-circle-outline' : 'center-focus-weak'} size={18} color={Palette.white} />
+          <AppText variant="labelMd" color={Palette.white}>
+            {count ? `Đã có ${count}/${MAX_PAGES} trang vở` : 'Đặt vở vào khung nhé'}
           </AppText>
         </View>
 
-        {count > 0 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pages}>
-            {photos.map((page, index) => (
-              <View key={`${page.uri}-${index}`} style={styles.page}>
-                <Image source={{ uri: page.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                <View style={styles.pageNumber}>
-                  <AppText variant="labelSm" color={Palette.white}>
-                    Trang {index + 1}
-                  </AppText>
-                </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Bỏ trang ${index + 1}`}
-                  onPress={() => removePhoto(index)}
-                  hitSlop={8}
-                  style={styles.pageRemove}>
-                  <MaterialIcons name="close" size={18} color={Palette.white} />
-                </Pressable>
-              </View>
-            ))}
-            {!full && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Chụp thêm trang"
-                onPress={() => pickPhoto('camera')}
-                style={[styles.page, styles.addPage]}>
-                <MaterialIcons name="add-a-photo" size={32} color={Palette.blue} />
-                <AppText variant="labelMd" color={Palette.blue}>
-                  Thêm trang
-                </AppText>
-              </Pressable>
-            )}
-          </ScrollView>
-        ) : (
-          <View style={styles.frame}>
-            <View style={styles.placeholder}>
-              <View style={styles.placeholderLineShort} />
-              <View style={styles.placeholderLine} />
-              <View style={styles.placeholderLine} />
-              <View style={styles.placeholderMark}>
-                <AppText variant="labelMd" color={Palette.amberInk}>
-                  12 + 15 = 27
-                </AppText>
-              </View>
-              <View style={styles.placeholderLine} />
-            </View>
+        <View style={styles.paper}>
+          <View style={styles.placeholderLineShort} />
+          <View style={styles.placeholderLine} />
+          <View style={styles.placeholderLine} />
+          <View style={styles.placeholderMark}>
+            <AppText variant="labelMd" color={Palette.amberInk}>
+              12 + 15 = 27
+            </AppText>
           </View>
-        )}
+          <View style={styles.placeholderLine} />
+        </View>
 
         <View style={styles.tips}>
           <Tip icon="light-mode" label="Đủ ánh sáng" />
-          <Tip icon="crop-free" label="Chụp thẳng đứng" />
+          <Tip icon="crop-free" label="Chụp thẳng" />
         </View>
       </View>
-
-      {/* Đặt ngay dưới khung ảnh để không bị thanh tab che sau khi chọn ảnh. */}
-      {count > 0 && (
-        <BigButton
-          label={count > 1 ? `${T.Title} chấm ${count} trang nhé!` : `${T.Title} chấm bài nhé!`}
-          icon="auto-fix-high"
-          onPress={handleGrade}
-          loading={grading}
-        />
-      )}
 
       <View style={styles.controls}>
         <SideControl icon="photo-library" label="Từ Album" onPress={() => pickPhoto('library')} />
-        <View style={styles.shutterColumn}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={count ? 'Chụp thêm trang' : 'Chụp ngay'}
-            disabled={full}
-            onPress={() => pickPhoto('camera')}
-            style={({ pressed }) => [styles.shutterRing, pressed && styles.pressed]}>
-            <View style={styles.shutter}>
-              <MaterialIcons name="photo-camera" size={38} color={Palette.blueDark} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={full ? 'Đủ trang' : count ? 'Chụp thêm trang' : 'Chụp ngay'}
+          disabled={full}
+          onPress={() => pickPhoto('camera')}
+          style={({ pressed }) => [styles.shutterRing, full && styles.disabled, pressed && styles.pressed]}>
+          <View style={styles.shutter}>
+            <MaterialIcons name="photo-camera" size={36} color={Palette.blueDark} />
+          </View>
+        </Pressable>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.thumbs}
+          contentContainerStyle={styles.thumbsContent}>
+          {photos.map((page, index) => (
+            <View key={`${page.uri}-${index}`} style={styles.thumb}>
+              <Image source={{ uri: page.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              <View style={styles.thumbNumber}>
+                <AppText variant="labelSm" color={Palette.white}>
+                  {index + 1}
+                </AppText>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Bỏ trang ${index + 1}`}
+                onPress={() => removePhoto(index)}
+                style={styles.thumbRemove}>
+                <View style={styles.thumbRemoveDot}>
+                  <MaterialIcons name="close" size={16} color={Palette.white} />
+                </View>
+              </Pressable>
             </View>
-          </Pressable>
-          <AppText variant="labelMd">{full ? 'Đủ trang' : count ? 'Chụp thêm trang' : 'Chụp ngay'}</AppText>
-        </View>
-        <View style={styles.sideControl} />
-      </View>
-
-      <View style={styles.teacherRow}>
-        <Mascot size={64} />
-        <View style={styles.bubble}>
-          <AppText variant="labelMd" color={Palette.blue}>
-            {T.name} ♡
-          </AppText>
-          <AppText variant="bodyMd">
-            Con chụp ngay ngắn và đủ sáng để {T.word} chấm bài thật nhanh nhé! 🌸
-          </AppText>
-        </View>
+          ))}
+        </ScrollView>
       </View>
 
       {grading && <GradingOverlay photoUri={photos[0]?.uri} pageCount={count} />}
@@ -162,6 +154,7 @@ function SideControl({ icon, label, onPress }: { icon: IconName; label: string; 
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       onPress={onPress}
       style={({ pressed }) => [styles.sideControl, pressed && styles.pressed]}>
       <View style={styles.sideCircle}>
@@ -175,146 +168,144 @@ function SideControl({ icon, label, onPress }: { icon: IconName; label: string; 
 function Tip({ icon, label }: { icon: IconName; label: string }) {
   return (
     <View style={styles.tip}>
-      <MaterialIcons name={icon} size={16} color={Palette.amberInk} />
-      <AppText variant="labelMd">{label}</AppText>
+      <MaterialIcons name={icon} size={18} color={Palette.white} />
+      <AppText variant="labelMd" color={Palette.white}>
+        {label}
+      </AppText>
     </View>
   );
 }
+
+const CORNER = 28;
 
 const styles = StyleSheet.create({
   pressed: {
     opacity: 0.85,
     transform: [{ scale: 0.97 }],
   },
+  disabled: {
+    opacity: 0.5,
+  },
   pickers: {
-    gap: Spacing.two,
-  },
-  stage: {
-    backgroundColor: Palette.surfaceMuted,
-    borderRadius: Radius.lg + 8,
-    padding: Spacing.three,
     gap: Spacing.two + 4,
-    alignItems: 'center',
   },
-  statusPill: {
-    alignSelf: 'flex-start',
+  gradeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.one + 2,
-    backgroundColor: Palette.white,
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    gap: Spacing.two,
+  },
+  gradeButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   frame: {
     width: '100%',
-    // Khung thấp vừa đủ để nút "Chụp ngay" luôn nằm trong màn hình, không phải cuộn.
-    aspectRatio: 1.5,
+    // Khung thấp vừa đủ để hàng nút chụp và ảnh đã chụp nằm trên nút "Cô chấm" dính đáy, không phải cuộn.
+    aspectRatio: 1.2,
     borderRadius: Radius.lg,
-    overflow: 'hidden',
-    backgroundColor: Palette.white,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: Palette.blue,
-  },
-  pages: {
-    gap: Spacing.two + 2,
-    paddingVertical: Spacing.one,
-  },
-  page: {
-    width: 150,
-    aspectRatio: 3 / 4,
-    borderRadius: Radius.md,
-    overflow: 'hidden',
-    backgroundColor: Palette.white,
-  },
-  pageNumber: {
-    position: 'absolute',
-    left: Spacing.two,
-    bottom: Spacing.two,
-    backgroundColor: 'rgba(17,28,45,0.65)',
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.half,
-  },
-  pageRemove: {
-    position: 'absolute',
-    top: Spacing.two,
-    right: Spacing.two,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(17,28,45,0.65)',
+    backgroundColor: Palette.ink,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  addPage: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.two,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: Palette.blue,
-  },
-  placeholder: {
-    flex: 1,
     padding: Spacing.four,
-    gap: Spacing.three,
+  },
+  corner: {
+    position: 'absolute',
+    width: CORNER,
+    height: CORNER,
+    borderColor: Palette.mint,
+  },
+  cornerTopLeft: {
+    top: Spacing.three,
+    left: Spacing.three,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderTopLeftRadius: 8,
+  },
+  cornerTopRight: {
+    top: Spacing.three,
+    right: Spacing.three,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderTopRightRadius: 8,
+  },
+  cornerBottomLeft: {
+    bottom: Spacing.three,
+    left: Spacing.three,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+    borderBottomLeftRadius: 8,
+  },
+  cornerBottomRight: {
+    bottom: Spacing.three,
+    right: Spacing.three,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderBottomRightRadius: 8,
+  },
+  statusPill: {
+    position: 'absolute',
+    top: Spacing.three + 4,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one + 2,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one + 2,
+  },
+  paper: {
+    width: '62%',
+    aspectRatio: 1.3,
+    backgroundColor: Palette.amberSoft,
+    borderRadius: Radius.md,
+    padding: Spacing.three,
+    gap: Spacing.two + 4,
+    transform: [{ rotate: '-3deg' }],
   },
   placeholderLineShort: {
-    width: '35%',
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: Palette.mintSoft,
+    width: '45%',
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Palette.border,
   },
   placeholderLine: {
     height: 10,
     borderRadius: 5,
-    backgroundColor: Palette.blueSoft,
+    backgroundColor: Palette.border,
   },
   placeholderMark: {
     alignSelf: 'flex-start',
-    backgroundColor: Palette.amberSoft,
+    backgroundColor: Palette.amber,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one + 2,
     borderRadius: 6,
   },
   tips: {
+    position: 'absolute',
+    bottom: Spacing.four + 4,
     flexDirection: 'row',
     gap: Spacing.two,
   },
   tip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.one,
-    backgroundColor: Palette.surface,
+    gap: Spacing.one + 2,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     borderRadius: Radius.full,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
-  teacherRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two + 4,
-  },
-  bubble: {
-    flex: 1,
-    backgroundColor: Palette.surface,
-    borderRadius: Radius.md + 4,
-    borderTopLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: Palette.border,
-    padding: Spacing.three,
-    gap: Spacing.half,
-  },
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.two,
+    gap: Spacing.three,
   },
   sideControl: {
-    width: 84,
+    flex: 1,
     alignItems: 'center',
     gap: Spacing.one + 2,
   },
@@ -326,25 +317,66 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  shutterColumn: {
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
   shutterRing: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: Palette.amber,
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    borderWidth: 4,
+    borderColor: Palette.mint,
+    backgroundColor: Palette.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
   shutter: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 74,
+    height: 74,
+    borderRadius: 37,
     backgroundColor: Palette.mint,
-    borderWidth: 4,
-    borderColor: Palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbs: {
+    flex: 1,
+  },
+  thumbsContent: {
+    gap: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingRight: Spacing.one,
+  },
+  thumb: {
+    width: 56,
+    height: 72,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: Palette.amberSoft,
+    borderWidth: 1,
+    borderColor: Palette.border,
+  },
+  thumbNumber: {
+    position: 'absolute',
+    left: 4,
+    bottom: 4,
+    minWidth: 20,
+    alignItems: 'center',
+    backgroundColor: 'rgba(17,28,45,0.75)',
+    borderRadius: 6,
+    paddingHorizontal: 4,
+  },
+  // Vùng bấm 44pt phủ góc trên ảnh nhỏ; chấm ✕ nhìn thấy nằm ở góc.
+  thumbRemove: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 44,
+    height: 44,
+    alignItems: 'flex-end',
+    padding: 3,
+  },
+  thumbRemoveDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(17,28,45,0.75)',
     alignItems: 'center',
     justifyContent: 'center',
   },

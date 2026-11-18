@@ -3,7 +3,6 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppHeader } from '@/components/app-header';
 import { AskTeacherButton } from '@/components/ask-teacher-button';
 import { AppText } from '@/components/app-text';
 import { BigButton } from '@/components/big-button';
@@ -12,8 +11,9 @@ import { ItemSpeakButton } from '@/components/item-speak-button';
 import { Mascot } from '@/components/mascot';
 import { RetryQuestion } from '@/components/retry-question';
 import { Screen } from '@/components/screen';
-import { Accent, FontFamily, Palette, Radius, Spacing } from '@/constants/theme';
-import { essayWords, itemParts, tallyParts } from '../../../supabase/functions/_shared/cham-bai';
+import { PulseRing } from '@/components/sound-wave';
+import { FontFamily, Palette, Radius, Spacing } from '@/constants/theme';
+import { essayWords, itemParts } from '../../../supabase/functions/_shared/cham-bai';
 import { SubjectNames, type GradedItem, type Subject } from '@/lib/grading';
 import { loadHistory, type HistoryEntry } from '@/lib/history';
 import { useHomeworkSession } from '@/lib/homework-session';
@@ -22,10 +22,15 @@ import { itemSpeech } from '@/lib/item-speech';
 import { useTeacher } from '@/lib/profile';
 import { praiseForScore } from '@/lib/progress';
 import { STARS_PER_GRADING } from '@/lib/rewards';
-import { SoundWave } from '@/components/sound-wave';
 
-const waveHeights = [14, 24, 18, 32, 22, 36, 26, 18, 30, 16, 24, 12, 20, 28];
-const waveColors = [Palette.blue, Palette.amber, Palette.white, Palette.coral];
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
 export default function ReviewScreen() {
   const { latest, latestReward, startOver, speaking, speak, stopSpeech } = useHomeworkSession();
@@ -78,10 +83,10 @@ export default function ReviewScreen() {
   if (!entry) {
     return (
       <Screen>
-        <AppHeader subtitle="Chữa bài" />
+        <AppText variant="headlineMd">Chữa bài</AppText>
         <Card style={styles.empty}>
-          <Mascot variant="full" size={160} />
-          <AppText variant="headlineMd" style={styles.center}>
+          <Mascot variant="full" size={150} />
+          <AppText variant="headlineSm" style={styles.center}>
             Chưa có bài nào được chấm
           </AppText>
           <AppText variant="bodyMd" color={Palette.inkSoft} style={styles.center}>
@@ -93,32 +98,72 @@ export default function ReviewScreen() {
     );
   }
 
-  const tally = tallyParts(entry.items);
+  const wrongItems = entry.items.map((item, index) => ({ item, index })).filter(({ item }) => !item.correct);
+  const correctItems = entry.items.map((item, index) => ({ item, index })).filter(({ item }) => item.correct);
+  const pageCount = Math.max(entry.pages?.length ?? 0, entry.imagePaths?.length ?? 0);
+
+  function rowProps(index: number) {
+    const current = entry!;
+    const item = current.items[index];
+    return {
+      speakingNow: speaking && activeItem === index,
+      onSpeak: () => toggleItem(index),
+      onAsk: () => {
+        stopSpeech();
+        openAskTeacher({ item, number: index + 1, subject: current.subject, grade: current.grade });
+      },
+    };
+  }
 
   return (
     <Screen>
-      <AppHeader subtitle={`Lớp ${entry.grade} • Chữa bài`} />
+      <View>
+        <AppText variant="headlineMd">
+          Bài {SubjectNames[entry.subject]} lớp {entry.grade}
+        </AppText>
+        <AppText variant="bodySm" color={Palette.inkSoft}>
+          {formatDate(entry.createdAt)}
+          {pageCount > 0 ? ` · ${pageCount} trang vở` : ''}
+        </AppText>
+      </View>
 
-      <View style={styles.hero}>
-        <View style={styles.heroText}>
-          <View style={styles.heroTag}>
-            <AppText variant="labelSm" color={Palette.amberInk}>
-              🏆 {praiseForScore(entry.score)} {entry.score}/10 điểm 🎉
+      {entry.items.length > 0 ? (
+        <View
+          accessible
+          accessibilityLabel={`${entry.score} trên 10 điểm. ${praiseForScore(entry.score)} Đúng ${correctItems.length} trên ${entry.items.length} câu.`}
+          style={styles.hero}>
+          <View style={styles.scoreRing}>
+            <View style={styles.scoreValue}>
+              <AppText style={styles.scoreNumber}>{entry.score}</AppText>
+              <AppText variant="labelLg" color={Palette.amberInk}>
+                /10
+              </AppText>
+            </View>
+          </View>
+          <View style={styles.heroText}>
+            <AppText variant="headlineSm" color={Palette.amberInk}>
+              {praiseForScore(entry.score)} 🎉
+            </AppText>
+            <AppText variant="bodyMd" color={Palette.amberInk}>
+              Đúng {correctItems.length}/{entry.items.length} câu.
+              {wrongItems.length > 0
+                ? ` Cùng sửa ${wrongItems.length} câu với ${T.word} nhé!`
+                : ` Con làm đúng hết rồi!`}
             </AppText>
           </View>
-          <AppText variant="headlineMd" color={Palette.amberInk}>
-            Bài {SubjectNames[entry.subject]} lớp {entry.grade}
-          </AppText>
-          <AppText variant="bodyMd" color={Palette.amberInk}>
-            {entry.items.length > 0
-              ? `Con làm đúng ${tally.correct}/${tally.total} phần. Cùng sửa với ${T.word} nhé!`
-              : `${T.Title} chưa đọc được bài, con chụp lại giúp ${T.word} nhé!`}
-          </AppText>
         </View>
-        <View style={styles.medal}>
-          <MaterialIcons name="military-tech" size={34} color={Palette.amberInk} />
-        </View>
-      </View>
+      ) : (
+        <Card style={styles.empty}>
+          <Mascot variant="full" size={130} />
+          <AppText variant="headlineSm" style={styles.center}>
+            {T.Title} chưa đọc được bài
+          </AppText>
+          <AppText variant="bodyMd" color={Palette.inkSoft} style={styles.center}>
+            Con chụp lại giúp {T.word} nhé!
+          </AppText>
+          <BigButton label="Chụp lại" icon="photo-camera" onPress={scanAnother} />
+        </Card>
+      )}
 
       {/* Chỉ khen sao ngay sau bài vừa chấm, không hiện lại khi xem bài cũ. */}
       {latestReward && entry === latest && (
@@ -143,63 +188,43 @@ export default function ReviewScreen() {
 
       <View style={styles.voiceCard}>
         <View style={styles.voiceHeader}>
-          <Mascot size={60} background={Palette.white} />
+          <Mascot size={52} background={Palette.white} />
           <View style={styles.flex}>
-            <AppText variant="headlineSm" color={Palette.blueDark}>
+            <AppText variant="labelLg" color={Palette.blueDark}>
               {feedbackSpeaking ? `${T.name} đang giảng` : `Lời ${T.word} nhận xét`}
             </AppText>
             <AppText variant="bodySm" color={Palette.blueDark}>
               Con lắng nghe giọng {T.word} nhé!
             </AppText>
           </View>
-        </View>
-
-        <View style={styles.quote}>
-          <MaterialIcons name="record-voice-over" size={22} color={Palette.blue} />
-          <AppText variant="bodyLg" style={styles.flex}>
-            “{entry.spokenFeedback}”
-          </AppText>
-        </View>
-
-        <SoundWave active={feedbackSpeaking} heights={waveHeights} colors={waveColors} gap={7} restHeight={8} style={styles.wave} />
-
-        <View style={styles.voiceControls}>
           <RoundButton icon="replay" label="Nghe lại từ đầu" onPress={replay} />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={feedbackSpeaking ? 'Dừng đọc' : `Nghe ${T.word} nhận xét`}
-            onPress={toggleSpeech}
-            style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}>
-            <MaterialIcons name={feedbackSpeaking ? 'pause' : 'play-arrow'} size={40} color={Palette.white} />
-          </Pressable>
-          <View style={styles.roundButtonSpacer} />
+          <View style={styles.playWrap}>
+            <PulseRing active={feedbackSpeaking} size={60} color={Palette.blue} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={feedbackSpeaking ? 'Dừng đọc' : `Nghe ${T.word} nhận xét`}
+              onPress={toggleSpeech}
+              style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}>
+              <MaterialIcons name={feedbackSpeaking ? 'pause' : 'play-arrow'} size={36} color={Palette.white} />
+            </Pressable>
+          </View>
         </View>
+        <AppText variant="bodyMd" numberOfLines={2}>
+          “{entry.spokenFeedback}”
+        </AppText>
       </View>
 
-      {entry.items.length > 0 && (
-        <Card>
-          <View style={styles.detailHeader}>
-            <MaterialIcons name="menu-book" size={22} color={Palette.blue} />
+      {wrongItems.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
             <AppText variant="headlineSm" style={styles.flex}>
-              Chi tiết bài làm trên vở
+              Cần sửa
             </AppText>
-            <View style={styles.countTag}>
-              <AppText variant="labelSm">{entry.items.length} câu</AppText>
-            </View>
+            <AppText variant="labelLg" color={Palette.coralInk}>
+              {wrongItems.length} câu
+            </AppText>
           </View>
-          <AppText variant="bodySm" color={Palette.inkSoft}>
-            Bấm nút loa để nghe {T.word} giảng lại, hoặc bấm Hỏi {T.word} nếu con còn thắc mắc nhé!
-          </AppText>
-          {entry.items.map((item, index) => {
-            const speakProps = {
-              speakingNow: speaking && activeItem === index,
-              onSpeak: () => toggleItem(index),
-              onAsk: () => {
-                stopSpeech();
-                openAskTeacher({ item, number: index + 1, subject: entry.subject, grade: entry.grade });
-              },
-            };
-            if (item.correct) return <CorrectRow key={index} item={item} number={index + 1} {...speakProps} />;
+          {wrongItems.map(({ item, index }) => {
             const retryKey = `retry-${index}` as const;
             return (
               <WrongRow
@@ -214,11 +239,35 @@ export default function ReviewScreen() {
                   speak(text);
                 }}
                 stopSpeech={stopSpeech}
-                {...speakProps}
+                {...rowProps(index)}
               />
             );
           })}
-        </Card>
+        </View>
+      )}
+
+      {correctItems.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <AppText variant="headlineSm" style={styles.flex}>
+              Con làm đúng
+            </AppText>
+            <AppText variant="labelLg" color={Palette.blue}>
+              {correctItems.length} câu
+            </AppText>
+          </View>
+          <Card style={styles.correctList}>
+            {correctItems.map(({ item, index }, position) => (
+              <CorrectRow
+                key={index}
+                item={item}
+                number={index + 1}
+                last={position === correctItems.length - 1}
+                {...rowProps(index)}
+              />
+            ))}
+          </Card>
+        </View>
       )}
 
       <BigButton label="Chụp bài khác" icon="photo-camera" onPress={scanAnother} />
@@ -265,28 +314,20 @@ type RowProps = {
   onAsk: () => void;
 };
 
-function CorrectRow({ item, number, speakingNow, onSpeak, onAsk }: RowProps) {
+function CorrectRow({
+  item,
+  number,
+  speakingNow,
+  onSpeak,
+  last,
+}: Omit<RowProps, 'onAsk'> & { last: boolean }) {
   return (
-    <View style={[styles.row, { backgroundColor: Palette.surfaceMuted }]}>
-      <View style={styles.rowHeader}>
-        <NumberBubble number={number} tint={Accent.primarySoft} ink={Accent.primary} />
-        <View style={styles.flex}>
-          <AppText variant="labelLg">{item.question}</AppText>
-          <AppText variant="bodySm" color={Palette.inkSoft}>
-            Con làm: {item.childAnswer}
-          </AppText>
-        </View>
-        <ItemSpeakButton speakingNow={speakingNow} onSpeak={onSpeak} number={number} />
-      </View>
-      <View style={styles.rowActions}>
-        <View style={styles.correctPill}>
-          <MaterialIcons name="check-circle-outline" size={18} color={Palette.blueDark} />
-          <AppText variant="labelMd" color={Palette.blueDark}>
-            Đúng rồi! Giỏi quá
-          </AppText>
-        </View>
-        <AskTeacherButton onPress={onAsk} />
-      </View>
+    <View style={[styles.correctRow, !last && styles.correctDivider]}>
+      <MaterialIcons name="check-circle-outline" size={26} color={Palette.blue} />
+      <AppText variant="bodyMd" numberOfLines={1} style={styles.flex}>
+        {number}. {item.question}
+      </AppText>
+      <ItemSpeakButton speakingNow={speakingNow} onSpeak={onSpeak} number={number} />
     </View>
   );
 }
@@ -312,7 +353,6 @@ function WrongRow({
   onRetrySpeak,
   stopSpeech,
 }: WrongRowProps) {
-  const T = useTeacher();
   // Bé đang làm lại thì che đáp án đúng, để bé tự nghĩ.
   const [hideAnswer, setHideAnswer] = useState(false);
   const parts = itemParts(item);
@@ -350,29 +390,23 @@ function WrongRow({
             ) : (
               <AppText style={styles.strike}>{item.childAnswer}</AppText>
             )}
-            {rightAnswer && !hideAnswer ? (
-              <AppText variant="labelMd" color={Palette.blue}>
-                {'  •  '}Đúng là: {rightAnswer}
-              </AppText>
-            ) : null}
           </AppText>
+          {rightAnswer && !hideAnswer ? (
+            <AppText variant="labelMd" color={Palette.blue}>
+              Đúng là: {rightAnswer}
+            </AppText>
+          ) : null}
         </View>
         <ItemSpeakButton speakingNow={speakingNow} onSpeak={onSpeak} number={number} />
-      </View>
-      <View style={styles.rowActions}>
-        <View style={styles.fixTag}>
-          <MaterialIcons name="lightbulb-outline" size={16} color={Palette.coralInk} />
-          <AppText variant="labelMd" color={Palette.coralInk}>
-            Cùng {T.Title} sửa nha
-          </AppText>
-        </View>
-        <AskTeacherButton onPress={onAsk} />
       </View>
       {!hideAnswer && (
         <View style={styles.explainBox}>
           <AppText variant="bodyMd">{item.explanation}</AppText>
         </View>
       )}
+      <View style={styles.rowActions}>
+        <AskTeacherButton onPress={onAsk} />
+      </View>
       <RetryQuestion
         item={item}
         number={number}
@@ -388,6 +422,53 @@ function WrongRow({
 }
 
 const styles = StyleSheet.create({
+  correctDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: Palette.border,
+  },
+  correctRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two + 4,
+    paddingVertical: Spacing.two,
+  },
+  correctList: {
+    gap: 0,
+    paddingVertical: Spacing.one,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  section: {
+    gap: Spacing.three,
+  },
+  playWrap: {
+    width: 60,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scoreNumber: {
+    fontFamily: FontFamily.heading,
+    fontSize: 44,
+    lineHeight: 52,
+    color: Palette.amberInk,
+  },
+  scoreValue: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  scoreRing: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    borderWidth: 8,
+    borderColor: Palette.amber,
+    backgroundColor: Palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   rewardRow: {
     flexDirection: 'row',
     gap: Spacing.three,
@@ -422,89 +503,42 @@ const styles = StyleSheet.create({
   },
   hero: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.three,
-    backgroundColor: Palette.amber,
+    alignItems: 'center',
+    gap: Spacing.three + 4,
+    backgroundColor: Palette.amberSoft,
     borderRadius: Radius.lg,
-    padding: Spacing.four,
+    padding: Spacing.three + 4,
   },
   heroText: {
     flex: 1,
-    gap: Spacing.two,
-  },
-  heroTag: {
-    alignSelf: 'flex-start',
-    backgroundColor: Palette.white,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one + 2,
-    borderRadius: Radius.full,
-  },
-  medal: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: Palette.amberSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: Spacing.one,
   },
   voiceCard: {
-    backgroundColor: Palette.mint,
+    backgroundColor: Palette.mintSoft,
     borderRadius: Radius.lg,
-    padding: Spacing.four,
+    padding: Spacing.three + 4,
     gap: Spacing.three,
   },
   voiceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
-  },
-  quote: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    backgroundColor: Palette.white,
-    borderRadius: Radius.md,
-    padding: Spacing.three,
-  },
-  wave: {
-    height: 56,
-    backgroundColor: 'rgba(255,255,255,0.45)',
-    borderRadius: Radius.full,
-  },
-  voiceControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.five,
+    gap: Spacing.two + 4,
   },
   roundButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(255,255,255,0.6)',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.7)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  roundButtonSpacer: {
-    width: 52,
-  },
   playButton: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: Palette.blue,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  detailHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  countTag: {
-    backgroundColor: Palette.blueSoft,
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.two + 2,
-    paddingVertical: Spacing.one,
   },
   row: {
     borderRadius: Radius.md + 4,
@@ -525,28 +559,8 @@ const styles = StyleSheet.create({
   },
   rowActions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: Spacing.two,
-  },
-  correctPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    backgroundColor: Palette.mintSoft,
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one + 2,
-  },
-  fixTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    backgroundColor: Palette.coral,
-    borderRadius: Radius.full,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one + 2,
   },
   explainBox: {
     backgroundColor: Palette.white,

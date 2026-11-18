@@ -6,7 +6,6 @@ import { useCallback, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { AccountCard } from '@/components/account-card';
-import { AppHeader } from '@/components/app-header';
 import { PlusCard } from '@/components/plus-card';
 import { PrivacyCard } from '@/components/privacy-card';
 import { AppText } from '@/components/app-text';
@@ -20,7 +19,7 @@ import { tallyParts } from '../../../supabase/functions/_shared/cham-bai';
 import { SubjectNames, type Subject } from '@/lib/grading';
 import { clearHistory, loadHistory, type HistoryEntry } from '@/lib/history';
 import { accuracy, allSubjects, averageScore, scoreLabel, SubjectIcons, thisWeek } from '@/lib/progress';
-import { useTeacher } from '@/lib/profile';
+import { useProfile, useTeacher } from '@/lib/profile';
 import { speakVietnamese } from '@/lib/speech';
 import { APP_NAME } from '@/lib/teacher';
 
@@ -43,6 +42,7 @@ export default function ProgressScreen() {
   const [filter, setFilter] = useState<Subject | 'all'>('all');
   const shown = filter === 'all' ? history : history.filter((entry) => entry.subject === filter);
   const teacher = useTeacher();
+  const { profile } = useProfile();
 
   useFocusEffect(
     useCallback(() => {
@@ -71,23 +71,12 @@ export default function ProgressScreen() {
 
   return (
     <Screen>
-      <AppHeader subtitle="Tiến độ" />
-
-      <View style={styles.titleRow}>
-        <View style={styles.titleIcon}>
-          <MaterialIcons name="insights" size={26} color={Palette.blue} />
-        </View>
-        <View>
-          <AppText variant="headlineLg">Báo cáo tiến độ</AppText>
-          <AppText variant="bodySm" color={Palette.inkSoft}>
-            Dành cho bố mẹ
-          </AppText>
-        </View>
+      <View>
+        <AppText variant="headlineLg">{profile?.name ? `Tiến độ của ${profile.name}` : 'Tiến độ của bé'}</AppText>
+        <AppText variant="bodyMd" color={Palette.inkSoft}>
+          Dành cho bố mẹ
+        </AppText>
       </View>
-
-      <AccountCard />
-      <PlusCard />
-      <PrivacyCard />
 
       {history.length === 0 ? (
         <Card style={styles.empty}>
@@ -98,6 +87,41 @@ export default function ProgressScreen() {
         </Card>
       ) : (
         <>
+          <Card>
+            <View style={styles.weekHeader}>
+              <AppText variant="headlineSm" style={styles.flex}>
+                Tuần này
+              </AppText>
+              <AppText variant="labelLg" color={Palette.blue}>
+                {daysDone}/7 ngày
+              </AppText>
+            </View>
+            <View style={styles.weekRow}>
+              {week.map((day) => (
+                <View key={day.label} style={styles.dayColumn}>
+                  <AppText variant="labelSm" color={day.isToday ? Palette.blue : Palette.inkSoft}>
+                    {day.label}
+                  </AppText>
+                  <View
+                    style={[
+                      styles.dayCircle,
+                      day.done
+                        ? { backgroundColor: day.isToday ? Palette.blue : Palette.mint }
+                        : { backgroundColor: Palette.surfaceMuted },
+                    ]}>
+                    {day.done && (
+                      <MaterialIcons
+                        name={day.isToday ? 'star' : 'check'}
+                        size={20}
+                        color={day.isToday ? Palette.white : Palette.blueDark}
+                      />
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          </Card>
+
           <View style={styles.statsRow}>
             <StatTile
               icon="assignment-turned-in"
@@ -153,67 +177,28 @@ export default function ProgressScreen() {
 
           <Card>
             <View style={styles.noteHeader}>
-              <Mascot size={56} />
+              <Mascot size={52} />
               <View style={styles.flex}>
-                <AppText variant="headlineSm">{teacher.name}</AppText>
+                <AppText variant="labelLg">
+                  {teacher.Title} gợi ý cho bố mẹ
+                </AppText>
                 <AppText variant="labelMd" color={Palette.blue}>
-                  Nhận xét mới nhất · {formatDate(history[0].createdAt)}
+                  Mới nhất · {formatDate(history[0].createdAt)}
                 </AppText>
               </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Nghe ${teacher.word} gợi ý cho bố mẹ`}
+                onPress={() => speakVietnamese(history[0].parentNote, undefined, teacher.id)}
+                style={({ pressed }) => [styles.playButton, pressed && styles.pressed]}>
+                <MaterialIcons name="play-arrow" size={30} color={Palette.blue} />
+              </Pressable>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => speakVietnamese(history[0].parentNote, undefined, teacher.id)}
-              style={({ pressed }) => [styles.listenRow, pressed && styles.pressed]}>
-              <View style={styles.playDot}>
-                <MaterialIcons name="play-arrow" size={26} color={Palette.white} />
-              </View>
-              <AppText variant="labelLg" style={styles.flex}>
-                Nghe {teacher.word} nhận xét 🎧
-              </AppText>
-            </Pressable>
             <View style={styles.tipBox}>
               <MaterialIcons name="lightbulb-outline" size={20} color={Palette.amberInk} />
               <AppText variant="bodyMd" style={styles.flex}>
-                <AppText variant="labelLg">Gợi ý cho ba mẹ: </AppText>
                 {history[0].parentNote}
               </AppText>
-            </View>
-          </Card>
-
-          <Card>
-            <View style={styles.weekHeader}>
-              <MaterialIcons name="event-available" size={22} color={Palette.coralInk} />
-              <AppText variant="headlineSm" style={styles.flex}>
-                Điểm danh 7 ngày
-              </AppText>
-              <AppText variant="labelMd" color={Palette.blue}>
-                {daysDone}/7 ngày
-              </AppText>
-            </View>
-            <View style={styles.weekRow}>
-              {week.map((day) => (
-                <View key={day.label} style={styles.dayColumn}>
-                  <AppText variant="labelSm" color={day.isToday ? Palette.blue : Palette.inkSoft}>
-                    {day.label}
-                  </AppText>
-                  <View
-                    style={[
-                      styles.dayCircle,
-                      day.done
-                        ? { backgroundColor: day.isToday ? Palette.blue : Palette.mint }
-                        : { backgroundColor: Palette.surfaceMuted },
-                    ]}>
-                    {day.done && (
-                      <MaterialIcons
-                        name={day.isToday ? 'star' : 'check'}
-                        size={20}
-                        color={day.isToday ? Palette.white : Palette.blueDark}
-                      />
-                    )}
-                  </View>
-                </View>
-              ))}
             </View>
           </Card>
 
@@ -246,6 +231,13 @@ export default function ProgressScreen() {
           </Pressable>
         </>
       )}
+
+      <View style={styles.section}>
+        <AppText variant="headlineSm">Tài khoản và cài đặt</AppText>
+        <AccountCard />
+        <PlusCard />
+        <PrivacyCard />
+      </View>
 
       <AppText variant="bodySm" color={Palette.inkSoft} style={styles.center}>
         {APP_NAME} {Constants.expoConfig?.version}
@@ -319,6 +311,16 @@ function HistoryCard({ entry }: { entry: HistoryEntry }) {
 }
 
 const styles = StyleSheet.create({
+  playButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: Palette.mint,
+    backgroundColor: Palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   flex: {
     flex: 1,
   },
@@ -327,19 +329,6 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.85,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  titleIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: Palette.mintSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   empty: {
     alignItems: 'center',
@@ -395,22 +384,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
-  },
-  listenRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    backgroundColor: Palette.surfaceMuted,
-    borderRadius: Radius.full,
-    padding: Spacing.two,
-  },
-  playDot: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Palette.blue,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   tipBox: {
     flexDirection: 'row',
