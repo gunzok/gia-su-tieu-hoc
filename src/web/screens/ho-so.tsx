@@ -10,6 +10,7 @@ import { avatarEmoji, avatarOptions } from '@/lib/profile';
 import { APP_NAME, teachers, type TeacherId } from '@/lib/teacher';
 import { GRADE_OPTIONS, useProfileForm } from '@/lib/use-profile-form';
 import { Columns } from '@/web/columns';
+import { FieldBorder } from '@/web/constants';
 import { OnboardingFrame } from '@/web/onboarding-frame';
 import { useLayout } from '@/web/use-layout';
 
@@ -441,7 +442,7 @@ const styles = StyleSheet.create({
     paddingRight: Spacing.two,
     borderRadius: Radius.full,
     borderWidth: 1,
-    borderColor: Palette.border,
+    borderColor: FieldBorder,
     backgroundColor: Palette.surfaceMuted,
   },
   input: {

@@ -4,6 +4,8 @@ import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/app-text';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 import { answerWebAlert, currentWebAlert, subscribeWebAlert } from '@/lib/web-alert';
+// Thành phần này được gắn ở gốc app (src/app/_layout.tsx), nên nạp CSS vòng focus chung cho bản web ở đây.
+import '@/web/focus-ring.css';
 
 // Hộp thoại thay cho Alert.alert trên trình duyệt (xem lib/web-alert.ts). Trên điện thoại không làm gì.
 export function WebAlertHost() {

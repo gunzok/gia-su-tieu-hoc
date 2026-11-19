@@ -14,3 +14,9 @@ export const ContentMaxWidth = 1240;
 export const NarrowContentWidth = 600;
 /** Chừa chỗ cho thanh tab dưới khi cửa sổ hẹp. */
 export const BottomBarInset = 84;
+
+/**
+ * Viền ô nhập trên web: đạt tương phản ≥ 3:1 với nền (WCAG 1.4.11), để thấy rõ chỗ gõ.
+ * #767F8E: 3.85:1 trên nền kem #F9F9FF, 3.65:1 trên nền ô #F0F3FF (GIA-74).
+ */
+export const FieldBorder = '#767F8E';

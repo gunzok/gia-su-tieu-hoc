@@ -396,6 +396,8 @@ const styles = StyleSheet.create({
   parentPill: {
     flexDirection: 'row',
     alignItems: 'center',
+    // Vùng bấm tối thiểu 44px (trước đây 36px).
+    minHeight: 44,
     gap: Spacing.one + 2,
     backgroundColor: Palette.surfaceStrong,
     borderRadius: Radius.full,
