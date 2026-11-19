@@ -9,6 +9,7 @@ import { Mascot } from '@/components/mascot';
 import { Palette, Radius, Spacing } from '@/constants/theme';
 import { APP_NAME } from '@/lib/teacher';
 import { OnboardingFrame } from '@/web/onboarding-frame';
+import { LANDING_TITLE } from '@/web/page-title';
 import { useLayout } from '@/web/use-layout';
 
 const features: { icon: IconName; title: string; hint: string; tint: string; border: string }[] = [
@@ -27,7 +28,7 @@ export default function WebWelcomeScreen() {
   return (
     <OnboardingFrame
       head={{
-        title: `${APP_NAME}: gia sư AI chấm bài tập về nhà lớp 1–5`,
+        title: LANDING_TITLE,
         description:
           'Bé chụp bài tập, gia sư AI chấm và nhận xét bằng tiếng Việt rồi đọc thành tiếng. Ba mẹ theo dõi tiến độ của con mỗi ngày.',
       }}
