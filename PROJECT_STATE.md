@@ -11,6 +11,7 @@
 | Web production | https://gia-su-tieu-hoc.giasutieuhoc.workers.dev (mở công khai từ 14/11, GIA-78; máy chủ còn danh sách mời tới khi tắt `WEB_CHI_NGUOI_DUOC_MOI`) |
 | App Android | 0.5.0 APK cài trực tiếp: https://github.com/gunzok/gia-su-tieu-hoc/releases/latest (trang web `/tai-app`), phát hành 15/11 (GIA-79) |
 | Ngày khởi tạo | 2026-10-18 (migration đầu tiên) · áp quy trình: 2026-11-13 |
+| Cập nhật | 2026-11-18 (dọn bảng Linear, chốt sprint 1) |
 | Pha hiện tại | **6 Nghiệm thu, vận hành** (web công khai + app Android APK 0.5.0 từ 15/11) · **5 Phát triển** cho việc sau ra mắt |
 
 ## Gate
@@ -42,7 +43,7 @@ Trạng thái: Chưa bắt đầu · Đang làm · Chờ duyệt · Đã duyệt
 ## Rủi ro
 | Mã | Mô tả | Xác suất | Ảnh hưởng | Xử lý | Trạng thái |
 |---|---|---|---|---|---|
-| R-001 | Điều khoản Gemini API không cho app hướng tới người dưới 18 tuổi; gói miễn phí dùng dữ liệu gửi lên | Cao | Cao | Chủ dự án chấp nhận 14/11: miễn phí dùng Gemini miễn phí, Plus dùng Gemini trả phí (GIA-77); chính sách ghi rõ. Cần rà pháp lý | Chấp nhận có điều kiện |
+| R-001 | Điều khoản Gemini API không cho app hướng tới người dưới 18 tuổi; gói miễn phí dùng dữ liệu gửi lên | Cao | Cao | Chủ dự án chấp nhận 14/11: miễn phí dùng Gemini miễn phí, Plus dùng Gemini trả phí (GIA-77); chính sách ghi rõ. 18/11: chủ dự án giữ nguyên cho nhóm thử, **quyết lại trước khi mở rộng** (chuyển gói miễn phí sang khoá trả phí hoặc khoá chấm bài gói miễn phí). Cần rà pháp lý | Chấp nhận có điều kiện |
 | R-002 | Chưa bật CAPTCHA đăng ký; đăng nhập ẩn danh vẫn bật (app cần) | Trung bình | Trung bình | ADR-007: giữ CAPTCHA tắt, dựa vào rate limit Auth + giới hạn lượt + cầu dao tổng cho mọi yêu cầu (GIA-84); Turnstile khi có bản app mới | Đang theo dõi |
 | R-003 | OTA kênh `preview` tự gửi khi gộp, không có cổng duyệt | Trung bình | Trung bình | Chỉ máy thử nhận kênh preview; kênh production đi theo tag | Chấp nhận |
 | R-004 | Chưa có Sentry DSN và cảnh báo ngân sách AI | Trung bình | Trung bình | Code sẵn; chủ dự án tạo DSN + budget alert (GIA-72) | Mở |
@@ -71,6 +72,6 @@ Không. `make lint test build security` gọi lệnh thật; CI (`ci.yml`) chạ
 - Duyệt ADR-007 (mở web, CAPTCHA tắt), ADR-008 (LM Studio qua hàng đợi, cần đo model 27B trước), ADR-009 (chưa làm đăng nhập bằng tài khoản AI cá nhân)?
 
 ## Bước tiếp theo
-1. Chủ dự án: tắt `WEB_CHI_NGUOI_DUOC_MOI` (mở web thật sự), đặt `GEMINI_API_KEY_TRA_PHI`, tắt deploy tự động của tích hợp GitHub Supabase (R-008), budget alert Google Cloud + Anthropic, thử cài APK 0.5.0 trên máy Android thật.
-2. Sprint 1 (16-22/11): xác nhận nội dung Cycle đầu sprint (GIA-73 thử thật, GIA-72 Sentry, GIA-58, quyết định ADR-008/009).
-3. Cuối sprint: demo, velocity, retro, status update Linear.
+1. Chủ dự án: đặt `GEMINI_API_KEY_TRA_PHI` và `REVENUECAT_SECRET_KEY` (chặn GIA-77/78), tắt `WEB_CHI_NGUOI_DUOC_MOI` (mở web thật sự), tắt deploy tự động của tích hợp GitHub Supabase (R-008), budget alert Google Cloud + Anthropic, cài thử APK trên máy Android thật (OTA production 16/11 có GIA-85).
+2. Sprint 1 (16-22/11), chốt 18/11: worker Orca chạy GIA-58 (tách code dùng chung), GIA-74 phần Developer web, GIA-73 kiểm thử web đa trình duyệt. GIA-44: 5 mục con xong, nghiệm thu chờ bộ mẫu `mau-bai-tap/`. GIA-86 (bố cục 4 tab) đã gộp 18/11.
+3. Cuối sprint (22/11): demo, velocity, retro, status update Linear.
