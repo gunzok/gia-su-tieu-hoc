@@ -64,7 +64,8 @@ App iOS + Android giúp học sinh tiểu học (lớp 1–5) làm bài tập v�
 
 Linear có 2 project: **Gia sư Tiểu học — App mobile (iOS/Android)** (P-GIA-2) và **Gia sư Tiểu học — Web app** (P-GIA-4). Hai bản dùng chung code chức năng; giao diện và nhánh Git riêng.
 
-- **Dùng chung** (nhãn Linear `Dùng chung`): `supabase/`, `src/lib/`, hook thuần logic, `src/constants/`. Không import từ `src/app/` hay `src/components/`. Sửa ở đây phải chạy được cho cả hai bản (tsc, lint, `npm test`).
+- **Dùng chung** (nhãn Linear `Dùng chung`): `supabase/`, `src/lib/`, hook thuần logic, `src/constants/`. Không import từ `src/app/`, `src/components/` hay `src/web/` (luật ESLint `no-restricted-imports` chặn, GIA-58). Sửa ở đây phải chạy được cho cả hai bản (tsc, lint, `npm test`).
+- Khác biệt nền tảng trong lõi: khác cả file thì tách hậu tố `.web.ts(x)`; chỉ khác một giá trị/nhánh nhỏ thì giữ `Platform.OS` một dòng. Danh sách file từng loại, chỗ dùng `Platform.OS` và ngoại lệ `router` của expo-router trong `src/lib/`: `docs/cau-truc-code.md` (cập nhật khi thêm file lõi mới).
 - **Riêng mobile** (nhãn `Mobile`): giao diện native, build EAS/OTA, TestFlight/store. Nhánh `ticket/GIA-xx` từ `main`.
 - **Riêng web** (nhãn `Web`): giao diện web, khác biệt nền tảng dùng hậu tố `.web.ts(x)`. Nhánh `web/GIA-xx` từ `main`. Không sửa file giao diện native từ nhánh web và ngược lại.
 - Mỗi issue Linear thuộc đúng một project; việc lõi dùng chung nằm ở project nơi phát sinh và gắn nhãn `Dùng chung`. Nhánh: `main` là nhánh chính duy nhất cho cả hai bản (chốt 12/11/2026, GIA-59); mọi PR vào `main`, CI xanh và chủ dự án duyệt mới gộp. `setup/khung-du-an` ngừng dùng.
