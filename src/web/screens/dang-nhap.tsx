@@ -12,6 +12,7 @@ import { EMAIL_CODE_MAX } from '@/lib/email-code';
 import { APP_NAME } from '@/lib/teacher';
 import { comingSoon, useParentLogin } from '@/lib/use-parent-login';
 import { Columns } from '@/web/columns';
+import { FieldBorder } from '@/web/constants';
 import { OnboardingFrame } from '@/web/onboarding-frame';
 
 // Màn "Ba Mẹ đăng nhập" bản web, theo Stitch "Web App v2 - Đăng nhập Ba Mẹ":
@@ -330,7 +331,7 @@ const styles = StyleSheet.create({
     minHeight: 56,
     borderRadius: Radius.full,
     borderWidth: 1,
-    borderColor: Palette.border,
+    borderColor: FieldBorder,
     backgroundColor: Palette.surfaceMuted,
     paddingHorizontal: Spacing.four,
     fontFamily: FontFamily.body,

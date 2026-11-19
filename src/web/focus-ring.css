@@ -1,0 +1,10 @@
+/*
+ * Vòng focus khi đi bằng bàn phím (Tab) trên bản web (GIA-74).
+ * Vòng mặc định của trình duyệt (xanh dương #005FCC, 1px) gần như không thấy trên nút xanh lá #006B58 (1.08:1).
+ * Vòng 3px màu chữ đậm #111C2D, cách mép 2px: nằm trên nền sáng, tương phản 16:1. Chỉ hiện khi dùng bàn phím
+ * (:focus-visible), bấm chuột không hiện. Màu = Palette.ink.
+ */
+html :focus-visible {
+  outline: 3px solid #111c2d;
+  outline-offset: 2px;
+}
