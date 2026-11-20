@@ -17,6 +17,7 @@ import { NoticeToast } from '@/components/notice-toast';
 import { WebAlertHost } from '@/web/web-alert-host';
 import { WebAuthReturn } from '@/web/auth-return';
 import { ConsentGate } from '@/web/consent-gate';
+import { WebPageTitle } from '@/web/page-title-host';
 import { Palette } from '@/constants/theme';
 import { AuthProvider } from '@/lib/auth';
 import { HomeworkSessionProvider } from '@/lib/homework-session';
@@ -86,6 +87,7 @@ function RootNavigator() {
       <NoticeToast />
       <WebAlertHost />
       <WebAuthReturn />
+      <WebPageTitle />
       <ConsentGate />
     </HomeworkSessionProvider>
   );

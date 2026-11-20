@@ -80,6 +80,13 @@ Ghi chú: lỗi console duy nhất là `403` khi bấm chấm bằng tài khoả
 
 Không thấy lỗi nặng (không vào được, trắng trang, mất dữ liệu) ở phần thử được.
 
+**Kiểm lại sau khi sửa (19/11, nhánh `web/GIA-87`, bản build chạy trên máy, Chrome + Android Chrome + Safari + iPhone Safari):**
+cả 4 lỗi đạt. Nút X "Bỏ trang" 44×44 (hình tròn 28px bên trong), "Cổng phụ huynh" 168×44 / 52×44 (đã sửa ở PR #43);
+trang 404 tiếng Việt có nút "Về Trang chủ", `/_sitemap` cũng hiện trang này, kèm `noindex`; mỗi màn một tiêu đề
+(đặt theo đường dẫn ở `src/web/page-title.ts`); ảnh xem trước có `alt="Trang 1 bài làm của bé"`. axe 0 lỗi ở Trang chủ,
+Quét bài có ảnh, 404. Ảnh: `gia-87-nut-bo-trang-truoc.jpg` / `-sau.jpg`, `gia-88-404-chrome-desktop.jpg`, `gia-88-404-iphone-safari.jpg`.
+Đường dẫn sai vẫn trả mã 200 (Cloudflare chế độ SPA); muốn trả 404 thật phải đổi cấu hình Worker (ngoài phạm vi GIA-88).
+
 ## 5. Chạy thử với 10 người
 
 Bộ tài liệu trong `docs/nguoi-thu-web/` (chủ dự án gửi, QA không gửi cho ai):

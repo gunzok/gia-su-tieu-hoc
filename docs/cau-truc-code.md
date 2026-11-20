@@ -29,7 +29,9 @@ hay một nhánh nhỏ. Không tách file chỉ để bỏ một dòng `Platform
 | `src/lib/homework-session.tsx` | Dùng chung | `Platform.OS` ở chọn ảnh; dùng `router` |
 | `src/lib/payments.tsx` | Dùng chung | RevenueCat (`react-native-purchases` có bản web); dùng `router` |
 | `src/lib/profile.tsx`, `use-profile-form.ts`, `use-parent-login.ts` | Dùng chung | Hook form/đăng nhập; hai file sau dùng `router` |
-| `src/lib/speech.ts` | Dùng chung | `Platform.OS` chỉnh tốc độ đọc iOS/Android |
+| `src/lib/speech-core.ts` | Dùng chung | Giọng AI của máy chủ, `naturalSpeech`, lượt đọc/dừng; nhận giọng trên máy của từng nền tảng |
+| `src/lib/speech.ts` / `.web.ts` | Có bản riêng mỗi nền tảng | Giọng trên máy: app dùng `expo-speech` (`Platform.OS` chỉnh tốc độ iOS/Android); web dùng Web Speech, trình duyệt thiếu giọng vi-VN thì không đọc, gọi `onNoVoice` (GIA-87) |
+| `src/lib/browser-voices.ts` | Dùng chung (chỉ web gọi) | Danh sách giọng tiếng Việt của trình duyệt; `src/web/web-voice.ts` dùng lại |
 | `src/lib/nghe-giong.ts`, `read-page-text.ts` | Dùng chung | Gọi mã native tuỳ chọn (`requireOptionalNativeModule`); web không có thì trả rỗng/ẩn nút |
 | `src/lib/supabase.ts` | Dùng chung | `Platform.OS` cho `detectSessionInUrl` |
 | `src/lib/web-alert.ts` | Dùng chung | Hàng đợi hộp thoại; chỉ thay `Alert.alert` khi chạy web |
@@ -47,7 +49,7 @@ hay một nhánh nhỏ. Không tách file chỉ để bỏ một dòng `Platform
 | Chỗ | Làm gì | Quyết định | Lý do |
 |---|---|---|---|
 | `auth.tsx` `signInWithGoogle` | Web chuyển hẳn trang sang Google; app mở phiên trình duyệt | Giữ | Một nhánh trong một hàm; tách `.web` phải chép cả `AuthProvider` (~140 dòng) |
-| `speech.ts` `rate` | Tốc độ đọc iOS 0.96, còn lại 0.95 | Giữ | Một giá trị, không phải khác biệt web |
+| `speech.ts` `rate` | Tốc độ đọc iOS 0.96, Android 0.95 (web ở `speech.web.ts`) | Giữ | Một giá trị, không phải khác biệt web |
 | `homework-session.tsx` `pickPhoto` | Web bấm "chụp" thì mở hộp chọn ảnh | Giữ | Một dòng; file là hook chung lớn |
 | `grading.ts`, `hoi-co.ts` `lmStudioUrl` | Web không gọi LM Studio trong mạng nhà | Giữ | Một dòng; không sửa logic chấm bài |
 | `supabase.ts` `detectSessionInUrl` | Web đọc phiên từ địa chỉ sau Google | Giữ | Một giá trị cấu hình |

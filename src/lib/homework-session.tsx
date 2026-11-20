@@ -116,7 +116,21 @@ export function HomeworkSessionProvider({
 
   function speak(text: string) {
     setSpeaking(true);
-    speakVietnamese(text, { onDone: () => setSpeaking(false) }, teacher.id);
+    speakVietnamese(
+      text,
+      {
+        onDone: () => setSpeaking(false),
+        // Chỉ bản web: trình duyệt thiếu giọng tiếng Việt thì không đọc bằng giọng tiếng Anh, báo nhẹ.
+        onNoVoice: () =>
+          setNotice(
+            newNotice(
+              'Máy chưa có giọng đọc tiếng Việt',
+              'Con đọc lời cô trên màn hình nhé. Ba mẹ có thể cài giọng tiếng Việt cho máy hoặc dùng Chrome.',
+            ),
+          ),
+      },
+      teacher.id,
+    );
   }
 
   // Giữ cố định để màn Chữa bài dùng làm hàm dọn dẹp khi rời tab.

@@ -112,7 +112,12 @@ export default function ScanScreen() {
       {count > 0 ? (
         <>
           <View style={styles.previewWrap}>
-            <Image source={{ uri: photos[shown].uri }} style={StyleSheet.absoluteFill} contentFit="contain" />
+            <Image
+              source={{ uri: photos[shown].uri }}
+              style={StyleSheet.absoluteFill}
+              contentFit="contain"
+              accessibilityLabel={`Trang ${shown + 1} bài làm của bé`}
+            />
             <View style={[styles.corner, styles.cornerTL]} />
             <View style={[styles.corner, styles.cornerTR]} />
             <View style={[styles.corner, styles.cornerBL]} />
@@ -132,15 +137,17 @@ export default function ScanScreen() {
                   accessibilityLabel={`Xem trang ${index + 1}`}
                   onPress={() => setActive(index)}
                   style={StyleSheet.absoluteFill}>
-                  <Image source={{ uri: page.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                  {/* Nút đã có nhãn "Xem trang …" nên ảnh thu nhỏ để alt rỗng (ảnh trang trí). */}
+                  <Image source={{ uri: page.uri }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel="" />
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`Bỏ trang ${index + 1}`}
                   onPress={() => removePhoto(index)}
-                  hitSlop={8}
-                  style={styles.thumbRemove}>
-                  <MaterialIcons name="close" size={16} color={Palette.white} />
+                  style={({ pressed }) => [styles.thumbRemove, pressed && styles.pressed]}>
+                  <View style={styles.thumbRemoveDot}>
+                    <MaterialIcons name="close" size={18} color={Palette.white} />
+                  </View>
                 </Pressable>
               </View>
             ))}
@@ -572,14 +579,21 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: Palette.blue,
   },
+  // Vùng bấm 44×44 ở góc ảnh (web không dùng được hitSlop), hình tròn bên trong nhỏ hơn cho đỡ che ảnh.
   thumbRemove: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(17,28,45,0.65)',
+    top: 0,
+    right: 0,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbRemoveDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(17,28,45,0.7)',
     alignItems: 'center',
     justifyContent: 'center',
   },

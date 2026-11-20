@@ -22,8 +22,9 @@ type Props = {
   /** Nút phụ bên phải thanh trên, ví dụ "Đăng nhập" ở màn Khởi động. */
   action?: { label: string; onPress: () => void };
   /**
-   * Tiêu đề thẻ trình duyệt và mô tả khi chia sẻ link (bản web mở công khai, GIA-78). Thẻ `description` cho máy tìm kiếm
-   * đã có sẵn trong index.html (lấy từ app.json) nên ở đây chỉ thêm `og:*`, tránh hai thẻ description.
+   * Tiêu đề và mô tả khi chia sẻ link (bản web mở công khai, GIA-78). Thẻ `description` cho máy tìm kiếm đã có sẵn
+   * trong index.html (lấy từ app.json) nên ở đây chỉ thêm `og:*`, tránh hai thẻ description. Tiêu đề thẻ trình duyệt
+   * (`document.title`) do `WebPageTitle` đặt theo đường dẫn (GIA-89), ở đây không đặt nữa để không ghi đè nhau.
    */
   head?: { title: string; description?: string };
 };
@@ -39,7 +40,6 @@ export function OnboardingFrame({ children, title, back, onSkip, action, head }:
     <View style={styles.page}>
       {head && (
         <Head>
-          <title>{head.title}</title>
           <meta property="og:title" content={head.title} />
           {head.description && <meta property="og:description" content={head.description} />}
         </Head>
